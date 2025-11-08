@@ -30,14 +30,23 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/rooms', require('./routes/rooms'));
-app.use('/api/reservations', require('./routes/reservations'));
+
 app.use('/api/menu', require('./routes/menu'));
 app.use('/api/feedback', require('./routes/feedback'));
 app.use('/api/reports', require('./routes/reports'));
-
+// Add this line with other routes
+app.use('/api/orders', require('./routes/orderRoutes'));
+// Add with other routes
+app.use('/api/bookings', require('./routes/bookingRoutes'));
+app.use('/api/public/rooms', require('./routes/publicRooms'));
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`✅ Server running at: http://localhost:${PORT}`));
+const { cleanupFinishedBookings } = require('./utils/cleanup');
 
+// Run every hour
+setInterval(cleanupFinishedBookings, 60 * 60 * 1000);
+// Run once on start
+cleanupFinishedBookings();
 /*// backend/src/server.js
 require('dotenv').config();
 const express = require('express');
