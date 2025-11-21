@@ -6,11 +6,14 @@ const {
     initiatePayment,
     verifyPayment,
     getCustomerBookings,
-    cancelBooking
+    cancelBooking,
+    createBookingByReceptionist,
+    getAllBookings,
+    markBookingAsCompleted
 } = require('../controllers/bookingController');
 
-router.post('/', protect, authorize('customer'), createBooking);
-router.post('/payment', protect, authorize('customer'), initiatePayment);
+router.post('/', protect, authorize('customer', ), createBooking);
+router.post('/payment', protect, authorize('customer', ), initiatePayment);
 router.post('/verify-payment', verifyPayment); // Public endpoint for Chapa callback
 
 router.put('/:id/cancel', protect, authorize('customer'), cancelBooking);
@@ -27,5 +30,25 @@ router.get('/guest-bookings', async(req, res) => {
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
-});
+}); // RECEPTIONIST ONLY
+router.post(
+    '/receptionist',
+    protect,
+    authorize('receptionist', 'admin', 'manager'),
+    createBookingByReceptionist
+);
+// <--- ADD THIS NEW ROUTE FOR RECEPTIONISTS TO VIEW ALL BOOKINGS
+router.get(
+    '/receptionist/all-bookings',
+    protect,
+    authorize('receptionist', 'admin', 'manager', 'cahier'),
+    getAllBookings // This will be the new controller function
+);
+// New: Mark Booking as Completed
+router.put(
+    '/receptionist/:id/complete',
+    protect,
+    authorize('receptionist', 'admin', 'manager'),
+    markBookingAsCompleted
+);
 module.exports = router;

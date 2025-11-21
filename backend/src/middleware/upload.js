@@ -122,4 +122,12 @@ const uploadRoom = multer({
     }
 });
 
-module.exports = { uploadAvatar, uploadMenu, uploadRoom };
+const uploadChatFile = multer({
+    storage: createStorage('chat'),
+    limits: { fileSize: 25 * 1024 * 1024 }, // 25MB
+    fileFilter: (req, file, cb) => {
+        cb(null, true); // Allow all file types for now
+    }
+});
+
+module.exports = { uploadAvatar, uploadMenu, uploadRoom, uploadChatFile };
