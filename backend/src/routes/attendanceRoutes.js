@@ -1,4 +1,4 @@
-// backend/src/routes/attendanceRoutes.js
+/*// backend/src/routes/attendanceRoutes.js
 const express = require('express');
 const router = express.Router();
 const { protect, authorize } = require('../middleware/auth');
@@ -26,5 +26,32 @@ router.put('/manager/:attendanceId', protect, authorize('admin', 'manager'), upd
 router.post('/manager', protect, authorize('admin', 'manager'), createStaffAttendance);
 router.get('/manager/history/:userId', protect, authorize('admin', 'manager'), getStaffAttendanceHistory);
 
+
+module.exports = router;*/
+const express = require('express');
+const router = express.Router();
+const { protect, authorize } = require('../middleware/auth');
+const {
+    checkIn,
+    checkOut,
+    getMyAttendance,
+    getStaffAttendanceByDate,
+    updateAttendance,
+    createStaffAttendance,
+    getStaffAttendanceHistory
+} = require('../controllers/attendanceController');
+
+// CRITICAL ORDER — PARAM ROUTE FIRST!
+router.get('/my/:date', protect, authorize('receptionist', 'cashier'), getMyAttendance); // ← MUST BE BEFORE /my
+router.get('/my', protect, authorize('receptionist', 'cashier'), getMyAttendance); // ← Today
+
+router.post('/check-in', protect, authorize('receptionist', 'cashier'), checkIn);
+router.post('/check-out', protect, authorize('receptionist', 'cashier'), checkOut);
+
+// Manager routes
+router.get('/manager/date/:date', protect, authorize('admin', 'manager'), getStaffAttendanceByDate);
+router.put('/manager/:attendanceId', protect, authorize('admin', 'manager'), updateAttendance);
+router.post('/manager', protect, authorize('admin', 'manager'), createStaffAttendance);
+router.get('/manager/history/:userId', protect, authorize('admin', 'manager'), getStaffAttendanceHistory);
 
 module.exports = router;

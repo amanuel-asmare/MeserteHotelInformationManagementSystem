@@ -183,7 +183,7 @@ const path = require('path');
 
 // Helper to get full image URL
 const getFullImageUrl = (imagePath) => {
-    const API_BASE = process.env.API_URL || 'http://localhost:5000';
+    const API_BASE = process.env.API_URL || 'https://localhost:5000';
     return `${API_BASE}${imagePath}`; // Fixed: Backticks + ${}
 };
 
@@ -219,16 +219,35 @@ exports.getRoom = async(req, res) => {
 
 // CREATE ROOM
 exports.createRoom = async(req, res) => {
-    const { roomNumber, type, price, floorNumber, description, capacity, amenities, status, numberOfBeds, bathrooms } = req.body;
+    const {
+        roomNumber,
+        // typeEn,
+        // typeAm,
+        type,
+        price,
+        floorNumber,
+        // descEn,
+        // descAm, 
+        description,
+        capacity,
+        amenities,
+        status,
+        numberOfBeds,
+        bathrooms
+    } = req.body;
     const images = req.files ? req.files.map(file => `/uploads/rooms/${file.filename}`) : []; // Fixed
 
     try {
         const room = new Room({
             roomNumber,
             type,
+            // typeEn,
+            //typeAm, // Dual Language Input
             price: Number(price),
             floorNumber: Number(floorNumber),
             description,
+            // descEn,
+            // descAm, // Dual Language Input
             images,
             capacity: Number(capacity),
             amenities: amenities ? amenities.split(',').map(a => a.trim()) : [],

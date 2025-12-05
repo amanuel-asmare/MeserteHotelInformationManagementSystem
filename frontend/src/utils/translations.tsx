@@ -1,0 +1,277 @@
+export const translations = {
+  en: {
+    // Brand
+    meseretHotel: "Meseret Hotel",
+    adminPortal: "Admin Portal",
+    managerPortal: "Manager Portal",
+    receptionPortal: "Reception Portal",
+    cashierPortal: "Cashier Portal",
+    
+    // Auth
+    login: "Login",
+    register: "Register",
+    logout: "Logout",
+    welcome: "Welcome back",
+    
+    // Dashboard Stats
+    occupiedRooms: "Occupied Rooms",
+    todaysCheckins: "Today's Check-ins",
+    pendingFeedback: "Pending Feedback",
+    revenueToday: "Revenue Today",
+    pendingOrders: "Pending Orders",
+    staffOnDuty: "Staff On Duty",
+    availableRooms: "Available Rooms",
+    
+    // Sidebar Menus
+    dashboard: "Dashboard",
+    roomManagement: "Room Management",
+    manageStaff: "Manage Staff",
+    menuManagement: "Menu Management",
+    foodOrders: "Food Orders",
+    generateReport: "Generate Report",
+    uploadDocs: "Upload Documentation",
+    feedback: "Feedback",
+    settings: "Settings",
+    chat: "Chat",
+    billing: "Billing Management",
+    payroll: "Payroll",
+    attendance: "Attendance",
+    
+    // Actions & Common
+    viewChart: "Click to view chart",
+    search: "Search...",
+    refresh: "Refresh",
+    addRoom: "Add Room",
+    view: "View",
+    edit: "Edit",
+    delete: "Delete",
+    save: "Save",
+    cancel: "Cancel",
+    // ADD THESE MISSING KEYS:
+    allTypes: "All Types",
+    allAvailability: "All Availability",
+    available: "Available",
+    occupied: "Occupied",
+    sortByRoomNumber: "Sort by Room Number",
+    sortByPrice: "Sort by Price",
+    sortByFloor: "Sort by Floor",
+    single: "Single",
+    double: "Double",
+    triple: "Triple",
+    clean: "Clean",
+    dirty: "Dirty",
+    maintenance: "Maintenance",
+    update: "Update",
+    add: "Add",
+  addNewRoom:"Add New Room",
+  updateSuccessfully:"Updated Successfully",
+   addSuccessfully:"Add Successfully",
+    Room:"Room",
+    // Footer
+    contactUs: "Contact Us",
+    ourServices: "Our Services",
+    quickLinks: "Quick Links",
+    rightsReserved: "All rights reserved.",
+    backToTop: "Back to Top",
+    systemOnline: "System Online"
+  },
+  am: {
+    // Brand
+    meseretHotel: "መሰረት ሆቴል",
+    adminPortal: "አስተዳዳሪ ፖርታል",
+    managerPortal: "ማናጀር ፖርታል",
+    receptionPortal: "ሪሴፕሽን ፖርታል",
+    cashierPortal: "ካሸር ፖርታል",
+    
+    // Auth
+    login: "ግባ",
+    register: "ተመዝገብ",
+    logout: "ውጣ",
+    welcome: "እንኳን ደህና መጡ",
+    
+    // Dashboard Stats
+    occupiedRooms: "የተያዙ ክፍሎች",
+    todaysCheckins: "ዛሬ የገቡ",
+    pendingFeedback: "ያልታዩ አስተያየቶች",
+    revenueToday: "የዛሬ ገቢ",
+    pendingOrders: "ያልተጠናቀቁ ትዕዛዞች",
+    staffOnDuty: "በስራ ላይ ያሉ",
+    availableRooms: "ነጻ ክፍሎች",
+    
+    // Sidebar Menus
+    dashboard: "ዳሽቦርድ",
+    roomManagement: "ክፍል አስተዳደር",
+    manageStaff: "ሰራተኛ ያስተዳድሩ",
+    menuManagement: "ሜኑ አስተዳደር",
+    foodOrders: "የምግብ ትዕዛዞች",
+    generateReport: "ሪፖርት አውጣ",
+    uploadDocs: "ሰነድ ይጫኑ",
+    feedback: "አስተያየት",
+    settings: "ቅንብሮች",
+    chat: "ውይይት",
+    billing: "ሂሳብ አስተዳደር",
+    payroll: "ደሞዝ ክፍያ",
+    attendance: "የሰዓት መቆጣጠሪያ",
+    
+    // Actions & Common
+    viewChart: "ቻርት ለመመልከት ይጫኑ",
+    search: "ፈልግ...",
+    refresh: "አድስ",
+    addRoom: "ክፍል ጨምር",
+    updateRoom: " አስተካክል ክፍል ",
+    view: "ተመልከት",
+    edit: "አስተካክል",
+    delete: "ሰርዝ",
+    save: "አስቀምጥ",
+    cancel: "ይቅር",
+    // ADD THESE MISSING AMHARIC TRANSLATIONS:
+    allTypes: "ሁሉም ዓይነቶች",
+    allAvailability: "ሁሉም ተገኝነት",
+    available: "ነጻ",
+    occupied: "ተይዟል",
+    sortByRoomNumber: "በክፍል ቁጥር ደርድር",
+    sortByPrice: "በዋጋ ደርድር",
+    sortByFloor: "በፎቅ ደርድር",
+    single: "ነጠላ",
+    double: "ድርብ",
+    triple: "ሶስትዮሽ",
+    clean: "ንጹህ",
+    dirty: "መጥፎ",
+    maintenance: "በጥገና ላይ",
+    update: "አሻሽል",
+    add: "ጨምር",
+    addNewRoom:"አዲስ ክፍል ጨምር",
+     updateSuccessfully:"በትክክል ትሻሽል",
+   addSuccessfully:"በትክክል ተመዝግብል",
+   Room:'ክፍል',
+    // Footer
+    contactUs: "ያግኙን",
+    ourServices: "አገልግሎቶቻችን",
+    quickLinks: "ፈጣን ሊንኮች",
+    rightsReserved: "መብቱ በህግ የተጠበቀ ነው።",
+    backToTop: "ወደ ላይ",
+    systemOnline: "ሲስተም ይሰራል"
+  }
+};/*import { Button } from 'react-native';
+// src/utils/translations.ts
+
+export const translations = {
+  en: {
+    // --- General ---
+    meseretHotel: "Meseret Hotel",
+    welcome: "Welcome",
+    login: "Login",
+    register: "Register",
+    logout: "Logout",
+    dashboard: "Dashboard",
+    settings: "Settings",
+    profile: "Profile",
+    searchPlaceholder: "Search...",
+    
+    // --- Roles ---
+    admin: "Admin",
+    manager: "Manager",
+    receptionist: "Receptionist",
+    cashier: "Cashier",
+    customer: "Customer",
+
+    // --- Sidebar Menus (All Roles) ---
+    manageStaff: "Manage Staff",
+    roomManagement: "Room Management",
+    menuManagement: "Menu Management",
+    foodOrders: "Food Orders",
+    generateReport: "Generate Report",
+    uploadDocs: "Upload Documentation",
+    feedback: "Feedback",
+    chat: "Chat",
+    roomStatus: "Room Status",
+    viewReport: "View Report",
+    attendance: "Attendance",
+    myAttendance: "My Attendance",
+    guestManagement: "Guest Management",
+    billingManagement: "Billing Management",
+    payroll: "Payroll",
+    phoneSystem: "Phone System",
+    myBookings: "My Bookings",
+    orderFood: "Order Food",
+    giveFeedback: "Give Feedback",
+
+    // --- Dashboard Stats ---
+    occupiedRooms: "Occupied Rooms",
+    todaysRevenue: "Today's Revenue",
+    pendingOrders: "Pending Orders",
+    staffOnDuty: "Staff On Duty",
+    availableRooms: "Available Rooms",
+    checkinsToday: "Check-ins Today",
+    upcomingArrivals: "Upcoming Arrivals",
+    departingToday: "Departing Today",
+    
+    // --- Buttons ---
+    viewRooms: "View Rooms",
+    contactUs: "Contact Us",
+    searchRooms: "Search Rooms",
+    nextStep: "Next Step",
+    cancel: "Cancel",
+    createAccount: "Create Account",
+    refresh: "Refresh",
+  },
+  am: {
+    // --- General ---
+    meseretHotel: "መሰረት ሆቴል",
+    welcome: "እንኳን ደህና መጡ",
+    login: "ግባ",
+    register: "ተመዝገብ",
+    logout: "ውጣ",
+    dashboard: "ዳሽቦርድ",
+    settings: "ቅንብሮች",
+    profile: "መገለጫ",
+    searchPlaceholder: "ፈልግ...",
+
+    // --- Roles ---
+    admin: "አስተዳዳሪ",
+    manager: "ማናጀር",
+    receptionist: "ሪሴፕሽን",
+    cashier: "ካሸር",
+    customer: "ደንበኛ",
+
+    // --- Sidebar Menus ---
+    manageStaff: "ሰራተኛ ያስተዳድሩ",
+    roomManagement: "ክፍል አስተዳደር",
+    menuManagement: "ሜኑ አስተዳደር",
+    foodOrders: "የምግብ ትዕዛዞች",
+    generateReport: "ሪፖርት አውጣ",
+    uploadDocs: "ሰነድ ይጫኑ",
+    feedback: "አስተያየት",
+    chat: "ውይይት",
+    roomStatus: "የክፍል ሁኔታ",
+    viewReport: "ሪፖርት ይመልከቱ",
+    attendance: "የሰዓት መቆጣጠሪያ",
+    myAttendance: "የኔ ሰዓት",
+    guestManagement: "እንግዳ አስተዳደር",
+    billingManagement: "ሂሳብ አስተዳደር",
+    payroll: "ደሞዝ ክፍያ",
+    phoneSystem: "ስልክ ሲስተም",
+    myBookings: "የኔ ትዕዛዞች",
+    orderFood: "ምግብ ይዘዙ",
+    giveFeedback: "አስተያየት ይስጡ",
+
+    // --- Dashboard Stats ---
+    occupiedRooms: "የተያዙ ክፍሎች",
+    todaysRevenue: "የዛሬ ገቢ",
+    pendingOrders: "ያልተጠናቀቁ ትዕዛዞች",
+    staffOnDuty: "በስራ ላይ ያሉ",
+    availableRooms: "ነጻ ክፍሎች",
+    checkinsToday: "ዛሬ የገቡ",
+    upcomingArrivals: "በመንገድ ላይ ያሉ",
+    departingToday: "ዛሬ የሚወጡ",
+
+    // --- Buttons ---
+    viewRooms: "ክፍሎችን ይመልከቱ",
+    contactUs: "ያግኙን",
+    searchRooms: "ክፍል ይፈልጉ",
+    nextStep: "ቀጣይ",
+    cancel: "ይቅር",
+    createAccount: "መለያ ይፍጠሩ",
+    refresh: "አድስ",
+  }
+};*/

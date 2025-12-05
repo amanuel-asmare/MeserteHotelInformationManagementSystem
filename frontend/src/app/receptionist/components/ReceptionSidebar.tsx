@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Home, Clock, Users, Bed, CreditCard, FileText, BarChart3, MessageSquare,Calendar,
-  Settings, Phone, MapPin, ChevronDown, Hotel
+  Settings, Phone, MapPin, ChevronDown, Hotel, CircleDollarSign, 
 } from 'lucide-react';
 import Image from 'next/image'; // Import Image component
 
@@ -92,13 +92,12 @@ const sidebarItems: SidebarItem[] = [
   },
   
   {
-    icon: Phone,
-    label: 'Phone System',
-    href: '/reception/phone',
+    icon: CircleDollarSign, 
+    label: 'Salary manageme',
+    href: '/receptionist/ownSalary',
     subItems: [
-      { label: 'Call Log', href: '/reception/phone/log' },
-      { label: 'Wake-up Calls', href: '/reception/phone/wakeup' },
-      { label: 'Extensions', href: '/reception/phone/extensions' }
+      { label: 'OwnSalary', href: '/receptionist/ownSalary' },
+      
     ]
   },
   {
@@ -106,10 +105,8 @@ const sidebarItems: SidebarItem[] = [
     label: 'Settings',
     href: '/reception/settings',
     subItems: [
-      { label: 'Profile', href: '/admin/settings' },
-      { label: 'Preferences', href: '/reception/settings/preferences' },
-      { label: 'System', href: '/reception/settings/system' }
-    ]
+      { label: 'Profile', href: '/receptionist/settings' },
+   ]
   }
 ];
 
@@ -159,13 +156,7 @@ export default function ReceptionSidebar({ isSidebarOpen }: ReceptionSidebarProp
     >
       {/* Header (always visible in sidebar, pushes content below navbar) */}
       <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center gap-3 ">
-        <Image
-          src="/MHIMS_LOGO.png" // Path to your public folder image
-          alt="Meseret Hotel Logo"
-          width={40} // Adjusted width for better fit within sidebar
-          height={40} // Adjusted height
-          className="rounded-lg shadow-md flex-shrink-0"
-        />
+        
         <div>
           <h2 className="text-lg font-bold text-gray-900 dark:text-white">Reception</h2> {/* Slightly smaller text */}
           <p className="text-xs text-gray-600 dark:text-gray-400">Hotel Management</p>

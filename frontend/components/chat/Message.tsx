@@ -50,7 +50,7 @@ const Message = ({ message, isCurrentUser, onEdit, onDelete, onReply, }) => {
     const fileType = message.file ? getFileType(message.file.mimeType) : null;
     const alignment = isCurrentUser ? 'justify-end' : 'justify-start';
     const bgColor = isCurrentUser ? 'bg-amber-500 text-white' : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200';
-    const fileUrl = `http://localhost:5000${message.file?.url}`;
+    const fileUrl = `https://localhost:5000${message.file?.url}`;
 
     return (
         <motion.div
@@ -64,7 +64,7 @@ const Message = ({ message, isCurrentUser, onEdit, onDelete, onReply, }) => {
         >
             {!isCurrentUser && (
                 <img
-                    src={`http://localhost:5000${message.sender.profileImage}` || '/default-avatar.png'}
+                    src={`https://localhost:5000${message.sender.profileImage}` || '/default-avatar.png'}
                     alt={message.sender.firstName}
                     className="w-8 h-8 rounded-full object-cover self-start"
                 />

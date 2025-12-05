@@ -242,7 +242,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const API_URL = 'http://localhost:5000';
+  const API_URL = 'https://localhost:5000';
 
   const checkAuth = async () => {
     try {

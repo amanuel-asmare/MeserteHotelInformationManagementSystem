@@ -1,4 +1,273 @@
 'use client';
+import { Alert } from 'react-native';
+
+import { useState } from 'react';
+
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { motion } from 'framer-motion';
+import { Mail, Lock, LogIn, Facebook, Github, Chrome } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { Modal } from '../ui/Modal';
+
+// --- Schema ---
+const loginSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
+
+interface LoginFormProps {
+  onClose: () => void;
+  onSwitchToRegister?: () => void; // Optional: to switch modes
+}
+
+export default function LoginForm({ onClose, onSwitchToRegister }: LoginFormProps) {
+  const { login } = useAuth();
+  const [globalError, setGlobalError] = useState<string | null>(null);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+  });
+
+  const onSubmit = async (data: LoginFormData) => {
+    setGlobalError(null);
+    try {
+      await login(data.email, data.password);
+      onClose();
+    } catch (err: any) {
+      const msg = err.message || 'Login failed';
+      if (msg.includes('deactivated')) {
+        setGlobalError('Your account is deactivated. Please contact admin.');
+      } else {
+        setGlobalError('Invalid email or password.');
+      }
+    }
+  };
+
+  return (
+    <Modal 
+      title="" // We create a custom header inside for better visuals
+      onClose={onClose} 
+      className="max-w-md w-full p-0 overflow-hidden rounded-3xl"
+    >
+      <div className="flex flex-col">
+        {/* Header Section */}
+        <div className="bg-gradient-to-r from-amber-600 to-amber-800 p-8 text-center relative overflow-hidden">
+          <motion.div 
+            initial={{ scale: 0.8, opacity: 0 }} 
+            animate={{ scale: 1, opacity: 1 }} 
+            transition={{ duration: 0.5 }}
+            className="relative z-10"
+          >
+            <div className="mx-auto bg-white/20 w-16 h-16 rounded-full flex items-center justify-center backdrop-blur-sm mb-4 border border-white/30 shadow-lg">
+              <LogIn className="text-white w-8 h-8" />
+            </div>
+            <h2 className="text-3xl font-bold text-white tracking-wide font-serif">Welcome Back</h2>
+            <p className="text-amber-100 mt-2 text-sm">Sign in to access your dashboard</p>
+          </motion.div>
+          
+          {/* Decorative Circles */}
+          <div className="absolute top-[-50%] left-[-20%] w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-[-20%] right-[-20%] w-40 h-40 bg-amber-400/20 rounded-full blur-2xl"></div>
+        </div>
+
+        {/* Form Body */}
+        <div className="p-8 bg-white dark:bg-gray-900">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            
+            {/* Global Error Alert */}
+            {globalError && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }} 
+                animate={{ opacity: 1, y: 0 }}
+                className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm text-center"
+              >
+                {globalError}
+              </motion.div>
+            )}
+
+            {/* Email Field */}
+            <div className="space-y-1">
+              <label className="text-xs font-semibold uppercase tracking-wider text-gray-500 ml-1">Email</label>
+              <div className="relative group">
+                <Mail className="absolute left-4 top-3.5 text-gray-400 group-focus-within:text-amber-600 transition-colors" size={20} />
+                <input
+                  type="email"
+                  placeholder="name@example.com"
+                  {...register('email')}
+                  className={`w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-gray-800 border-2 ${errors.email ? 'border-red-400' : 'border-gray-100 dark:border-gray-700'} rounded-2xl focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 transition-all`}
+                />
+              </div>
+              {errors.email && <p className="text-red-500 text-xs ml-1">{errors.email.message}</p>}
+            </div>
+
+            {/* Password Field */}
+            <div className="space-y-1">
+              <div className="flex justify-between items-center ml-1">
+                <label className="text-xs font-semibold uppercase tracking-wider text-gray-500">Password</label>
+                <a href="#" className="text-xs text-amber-600 hover:underline">Forgot password?</a>
+              </div>
+              <div className="relative group">
+                <Lock className="absolute left-4 top-3.5 text-gray-400 group-focus-within:text-amber-600 transition-colors" size={20} />
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  {...register('password')}
+                  className={`w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-gray-800 border-2 ${errors.password ? 'border-red-400' : 'border-gray-100 dark:border-gray-700'} rounded-2xl focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 transition-all`}
+                />
+              </div>
+              {errors.password && <p className="text-red-500 text-xs ml-1">{errors.password.message}</p>}
+            </div>
+
+            {/* Submit Button */}
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full py-3.5 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-bold rounded-2xl shadow-lg shadow-amber-600/30 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {isSubmitting ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                'Sign In'
+              )}
+            </motion.button>
+
+            {/* Social Login */}
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200 dark:border-gray-700"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-3 bg-white dark:bg-gray-900 text-gray-500">Or continue with</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <button type="button" className="flex items-center justify-center py-2.5 border-2 border-gray-100 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                <Chrome className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+              </button>
+              <button type="button" className="flex items-center justify-center py-2.5 border-2 border-gray-100 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                <Facebook className="w-5 h-5 text-blue-600" />
+              </button>
+              <button type="button" className="flex items-center justify-center py-2.5 border-2 border-gray-100 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                <Github className="w-5 h-5 text-gray-900 dark:text-white" />
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Modal>
+  );
+}/*'use client';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { motion } from 'framer-motion';
+import { Mail, Lock, LogIn, Facebook, Chrome } from 'lucide-react';
+
+const schema = z.object({
+  email: z.string().email('Invalid email'),
+  password: z.string().min(6, 'Password too short'),
+});
+
+type FormData = z.infer<typeof schema>;
+
+export default function LoginForm({ onSwitch }: { onSwitch: () => void }) {
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
+    resolver: zodResolver(schema),
+  });
+
+  const onSubmit = (data: FormData) => {
+    console.log('Login:', data);
+    // Your login logic
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -100 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 100 }}
+      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      className="space-y-8"
+    >
+      <div className="text-center">
+        <h2 className="text-4xl font-black text-amber-400 tracking-wider">Login</h2>
+        <p className="mt-3 text-amber-200">Access your royal account</p>
+      </div>
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <div>
+          <label className="block text-amber-300 mb-2">Email</label>
+          <div className="relative">
+            <Mail className="absolute left-4 top-4 text-amber-500" size={20} />
+            <input
+              {...register('email')}
+              type="email"
+              placeholder="your@email.com"
+              className="w-full pl-12 pr-4 py-4 bg-white/10 border border-amber-600/50 rounded-xl text-white placeholder-amber-300/50 focus:border-amber-400 focus:outline-none transition"
+            />
+          </div>
+          {errors.email && <p className="text-red-400 text-sm mt-1">{errors.email.message}</p>}
+        </div>
+
+        <div>
+          <label className="block text-amber-300 mb-2">Password</label>
+          <div className="relative">
+            <Lock className="absolute left-4 top-4 text-amber-500" size={20} />
+            <input
+              {...register('password')}
+              type="password"
+              placeholder="••••••••"
+              className="w-full pl-12 pr-4 py-4 bg-white/10 border border-amber-600/50 rounded-xl text-white placeholder-amber-300/50 focus:border-amber-400 focus:outline-none transition"
+            />
+          </div>
+          {errors.password && <p className="text-red-400 text-sm mt-1">{errors.password.message}</p>}
+        </div>
+
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="w-full py-5 bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold text-xl rounded-xl shadow-xl hover:shadow-amber-600/50 transform hover:scale-105 transition-all duration-300 flex items-center justify-center gap-3"
+        >
+          <LogIn size={24} />
+          {isSubmitting ? 'Logging in...' : 'Enter Palace'}
+        </button>
+      </form>
+
+      <div className="text-center">
+        <a href="#" className="text-amber-400 hover:text-amber-300 text-sm">Forgot password?</a>
+      </div>
+
+      <div className="relative my-8">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-amber-600/30"></div>
+        </div>
+        <div className="relative flex justify-center text-sm">
+          <span className="px-4 bg-gradient-to-br from-amber-900 to-black text-amber-300">Or continue with</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <button className="py-4 bg-blue-600 hover:bg-blue-700 rounded-xl flex items-center justify-center gap-3 text-white font-medium transition">
+          <Facebook size={20} /> Facebook
+        </button>
+        <button className="py-4 bg-white hover:bg-gray-100 rounded-xl flex items-center justify-center gap-3 text-gray-800 font-medium transition">
+          <Chrome size={20} /> Google
+        </button>
+      </div>
+    </motion.div>
+  );
+}*/
+/*'use client';
 
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -51,138 +320,6 @@ const onSubmit = async (data: LoginFormData) => {
           label="Email"
           type="email"
           placeholder="abebe@meseret.com"
-          {...register('email')}
-          error={errors.email?.message}
-        />
-        <Input
-          label="Password"
-          type="password"
-          placeholder="••••••••"
-          {...register('password')}
-          error={errors.password?.message}
-        />
-        <Button type="submit" loading={isSubmitting} className="w-full">
-          Login
-        </Button>
-      </form>
-    </Modal>
-  );
-}
-/*'use client';
-
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { useAuth } from '../../context/AuthContext';
-
-const schema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
-});
-
-type Form = z.infer<typeof schema>;
-
-export default function LoginForm({ onClose }: { onClose: () => void }) {
-  const { login } = useAuth();
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<Form>({
-    resolver: zodResolver(schema),
-  });
-
-  const onSubmit = async (d: Form) => {
-    try {
-      await login(d.email, d.password);
-      onClose();               // modal closes – redirect is handled in AuthProvider
-    } catch (e: any) {
-      alert(e.message);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-        <h2 className="mb-4 text-2xl font-bold">Login</h2>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <input
-            {...register('email')}
-            placeholder="email"
-            className="w-full rounded border p-2"
-          />
-          {errors.email && <p className="text-red-600">{errors.email.message}</p>}
-
-          <input
-            {...register('password')}
-            type="password"
-            placeholder="password"
-            className="w-full rounded border p-2"
-          />
-          {errors.password && <p className="text-red-600">{errors.password.message}</p>}
-
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full rounded bg-amber-600 py-2 text-white hover:bg-amber-700"
-          >
-            {isSubmitting ? 'Logging in…' : 'Login'}
-          </button>
-        </form>
-        <button
-          onClick={onClose}
-          className="mt-4 w-full text-center text-sm text-gray-600"
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  );
-}*//*// src/components/forms/LoginForm.tsx
-'use client';
-
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Button } from '../ui/Button';
-import { Input } from '../ui/Input';
-import { Modal } from '../ui/Modal';
-import { useAuth } from '../../context/AuthContext';
-
-const loginSchema = z.object({
-  email: z.string().email('Invalid email'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-});
-
-type LoginFormData = z.infer<typeof loginSchema>;
-
-interface LoginFormProps {
-  onClose: () => void;
-}
-
-export default function LoginForm({ onClose }: LoginFormProps) {
-  const { login } = useAuth();
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
-  });
-
-  const onSubmit = async (data: LoginFormData) => {
-    try {
-      await login(data.email, data.password);
-      onClose();
-      // Redirect handled in Navbar or page
-    } catch (err: any) {
-      alert(err.message || 'Login failed');
-    }
-  };
-
-  return (
-    <Modal title="Login" onClose={onClose} className="mt-20 md:mt-24">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <Input
-          label="Email"
-          type="email"
-          placeholder="admin@meseret.com"
           {...register('email')}
           error={errors.email?.message}
         />

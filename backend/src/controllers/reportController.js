@@ -215,95 +215,186 @@ const Booking = require('../models/Booking');
 const Order = require('../models/orderModel');
 const Room = require('../models/Room');
 const User = require('../models/User');
-const { startOfDay, endOfDay, eachDayOfInterval } = require('date-fns');
+const { eachDayOfInterval, startOfDay, endOfDay, format } = require('date-fns');
 
-// --- UTILITY FUNCTIONS ---
-const parseDateParam = (dateString, defaultDate) => {
-    return dateString ? new Date(dateString) : defaultDate;
+// --- UTILITY: STRICT DATE BOUNDARIES ---
+const getStartOfDay = (dateInput) => {
+    const date = new Date(dateInput);
+    date.setHours(0, 0, 0, 0);
+    return date;
 };
+
+const getEndOfDay = (dateInput) => {
+    const date = new Date(dateInput);
+    date.setHours(23, 59, 59, 999);
+    return date;
+};
+
 const formatDate = (date) => date.toISOString().split('T')[0];
 
-// --- RECEPTIONIST REPORT GENERATION LOGIC ---
+// --- 1. RECEPTIONIST: DAILY REPORT ---
+const generateDailyReport = async(dateInput = new Date()) => {
+    const start = getStartOfDay(dateInput);
+    const end = getEndOfDay(dateInput);
 
-const generateDailyReport = async(date = new Date()) => {
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
     const totalRooms = await Room.countDocuments();
     const occupiedRooms = await Room.countDocuments({ availability: false });
     const availableRooms = totalRooms - occupiedRooms;
-    const checkIns = await Booking.countDocuments({ checkIn: { $gte: startOfDay, $lte: endOfDay } });
-    const checkOuts = await Booking.countDocuments({ checkOut: { $gte: startOfDay, $lte: endOfDay } });
-    const newBookings = await Booking.countDocuments({ createdAt: { $gte: startOfDay, $lte: endOfDay } });
-    const dailyRevenueResult = await Order.aggregate([{ $match: { createdAt: { $gte: startOfDay, $lte: endOfDay }, paymentStatus: 'completed' } }, { $group: { _id: null, total: { $sum: '$totalAmount' } } }]);
+
+    const checkIns = await Booking.countDocuments({
+        checkIn: { $gte: start, $lte: end },
+        status: { $in: ['confirmed', 'checked-in', 'completed'] }
+    });
+
+    const checkOuts = await Booking.countDocuments({
+        checkOut: { $gte: start, $lte: end },
+        status: { $in: ['completed', 'checked-out'] }
+    });
+
+    const newBookings = await Booking.countDocuments({
+        createdAt: { $gte: start, $lte: end }
+    });
+
+    // Revenue: Paid Today
+    const dailyRevenueResult = await Order.aggregate([
+        { $match: { paymentStatus: 'completed', updatedAt: { $gte: start, $lte: end } } },
+        { $group: { _id: null, total: { $sum: '$totalAmount' } } }
+    ]);
     const totalRevenueToday = dailyRevenueResult.length > 0 ? dailyRevenueResult[0].total : 0;
     const occupancyRate = totalRooms > 0 ? ((occupiedRooms / totalRooms) * 100).toFixed(2) + '%' : '0.00%';
-    return { reportDate: formatDate(date), newCheckIns: checkIns, newCheckOuts: checkOuts, newBookingsToday: newBookings, totalRevenueToday, occupancyRate, availableRooms, occupiedRooms, totalRooms };
+
+    return { reportDate: formatDate(start), newCheckIns: checkIns, newCheckOuts: checkOuts, newBookingsToday: newBookings, totalRevenueToday, occupancyRate, availableRooms, occupiedRooms, totalRooms };
 };
 
+// --- 2. RECEPTIONIST: OCCUPANCY REPORT ---
 const generateOccupancyReport = async(startDate, endDate) => {
+    const start = getStartOfDay(startDate);
+    const end = getEndOfDay(endDate);
+
     const totalRooms = await Room.countDocuments();
     const maintenanceRooms = await Room.countDocuments({ status: 'maintenance' });
     const operationalRooms = totalRooms - maintenanceRooms;
+
     let totalOccupiedRoomDays = 0;
-    const numberOfDays = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) || 1;
-    for (let d = new Date(startDate); d <= new Date(endDate); d.setDate(d.getDate() + 1)) {
+    const numberOfDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) || 1;
+
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
         const occupiedOnThisDay = await Booking.countDocuments({
-            status: { $in: ['confirmed', 'completed'] },
-            checkIn: { $lte: endOfDay(d) },
-            checkOut: { $gt: startOfDay(d) }
+            status: { $in: ['confirmed', 'completed', 'checked-in'] },
+            checkIn: { $lte: getEndOfDay(d) },
+            checkOut: { $gt: getStartOfDay(d) }
         });
         totalOccupiedRoomDays += occupiedOnThisDay;
     }
+
     const averageOccupiedRooms = totalOccupiedRoomDays / numberOfDays;
     const occupancyRateValue = operationalRooms > 0 ? (totalOccupiedRoomDays / (operationalRooms * numberOfDays)) * 100 : 0;
-    return { startDate: formatDate(startDate), endDate: formatDate(endDate), totalRooms, occupiedRooms: Math.round(averageOccupiedRooms), availableRooms: Math.round(operationalRooms - averageOccupiedRooms), occupancyRate: occupancyRateValue.toFixed(2) + '%' };
+
+    return { startDate: formatDate(start), endDate: formatDate(end), totalRooms, occupiedRooms: Math.round(averageOccupiedRooms), availableRooms: Math.round(operationalRooms - averageOccupiedRooms), occupancyRate: occupancyRateValue.toFixed(2) + '%' };
 };
 
+// --- 3. RECEPTIONIST: REVENUE REPORT ---
 const generateRevenueReport = async(startDate, endDate) => {
-    const revenueResult = await Order.aggregate([{ $match: { createdAt: { $gte: startDate, $lte: endDate }, paymentStatus: 'completed' } }, { $group: { _id: null, totalRevenue: { $sum: '$totalAmount' }, averageOrder: { $avg: '$totalAmount' }, totalOrders: { $sum: 1 } } }]);
-    const roomRevenueResult = await Booking.aggregate([{ $match: { createdAt: { $gte: startDate, $lte: endDate }, status: { $in: ['completed', 'confirmed'] } } }, { $group: { _id: null, totalRoomRevenue: { $sum: '$totalPrice' } } }]);
-    const foodBeverageRevenue = revenueResult.length > 0 ? revenueResult[0].totalRevenue : 0;
-    const roomBookingRevenue = roomRevenueResult.length > 0 ? roomRevenueResult[0].totalRoomRevenue : 0;
-    const averageOrderValue = revenueResult.length > 0 ? (revenueResult[0].averageOrder || 0).toFixed(2) : 0;
-    const numberOfOrders = revenueResult.length > 0 ? revenueResult[0].totalOrders : 0;
-    return { startDate: formatDate(startDate), endDate: formatDate(endDate), totalOverallRevenue: foodBeverageRevenue + roomBookingRevenue, foodBeverageRevenue, roomBookingRevenue, averageOrderValue, numberOfOrders };
+    const start = getStartOfDay(startDate);
+    const end = getEndOfDay(endDate);
+
+    const orderRev = await Order.aggregate([
+        { $match: { paymentStatus: 'completed', updatedAt: { $gte: start, $lte: end } } },
+        { $group: { _id: null, total: { $sum: '$totalAmount' }, avg: { $avg: '$totalAmount' }, count: { $sum: 1 } } }
+    ]);
+
+    const roomRev = await Booking.aggregate([
+        { $match: { paymentStatus: 'completed', updatedAt: { $gte: start, $lte: end } } },
+        { $group: { _id: null, total: { $sum: '$totalPrice' } } }
+    ]);
+
+    const foodBeverageRevenue = orderRev.length > 0 ? orderRev[0].total : 0;
+    const roomBookingRevenue = roomRev.length > 0 ? roomRev[0].total : 0;
+    const averageOrderValue = orderRev.length > 0 ? (orderRev[0].avg || 0).toFixed(2) : 0;
+    const numberOfOrders = orderRev.length > 0 ? orderRev[0].count : 0;
+
+    return { startDate: formatDate(start), endDate: formatDate(end), totalOverallRevenue: foodBeverageRevenue + roomBookingRevenue, foodBeverageRevenue, roomBookingRevenue, averageOrderValue, numberOfOrders };
 };
 
+// --- 4. RECEPTIONIST: GUEST REPORT ---
 const generateGuestReport = async(startDate, endDate) => {
-    const newGuestsInDateRange = await User.countDocuments({ role: 'customer', createdAt: { $gte: startDate, $lte: endDate } });
+    const start = getStartOfDay(startDate);
+    const end = getEndOfDay(endDate);
+    const newGuestsInDateRange = await User.countDocuments({ role: 'customer', createdAt: { $gte: start, $lte: end } });
     const totalGuests = await User.countDocuments({ role: 'customer' });
     const recentGuests = await User.find({ role: 'customer' }).select('firstName lastName email phone createdAt').sort({ createdAt: -1 }).limit(10);
-    return { startDate: formatDate(startDate), endDate: formatDate(endDate), newGuestsInDateRange, totalRegisteredGuests: totalGuests, recentGuestSignups: recentGuests };
+
+    return { startDate: formatDate(start), endDate: formatDate(end), newGuestsInDateRange, totalRegisteredGuests: totalGuests, recentGuestSignups: recentGuests };
 };
 
-// --- CASHIER REPORT GENERATION LOGIC ---
+// --- 5. CASHIER: COMPREHENSIVE REPORT (FIXED REVENUE) ---
+const generateComprehensiveData = async(startInput, endInput) => {
+    const start = getStartOfDay(startInput);
+    const end = getEndOfDay(endInput);
 
-const generateComprehensiveData = async(start, end) => {
-    const completedBookings = await Booking.find({ status: 'completed', updatedAt: { $gte: start, $lte: end } });
-    const completedOrders = await Order.find({ paymentStatus: 'completed', updatedAt: { $gte: start, $lte: end } });
+    // 1. REVENUE (FIXED LOGIC)
+    // Must match bookings that are PAID (paymentStatus: 'completed').
+    // We accept either Created Today (Cash) OR Updated Today (Chapa)
+    const completedBookings = await Booking.find({
+        paymentStatus: 'completed',
+        $or: [
+            { createdAt: { $gte: start, $lte: end } },
+            { updatedAt: { $gte: start, $lte: end } }
+        ]
+    });
+
+    const completedOrders = await Order.find({
+        paymentStatus: 'completed',
+        $or: [
+            { createdAt: { $gte: start, $lte: end } },
+            { updatedAt: { $gte: start, $lte: end } }
+        ]
+    });
+
     const roomRevenue = completedBookings.reduce((sum, b) => sum + b.totalPrice, 0);
     const orderRevenue = completedOrders.reduce((sum, o) => sum + o.totalAmount, 0);
     const totalRevenue = roomRevenue + orderRevenue;
+
+    // 2. NEW BOOKINGS
     const newBookingsCount = await Booking.countDocuments({ createdAt: { $gte: start, $lte: end } });
+
+    // 3. TOTAL GUESTS
+    const guestsServedList = await Booking.find({ status: { $in: ['confirmed', 'checked-in', 'completed'] }, checkIn: { $lte: end }, checkOut: { $gt: start } });
+    const totalGuests = guestsServedList.reduce((sum, b) => sum + (b.guests || 1), 0);
+
+    // 4. OCCUPANCY TREND
     const totalRooms = await Room.countDocuments();
     const dateInterval = eachDayOfInterval({ start, end });
     const occupancyTrend = [];
+
     for (const day of dateInterval) {
-        const occupiedCount = await Booking.countDocuments({ status: { $in: ['confirmed', 'completed'] }, checkIn: { $lte: endOfDay(day) }, checkOut: { $gt: startOfDay(day) } });
+        const dStart = getStartOfDay(day);
+        const dEnd = getEndOfDay(day);
+        const occupiedCount = await Booking.countDocuments({ status: { $in: ['confirmed', 'completed', 'checked-in'] }, checkIn: { $lte: dEnd }, checkOut: { $gt: dStart } });
         const rate = totalRooms > 0 ? (occupiedCount / totalRooms) * 100 : 0;
-        occupancyTrend.push({ date: day.toISOString().split('T')[0], rate: parseFloat(rate.toFixed(1)) });
+        occupancyTrend.push({ date: format(day, 'yyyy-MM-dd'), rate: parseFloat(rate.toFixed(1)) });
     }
     const avgOccupancy = occupancyTrend.reduce((sum, day) => sum + day.rate, 0) / (occupancyTrend.length || 1);
+
+    // 5. TOP MENU ITEMS
     const topMenuItems = await Order.aggregate([
-        { $match: { paymentStatus: 'completed', updatedAt: { $gte: start, $lte: end } } }, { $unwind: '$items' }, { $group: { _id: '$items.name', quantitySold: { $sum: '$items.quantity' } } }, { $sort: { quantitySold: -1 } }, { $limit: 5 }, { $project: { name: '$_id', quantitySold: 1, _id: 0 } }
+        { $match: { paymentStatus: 'completed', updatedAt: { $gte: start, $lte: end } } },
+        { $unwind: '$items' },
+        { $group: { _id: '$items.name', quantitySold: { $sum: '$items.quantity' } } },
+        { $sort: { quantitySold: -1 } }, { $limit: 5 },
+        { $project: { name: '$_id', quantitySold: 1, _id: 0 } }
     ]);
+
+    // 6. BOOKING TREND
     const bookingTrend = await Booking.aggregate([
-        { $match: { createdAt: { $gte: start, $lte: end } } }, { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, count: { $sum: 1 } } }, { $sort: { _id: 1 } }, { $project: { date: '$_id', bookings: '$count', _id: 0 } }
+        { $match: { createdAt: { $gte: start, $lte: end } } },
+        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, count: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+        { $project: { date: '$_id', bookings: '$count', _id: 0 } }
     ]);
+
     return {
-        summary: { totalRevenue: totalRevenue.toFixed(2), avgOccupancy: (avgOccupancy || 0).toFixed(1), newBookings: newBookingsCount, totalGuests: completedBookings.reduce((sum, b) => sum + b.guests, 0) },
+        summary: { totalRevenue: totalRevenue.toFixed(2), avgOccupancy: (avgOccupancy || 0).toFixed(1), newBookings: newBookingsCount, totalGuests: totalGuests },
         revenueBreakdown: { roomRevenue: roomRevenue.toFixed(2), orderRevenue: orderRevenue.toFixed(2) },
         occupancyTrend,
         topMenuItems,
@@ -312,105 +403,21 @@ const generateComprehensiveData = async(start, end) => {
 };
 
 // --- EXPORTED CONTROLLER FUNCTIONS ---
-
-// RECEPTIONIST REPORTS
-exports.getDailyReport = async(req, res) => {
-    try {
-        const report = await generateDailyReport(parseDateParam(req.query.date, new Date()));
-        if (req.query.save === 'true' && req.user.role === 'receptionist') {
-            await Report.create({ reportType: 'Daily', reportData: report, generatedBy: req.user.id, note: req.query.note || '' });
-        }
-        res.status(200).json(report);
-    } catch (error) { res.status(500).json({ message: 'Error generating daily report' }); }
-};
-
-exports.getOccupancyReport = async(req, res) => {
-    try {
-        const report = await generateOccupancyReport(parseDateParam(req.query.startDate, new Date()), parseDateParam(req.query.endDate, new Date()));
-        if (req.query.save === 'true' && req.user.role === 'receptionist') {
-            await Report.create({ reportType: 'Occupancy', reportData: report, generatedBy: req.user.id, note: req.query.note || '' });
-        }
-        res.status(200).json(report);
-    } catch (error) { res.status(500).json({ message: 'Error generating occupancy report' }); }
-};
-
-exports.getRevenueReport = async(req, res) => {
-    try {
-        const report = await generateRevenueReport(parseDateParam(req.query.startDate, new Date(new Date().setDate(1))), parseDateParam(req.query.endDate, new Date()));
-        if (req.query.save === 'true' && req.user.role === 'receptionist') {
-            await Report.create({ reportType: 'Revenue', reportData: report, generatedBy: req.user.id, note: req.query.note || '' });
-        }
-        res.status(200).json(report);
-    } catch (error) { res.status(500).json({ message: 'Error generating revenue report' }); }
-};
-
-exports.getGuestReport = async(req, res) => {
-    try {
-        const report = await generateGuestReport(parseDateParam(req.query.startDate, new Date(0)), parseDateParam(req.query.endDate, new Date()));
-        if (req.query.save === 'true' && req.user.role === 'receptionist') {
-            await Report.create({ reportType: 'Guest', reportData: report, generatedBy: req.user.id, note: req.query.note || '' });
-        }
-        res.status(200).json(report);
-    } catch (error) { res.status(500).json({ message: 'Error generating guest report' }); }
-};
-
-// CASHIER REPORTS
-exports.getComprehensiveReport = async(req, res) => {
-    try {
-        const { startDate, endDate } = req.query;
-        if (!startDate || !endDate) return res.status(400).json({ message: 'Start date and end date are required.' });
-        const reportData = await generateComprehensiveData(startOfDay(new Date(startDate)), endOfDay(new Date(endDate)));
-        res.json(reportData);
-    } catch (error) { res.status(500).json({ message: 'Failed to generate report data.' }); }
-};
-
-exports.saveComprehensiveReport = async(req, res) => {
-    try {
-        const { reportData, note, startDate, endDate } = req.body;
-        if (!reportData) return res.status(400).json({ message: 'Report data is required to save.' });
-        await Report.create({
-            reportType: 'Comprehensive Cashier',
-            reportData,
-            generatedBy: req.user.id,
-            note: note || '',
-            startDate: new Date(startDate),
-            endDate: new Date(endDate)
-        });
-        res.status(201).json({ message: 'Report saved successfully.' });
-    } catch (error) { res.status(500).json({ message: 'Failed to save the report to the database.' }); }
-};
-
-// UNIFIED HISTORY & SINGLE REPORT VIEW
-exports.getReportsHistory = async(req, res) => {
-    try {
-        const { category } = req.query;
-        let filter = {}; // Default to no filter
-
-        // Apply a filter ONLY if a category is specified
-        if (category === 'receptionist') {
-            filter.reportType = { $in: ['Daily', 'Occupancy', 'Revenue', 'Guest'] };
-        } else if (category === 'cashier') {
-            filter.reportType = 'Comprehensive Cashier';
-        }
-
-        const reports = await Report.find(filter) // The filter is applied here
-            .populate('generatedBy', 'firstName lastName role')
-            .sort({ createdAt: -1 });
-
-        res.status(200).json(reports);
-    } catch (error) {
-        console.error('Error fetching report history:', error); // Better logging
-        res.status(500).json({ message: 'Error fetching report history' });
-    }
-};
-
-exports.getSingleReport = async(req, res) => {
-    try {
-        const report = await Report.findById(req.params.id).populate('generatedBy', 'firstName lastName role');
-        if (!report) return res.status(404).json({ message: 'Report not found' });
-        if (req.user.role !== 'manager' && req.user.role !== 'admin' && report.generatedBy._id.toString() !== req.user.id) {
-            return res.status(403).json({ message: 'Forbidden' });
-        }
-        res.status(200).json(report);
-    } catch (error) { res.status(500).json({ message: 'Error fetching single report' }); }
-};
+exports.getDailyReport = async(req, res) => { try { const report = await generateDailyReport(req.query.date ? new Date(req.query.date) : new Date()); if (req.query.save === 'true' && req.user.role === 'receptionist') { await Report.create({ reportType: 'Daily', reportData: report, generatedBy: req.user.id, note: req.query.note || '' }); }
+        res.status(200).json(report); } catch (error) { res.status(500).json({ message: 'Error generating daily report' }); } };
+exports.getOccupancyReport = async(req, res) => { try { const { startDate, endDate } = req.query; if (!startDate || !endDate) return res.status(400).json({ message: 'Dates required' }); const report = await generateOccupancyReport(new Date(startDate), new Date(endDate)); if (req.query.save === 'true' && req.user.role === 'receptionist') { await Report.create({ reportType: 'Occupancy', reportData: report, generatedBy: req.user.id, note: req.query.note || '' }); }
+        res.status(200).json(report); } catch (error) { res.status(500).json({ message: 'Error generating occupancy report' }); } };
+exports.getRevenueReport = async(req, res) => { try { const { startDate, endDate } = req.query; if (!startDate || !endDate) return res.status(400).json({ message: 'Dates required' }); const report = await generateRevenueReport(new Date(startDate), new Date(endDate)); if (req.query.save === 'true' && req.user.role === 'receptionist') { await Report.create({ reportType: 'Revenue', reportData: report, generatedBy: req.user.id, note: req.query.note || '' }); }
+        res.status(200).json(report); } catch (error) { res.status(500).json({ message: 'Error generating revenue report' }); } };
+exports.getGuestReport = async(req, res) => { try { const { startDate, endDate } = req.query; if (!startDate || !endDate) return res.status(400).json({ message: 'Dates required' }); const report = await generateGuestReport(new Date(startDate), new Date(endDate)); if (req.query.save === 'true' && req.user.role === 'receptionist') { await Report.create({ reportType: 'Guest', reportData: report, generatedBy: req.user.id, note: req.query.note || '' }); }
+        res.status(200).json(report); } catch (error) { res.status(500).json({ message: 'Error generating guest report' }); } };
+exports.getComprehensiveReport = async(req, res) => { try { const { startDate, endDate } = req.query; if (!startDate || !endDate) return res.status(400).json({ message: 'Start date and end date are required.' }); const reportData = await generateComprehensiveData(new Date(startDate), new Date(endDate));
+        res.json(reportData); } catch (error) { console.error("Comp Report Error:", error);
+        res.status(500).json({ message: 'Failed to generate report data.' }); } };
+exports.saveComprehensiveReport = async(req, res) => { try { const { reportData, note, startDate, endDate } = req.body; if (!reportData) return res.status(400).json({ message: 'Report data required.' });
+        await Report.create({ reportType: 'Comprehensive Cashier', reportData, generatedBy: req.user.id, note: note || '', startDate: new Date(startDate), endDate: new Date(endDate) });
+        res.status(201).json({ message: 'Report saved successfully.' }); } catch (error) { res.status(500).json({ message: 'Failed to save report.' }); } };
+exports.getReportsHistory = async(req, res) => { try { const { category } = req.query; let filter = {}; if (category === 'receptionist') { filter.reportType = { $in: ['Daily', 'Occupancy', 'Revenue', 'Guest'] }; } else if (category === 'cashier') { filter.reportType = 'Comprehensive Cashier'; } const reports = await Report.find(filter).populate('generatedBy', 'firstName lastName role').sort({ createdAt: -1 });
+        res.status(200).json(reports); } catch (error) { res.status(500).json({ message: 'Error fetching history' }); } };
+exports.getSingleReport = async(req, res) => { try { const report = await Report.findById(req.params.id).populate('generatedBy', 'firstName lastName role'); if (!report) return res.status(404).json({ message: 'Report not found' });
+        res.status(200).json(report); } catch (error) { res.status(500).json({ message: 'Error fetching single report' }); } };

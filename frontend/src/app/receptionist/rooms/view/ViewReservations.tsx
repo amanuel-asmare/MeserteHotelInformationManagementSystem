@@ -1,11 +1,13 @@
 'use client';
+import { Image } from 'react-native';
 
 import { useState, useEffect, useMemo } from 'react';
+
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, Calendar, Users, DollarSign, Image as ImageIcon,
-  CheckCircle, CreditCard, Hotel, Loader2, ArrowLeft, ArrowRight, Clock, History, ListChecks,
-  Hourglass, Ban, XCircle, CheckSquare // New icons for status filters
+  CheckCircle, CreditCard, Hotel, ArrowLeft, ArrowRight, Clock, History, ListChecks,
+  Hourglass, XCircle, CheckSquare, Crown, BookOpenCheck
 } from 'lucide-react';
 import axios from 'axios';
 import { format, isPast, parseISO, isToday } from 'date-fns';
@@ -46,7 +48,7 @@ interface Booking {
   updatedAt: string;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
 
 export default function ReceptionistViewReservations() {
   const { user } = useAuth();
@@ -56,8 +58,26 @@ export default function ReceptionistViewReservations() {
   const [imageCarousel, setImageCarousel] = useState<string[] | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [activeCategoryTab, setActiveCategoryTab] = useState<'active' | 'history'>('active');
-  const [activeStatusFilter, setActiveStatusFilter] = useState<BookingStatus | 'all'>('all'); // New state for status filters
+  const [activeStatusFilter, setActiveStatusFilter] = useState<BookingStatus | 'all'>('all');
+  const [minTimePassed, setMinTimePassed] = useState(false);
+  
+  // FIX: Store random values in state to avoid hydration mismatch
+  const [particles, setParticles] = useState<{x: number, rotate: number}[]>([]);
+
   const bookingsPerPage = 10;
+
+  // Royal Loading Delay & Particle Generation
+  useEffect(() => {
+    // Generate stable random values for client-side only
+    setParticles([
+      { x: Math.random() * 100 - 50, rotate: 0 },
+      { x: Math.random() * 100 - 50, rotate: 0 },
+      { x: Math.random() * 100 - 50, rotate: 0 }
+    ]);
+
+    const timer = setTimeout(() => setMinTimePassed(true), 3000); // 3s luxury load
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -76,21 +96,19 @@ export default function ReceptionistViewReservations() {
       setBookings(res.data);
     } catch (err: any) {
       console.error('Failed to load all bookings:', err.response?.data?.message || err.message);
-      alert(err.response?.data?.message || 'Failed to load reservations.');
     } finally {
       setLoading(false);
     }
   };
 
   const getImageUrl = (image: string) => {
-    if (!image) return '/placeholder-room.jpg'; // Ensure a fallback
+    if (!image) return '/placeholder-room.jpg';
     if (image.startsWith('http')) return image;
     return image;
   };
 
   const getBookingCategory = (booking: Booking) => {
     const isCheckoutDatePast = isPast(parseISO(booking.checkOut));
-    // A booking is 'history' if it's completed, cancelled, or its checkout date has passed.
     if (booking.status === 'cancelled' || booking.status === 'completed' || isCheckoutDatePast) {
       return 'history';
     }
@@ -99,14 +117,23 @@ export default function ReceptionistViewReservations() {
 
   const filteredAndCategorizedBookings = useMemo(() => {
     return bookings.filter(booking => {
+      // Safety Checks
+      const roomNum = booking.room?.roomNumber?.toLowerCase() || '';
+      const fName = booking.user?.firstName?.toLowerCase() || '';
+      const lName = booking.user?.lastName?.toLowerCase() || '';
+      const email = booking.user?.email?.toLowerCase() || '';
+      const status = booking.status?.toLowerCase() || '';
+      const payment = booking.paymentStatus?.toLowerCase() || '';
+
       const searchLower = searchTerm.toLowerCase();
+      
       const matchesSearch = (
-        booking.room.roomNumber.toLowerCase().includes(searchLower) ||
-        booking.user.firstName.toLowerCase().includes(searchLower) ||
-        booking.user.lastName.toLowerCase().includes(searchLower) ||
-        booking.user.email.toLowerCase().includes(searchLower) ||
-        booking.status.toLowerCase().includes(searchLower) ||
-        booking.paymentStatus.toLowerCase().includes(searchLower)
+        roomNum.includes(searchLower) ||
+        fName.includes(searchLower) ||
+        lName.includes(searchLower) ||
+        email.includes(searchLower) ||
+        status.includes(searchLower) ||
+        payment.includes(searchLower)
       );
 
       const categoryMatches = getBookingCategory(booking) === activeCategoryTab;
@@ -128,17 +155,14 @@ export default function ReceptionistViewReservations() {
       return;
     }
     try {
-      setLoading(true);
       await axios.put(`${API_BASE}/api/bookings/receptionist/${bookingId}/complete`, {}, {
         withCredentials: true,
       });
       alert('Booking marked as completed successfully!');
-      fetchAllBookings(); // Refresh the list
+      fetchAllBookings();
     } catch (err: any) {
       console.error('Failed to mark booking as completed:', err.response?.data?.message || err.message);
       alert(err.response?.data?.message || 'Failed to update booking status.');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -150,18 +174,54 @@ export default function ReceptionistViewReservations() {
     { status: 'completed', label: 'Completed', icon: CheckCircle },
   ];
 
-  if (loading) {
+  // --- ROYAL LOADING SCREEN ---
+  if (loading || !minTimePassed) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="flex flex-col items-center space-y-4 text-blue-700">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-          >
-            <Loader2 className="h-12 w-12" />
-          </motion.div>
-          <p className="text-2xl font-semibold">Loading Reservations...</p>
-        </div>
+      <div className="fixed inset-0 bg-gradient-to-br from-blue-950 via-slate-900 to-black flex items-center justify-center overflow-hidden z-50">
+        <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+        
+        {/* Floating Icons - Using stable state 'particles' */}
+        {particles.length > 0 && [BookOpenCheck, Hotel, Users].map((Icon, i) => (
+           <motion.div
+             key={i}
+             className="absolute text-blue-500/20"
+             // Use the stable 'x' value from state instead of Math.random() directly
+             initial={{ y: '100vh', x: `${particles[i].x}%`, rotate: 0 }}
+             animate={{ y: '-20vh', rotate: 360 }}
+             transition={{ 
+               duration: 10 + i * 2, 
+               repeat: Infinity, 
+               ease: "linear"
+             }}
+             style={{ left: `${20 + i * 30}%` }}
+           >
+             <Icon size={80 + i * 10} />
+           </motion.div>
+        ))}
+
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.85 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="relative z-10 text-center px-8"
+        >
+            <div className="w-32 h-32 mx-auto mb-8 relative">
+                <motion.div 
+                   animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0.8, 0.5] }}
+                   transition={{ duration: 2, repeat: Infinity }}
+                   className="absolute inset-0 bg-blue-500/30 rounded-full blur-xl"
+                />
+                <div className="w-full h-full bg-gradient-to-br from-blue-600 to-indigo-800 rounded-full flex items-center justify-center shadow-2xl border-4 border-blue-400/30 relative z-10">
+                    <Crown className="text-white w-14 h-14 animate-pulse" />
+                </div>
+            </div>
+
+            <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight mb-2">
+              GUEST <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">RESERVATIONS</span>
+            </h2>
+            <p className="text-blue-200/70 font-medium text-lg tracking-widest uppercase">
+              Syncing Booking Data...
+            </p>
+        </motion.div>
       </div>
     );
   }
@@ -286,6 +346,15 @@ export default function ReceptionistViewReservations() {
                 const isCheckOutToday = isToday(parseISO(booking.checkOut));
                 const shouldShowCheckoutWarning = (isCheckOutDatePast || isCheckOutToday) && booking.status !== 'completed' && booking.status !== 'cancelled';
 
+                // Safely access nested properties with defaults
+                const roomNumber = booking.room?.roomNumber || 'Unknown';
+                const roomType = booking.room?.type || 'Unknown';
+                const roomPrice = booking.room?.price || 0;
+                const guestName = booking.user ? `${booking.user.firstName} ${booking.user.lastName}` : 'Unknown Guest';
+                const guestEmail = booking.user?.email || 'No Email';
+                const guestPhone = booking.user?.phoneNumber;
+                const roomImages = booking.room?.images;
+
                 return (
                   <motion.div
                     key={booking._id}
@@ -308,45 +377,44 @@ export default function ReceptionistViewReservations() {
                     )}
 
                     <div className="w-full lg:w-56 flex-shrink-0 relative overflow-hidden rounded-xl shadow-md">
-                      {booking.room.images?.[0] ? (
+                      {roomImages && roomImages[0] ? (
                         <motion.img
-                          src={getImageUrl(booking.room.images[0])}
-                          alt={`Room ${booking.room.roomNumber}`}
+                          src={getImageUrl(roomImages[0])}
+                          alt={`Room ${roomNumber}`}
                           className="w-full h-40 object-cover rounded-xl group-hover:scale-105 transition-transform duration-300"
-                          onClick={() => setImageCarousel(booking.room.images!)}
+                          onClick={() => setImageCarousel(roomImages!)}
                           whileHover={{ scale: 1.02 }}
                           tabIndex={0}
                           role="button"
-                          aria-label={`View images for room ${booking.room.roomNumber}`}
                         />
                       ) : (
                         <div className="w-full h-40 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400">
                           <ImageIcon size={50} />
                         </div>
                       )}
-                      {booking.room.images && booking.room.images.length > 1 && (
+                      {roomImages && roomImages.length > 1 && (
                         <motion.div
                           initial={{ opacity: 0 }}
-                          group-hover={{ opacity: 1 }}
+                          whileHover={{ opacity: 1 }}
                           className="absolute bottom-2 right-2 bg-black/50 text-white px-2 py-1 rounded-full text-xs flex items-center gap-1"
                         >
-                          <ImageIcon size={12} /> {booking.room.images.length} photos
+                          <ImageIcon size={12} /> {roomImages.length} photos
                         </motion.div>
                       )}
                     </div>
 
                     <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-3 gap-x-6">
                       <div className="flex flex-col">
-                        <h3 className="font-bold text-xl text-gray-900 mb-1">Room {booking.room.roomNumber}</h3>
-                        <p className="text-base text-gray-700"><Hotel size={16} className="inline mr-1 text-blue-500" /> {booking.room.type.charAt(0).toUpperCase() + booking.room.type.slice(1)} Room</p>
-                        <p className="text-sm text-gray-500">ETB {booking.room.price}/night</p>
+                        <h3 className="font-bold text-xl text-gray-900 mb-1">Room {roomNumber}</h3>
+                        <p className="text-base text-gray-700"><Hotel size={16} className="inline mr-1 text-blue-500" /> {roomType.charAt(0).toUpperCase() + roomType.slice(1)} Room</p>
+                        <p className="text-sm text-gray-500">ETB {roomPrice}/night</p>
                       </div>
 
                       <div className="flex flex-col">
                         <p className="text-sm text-gray-600 font-medium">Guest:</p>
-                        <p className="text-base font-semibold text-gray-800">{booking.user.firstName} {booking.user.lastName}</p>
-                        <p className="text-sm text-gray-500">{booking.user.email}</p>
-                        {booking.user.phoneNumber && <p className="text-sm text-gray-500">{booking.user.phoneNumber}</p>}
+                        <p className="text-base font-semibold text-gray-800">{guestName}</p>
+                        <p className="text-sm text-gray-500">{guestEmail}</p>
+                        {guestPhone && <p className="text-sm text-gray-500">{guestPhone}</p>}
                       </div>
 
                       <div className="flex flex-col">
@@ -456,7 +524,6 @@ export default function ReceptionistViewReservations() {
   );
 }/*'use client';
 
-import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, Calendar, Users, DollarSign, Image as ImageIcon,

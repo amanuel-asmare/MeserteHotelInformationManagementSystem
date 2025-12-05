@@ -8,7 +8,7 @@ const path = require('path');
 const getFullImageUrl = (imagePath) => {
     if (!imagePath) return '/default-avatar.png'; // Fallback for profile images
     if (imagePath.startsWith('http')) return imagePath;
-    const API_BASE = process.env.API_URL || 'http://localhost:5000';
+    const API_BASE = process.env.API_URL || 'https://localhost:5000';
     // Handle menu images which might use /uploads/menu/ or /uploads/avatars/ for avatars
     if (imagePath.startsWith('/uploads/menu/') || imagePath.startsWith('/uploads/avatars/')) {
         return `${API_BASE}${imagePath}`;

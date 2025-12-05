@@ -1,14 +1,16 @@
 'use client';
+import { View, Image } from 'react-native';
 
 import { useState, useEffect, useMemo } from 'react';
+
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Tag, ShieldCheck, MessageSquareWarning, Search, X, ChevronLeft, ChevronRight, History, Eye, EyeOff,Calendar ,MessageSquare } from 'lucide-react'; // NEW: Added History, Eye, EyeOff icons
-import Image from 'next/image';
+import { Star, Tag, ShieldCheck, MessageSquareWarning, Search, X, ChevronLeft, ChevronRight, History, Eye, EyeOff, Calendar, MessageSquare, Crown } from 'lucide-react';
+// import Image from 'next/image'; <--- REMOVE THIS to use standard <img> tag for easier external URL handling
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import BackButton from '@/app/manager/ui/BackButton';
 
-// --- INTERFACES --- (No changes here)
+// --- INTERFACES ---
 interface User {
     firstName: string;
     lastName: string;
@@ -26,13 +28,15 @@ interface Feedback {
     isAnonymous: boolean;
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
 
-// --- HELPER FUNCTIONS --- (No changes here)
-const getFullImageUrl = (imagePath: string) => {
+// --- HELPER FUNCTION ---
+const getFullImageUrl = (imagePath: string | undefined) => {
     if (!imagePath) return '/default-avatar.png';
     if (imagePath.startsWith('http')) return imagePath;
-    return `${API_BASE_URL}${imagePath}`;
+    // Remove double slashes if present
+    const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+    return `${API_BASE_URL}${cleanPath}`;
 };
 
 const isToday = (someDate: Date) => {
@@ -42,8 +46,6 @@ const isToday = (someDate: Date) => {
         someDate.getFullYear() === today.getFullYear();
 };
 
-
-// --- RATING STARS COMPONENT --- (No changes here, but including for completeness)
 const RatingStars = ({ rating, className = '' }: { rating: number; className?: string }) => (
     <div className={`flex items-center ${className}`}>
         {[1, 2, 3, 4, 5].map((star) => (
@@ -56,13 +58,12 @@ const RatingStars = ({ rating, className = '' }: { rating: number; className?: s
     </div>
 );
 
-
-// --- FEEDBACK DETAIL MODAL COMPONENT --- (No changes here, but including for completeness)
 const FeedbackDetailModal = ({ feedback, onClose }: { feedback: Feedback | null; onClose: () => void }) => {
     if (!feedback) return null;
 
     const { user, category, rating, message, target, createdAt, isAnonymous } = feedback;
     const userName = isAnonymous || !user ? 'Anonymous' : `${user.firstName} ${user.lastName}`;
+    // Correctly use helper
     const userImage = isAnonymous || !user ? '/shield-avatar.png' : getFullImageUrl(user.profileImage);
 
     return (
@@ -85,7 +86,13 @@ const FeedbackDetailModal = ({ feedback, onClose }: { feedback: Feedback | null;
                     <div className="p-8">
                         <div className="flex items-start justify-between mb-6">
                             <div className="flex items-center space-x-4">
-                                <Image src={userImage} alt={userName} width={64} height={64} className="rounded-full object-cover ring-4 ring-gray-200 dark:ring-gray-700" />
+                                {/* Use standard <img> tag for reliability with dynamic backend URLs */}
+                                <img 
+                                    src={userImage} 
+                                    alt={userName} 
+                                    className="w-16 h-16 rounded-full object-cover ring-4 ring-gray-200 dark:ring-gray-700"
+                                    onError={(e) => (e.currentTarget.src = '/default-avatar.png')}
+                                />
                                 <div>
                                     <h2 className="text-2xl font-bold text-gray-800 dark:text-white">{userName}</h2>
                                     <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2 mt-1">
@@ -132,8 +139,6 @@ const FeedbackDetailModal = ({ feedback, onClose }: { feedback: Feedback | null;
     );
 };
 
-
-// --- MAIN FEEDBACK PAGE COMPONENT ---
 const ViewFeedbackPage = () => {
     const [feedbackList, setFeedbackList] = useState<Feedback[]>([]);
     const [loading, setLoading] = useState(true);
@@ -141,21 +146,24 @@ const ViewFeedbackPage = () => {
     const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
-    
-    // NEW: State to control the visibility of the history section
     const [showHistory, setShowHistory] = useState(false);
+    const [minTimePassed, setMinTimePassed] = useState(false);
+
+    // Royal loading delay
+    useEffect(() => {
+        const timer = setTimeout(() => setMinTimePassed(true), 4500);
+        return () => clearTimeout(timer);
+    }, []);
 
     useEffect(() => {
         const fetchFeedback = async () => {
-            setLoading(true);
+            // Don't set loading true here if minTimePassed handles the initial load view
             try {
                 const response = await api.get('/api/feedback');
-                // Sort feedback by date, newest first
                 const sortedFeedback = response.data.data.sort((a: Feedback, b: Feedback) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
                 setFeedbackList(sortedFeedback);
             } catch (error: any) {
-                const errorMessage = error.response?.data?.message || 'Could not fetch feedback.';
-                toast.error(errorMessage);
+                toast.error(error.response?.data?.message || 'Could not fetch feedback.');
             } finally {
                 setLoading(false);
             }
@@ -188,19 +196,23 @@ const ViewFeedbackPage = () => {
         }
     };
     
-    // NEW: Reset to page 1 when toggling history to avoid being on an empty page
     const handleToggleHistory = () => {
         setShowHistory(!showHistory);
         setCurrentPage(1);
     };
 
-    if (loading) {
+    // Combined Loading Check
+    if (loading || !minTimePassed) {
         return (
-            <div className="flex justify-center items-center h-screen bg-gray-50 dark:bg-gray-900">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500"></div>
-                    <div className="text-lg font-semibold text-gray-600 dark:text-gray-300">Loading Feedback...</div>
-                </div>
+            <div className="fixed inset-0 bg-gradient-to-br from-amber-950 via-black to-amber-900 flex items-center justify-center overflow-hidden z-50">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(251,191,36,0.15),transparent_70%)]" />
+                <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="relative z-10 text-center">
+                    <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center shadow-2xl ring-4 ring-amber-900/50">
+                        <Crown className="text-white w-12 h-12" />
+                    </div>
+                    <h2 className="text-4xl font-black text-amber-400 tracking-widest mb-2">CUSTOMER FEEDBACK</h2>
+                    <p className="text-amber-200/80 tracking-wide">Every Voice Deserves Royal Attention</p>
+                </motion.div>
             </div>
         );
     }
@@ -216,7 +228,6 @@ const ViewFeedbackPage = () => {
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                        {/* Table Head */}
                         <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
                             <tr>
                                 <th scope="col" className="px-6 py-3">Customer</th>
@@ -226,16 +237,23 @@ const ViewFeedbackPage = () => {
                                 <th scope="col" className="px-6 py-3 text-right">Date</th>
                             </tr>
                         </thead>
-                        {/* Table Body */}
                         <tbody>
                             {data.map(fb => {
                                 const userName = fb.isAnonymous || !fb.user ? 'Anonymous' : `${fb.user.firstName} ${fb.user.lastName}`;
+                                // Correctly use helper here too
                                 const userImage = fb.isAnonymous || !fb.user ? '/shield-avatar.png' : getFullImageUrl(fb.user.profileImage);
+                                
                                 return (
                                     <tr key={fb._id} onClick={() => setSelectedFeedback(fb)} className="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer transition-colors">
                                         <td className="px-6 py-4 font-medium text-gray-900 dark:text-white whitespace-nowrap">
                                             <div className="flex items-center gap-3">
-                                                <Image src={userImage} alt={userName} width={40} height={40} className="rounded-full object-cover" />
+                                                {/* Use standard <img> tag */}
+                                                <img 
+                                                    src={userImage} 
+                                                    alt={userName} 
+                                                    className="w-10 h-10 rounded-full object-cover border border-gray-200"
+                                                    onError={(e) => (e.currentTarget.src = '/default-avatar.png')}
+                                                />
                                                 {userName}
                                             </div>
                                         </td>
@@ -257,7 +275,6 @@ const ViewFeedbackPage = () => {
         <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
             <div className="max-w-7xl mx-auto">
                 <BackButton />
-                {/* Header */}
                 <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
                     <h1 className="text-4xl font-bold text-gray-900 dark:text-white">Customer Feedback</h1>
                     <div className="relative w-full md:w-80">
@@ -272,10 +289,8 @@ const ViewFeedbackPage = () => {
                     </div>
                 </div>
 
-                {/* Main Content */}
                 {feedbackList.length > 0 ? (
                     <>
-                        {/* Always show today's feedback if it exists */}
                         {todayFeedback.length > 0 ? (
                              renderTable(todayFeedback, "Today's Feedback")
                         ) : (
@@ -285,7 +300,6 @@ const ViewFeedbackPage = () => {
                              </div>
                         )}
                        
-                        {/* NEW: History Button */}
                         {historyFeedback.length > 0 && (
                              <div className="my-8 text-center">
                                 <button onClick={handleToggleHistory} className="inline-flex items-center gap-2 px-6 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-transform transform hover:scale-105">
@@ -295,7 +309,6 @@ const ViewFeedbackPage = () => {
                              </div>
                         )}
 
-                        {/* NEW: Conditionally render history and pagination */}
                         <AnimatePresence>
                             {showHistory && paginatedHistory.length > 0 && (
                                 <motion.div
@@ -306,7 +319,6 @@ const ViewFeedbackPage = () => {
                                 >
                                     {renderTable(paginatedHistory, "History")}
 
-                                    {/* Pagination Controls */}
                                     {totalPages > 1 && (
                                         <div className="flex justify-between items-center mt-6">
                                             <span className="text-sm text-gray-700 dark:text-gray-400">
@@ -327,7 +339,6 @@ const ViewFeedbackPage = () => {
                         </AnimatePresence>
                     </>
                 ) : (
-                    /* No Feedback Message */
                     <div className="text-center py-20">
                         <MessageSquareWarning className="mx-auto h-12 w-12 text-gray-400" />
                         <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-white">No Feedback Yet</h3>

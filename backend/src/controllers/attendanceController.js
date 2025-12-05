@@ -1,4 +1,4 @@
-// backend/src/controllers/attendanceController.js
+/*// backend/src/controllers/attendanceController.js
 const Attendance = require('../models/Attendance');
 const User = require('../models/User'); // To get staff list for manager
 const moment = require('moment-timezone'); // For date handling
@@ -256,4 +256,249 @@ exports.getStaffAttendanceHistory = async(req, res) => {
         console.error('Error in getStaffAttendanceHistory:', err);
         res.status(500).json({ message: err.message });
     }
+};*/
+
+
+const Attendance = require('../models/Attendance');
+const User = require('../models/User');
+const moment = require('moment-timezone');
+
+// SAFE: Never let moment.tz receive undefined timezone
+const getStartOfDay = (dateString) => {
+    // If no date provided, use today
+    const input = dateString && typeof dateString === 'string' ?
+        dateString.trim() :
+        moment().tz('Africa/Addis_Ababa').format('YYYY-MM-DD');
+
+    // Validate format first
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(input)) {
+        return null;
+    }
+
+    // Now safely parse
+    const parsed = moment.tz(input, 'YYYY-MM-DD', 'Africa/Addis_Ababa');
+    return parsed.isValid() ? parsed.startOf('day').toDate() : null;
+};
+
+// =========================================================
+// STAFF ACTIONS
+// =========================================================
+exports.checkIn = async(req, res) => {
+    try {
+        const userId = req.user.id;
+        const today = getStartOfDay(); // today in Addis Ababa
+
+        let attendance = await Attendance.findOne({ user: userId, date: today });
+
+        // Fixed: no optional chaining
+        if (attendance && attendance.checkIn) {
+            return res.status(400).json({ message: 'Already checked in today.' });
+        }
+
+        if (!attendance) {
+            attendance = new Attendance({
+                user: userId,
+                date: today,
+                checkIn: new Date(),
+                status: 'present',
+                markedBy: userId
+            });
+            await attendance.save();
+        } else {
+            attendance.checkIn = new Date();
+            attendance.status = 'present';
+            attendance.markedBy = userId;
+            await attendance.save();
+        }
+
+        res.json({ message: 'Checked in successfully', attendance });
+    } catch (err) {
+        console.error('Error in checkIn:', err);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+exports.checkOut = async(req, res) => {
+    try {
+        const userId = req.user.id;
+        const today = getStartOfDay();
+
+        const attendance = await Attendance.findOne({ user: userId, date: today });
+
+        if (!attendance) {
+            return res.status(400).json({ message: 'No check-in record found today.' });
+        }
+        if (!attendance.checkIn) {
+            return res.status(400).json({ message: 'You have not checked in yet.' });
+        }
+        if (attendance.checkOut) {
+            return res.status(400).json({ message: 'Already checked out today.' });
+        }
+
+        attendance.checkOut = new Date();
+        await attendance.save();
+
+        res.json({ message: 'Checked out successfully', attendance });
+    } catch (err) {
+        console.error('Error in checkOut:', err);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+exports.getMyAttendance = async(req, res) => {
+    try {
+        const userId = req.user.id;
+        const dateParam = req.params.date;
+
+        const queryDate = getStartOfDay(dateParam);
+
+        if (!queryDate) {
+            return res.status(400).json({
+                message: 'Invalid or missing date. Use YYYY-MM-DD format.'
+            });
+        }
+
+        const attendance = await Attendance.findOne({
+            user: userId,
+            date: queryDate
+        });
+
+        if (!attendance) {
+            return res.status(404).json({
+                message: 'No attendance record found for this date.'
+            });
+        }
+
+        res.status(200).json(attendance);
+    } catch (err) {
+        console.error('getMyAttendance Error:', err);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// =========================================================
+// MANAGER ACTIONS (unchanged except safe getStartOfDay)
+// =========================================================
+exports.getStaffAttendanceByDate = async(req, res) => {
+    try {
+        const dateParam = req.params.date;
+        const queryDate = getStartOfDay(dateParam);
+
+        const staffUsers = await User.find({ role: { $in: ['receptionist', 'cashier'] } })
+            .select('_id firstName lastName email role');
+
+        const attendanceRecords = await Attendance.find({
+                user: { $in: staffUsers.map(u => u._id) },
+                date: queryDate,
+            })
+            .populate('user', 'firstName lastName email role')
+            .populate('markedBy', 'firstName lastName')
+            .lean();
+
+        const result = staffUsers.map(staff => {
+            const record = attendanceRecords.find(att => att.user._id.equals(staff._id));
+            return { staff, attendance: record || null };
+        });
+
+        res.status(200).json(result);
+    } catch (err) {
+        console.error('Error in getStaffAttendanceByDate:', err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+exports.updateAttendance = async(req, res) => {
+    try {
+        const { attendanceId } = req.params;
+        const { checkIn, checkOut, status, notes } = req.body;
+
+        const attendance = await Attendance.findById(attendanceId);
+        if (!attendance) return res.status(404).json({ message: 'Attendance record not found.' });
+
+        if (!['admin', 'manager'].includes(req.user.role)) {
+            return res.status(403).json({ message: 'Forbidden: Only managers/admins can update attendance.' });
+        }
+
+        if (checkIn !== undefined) attendance.checkIn = checkIn ? new Date(checkIn) : null;
+        if (checkOut !== undefined) attendance.checkOut = checkOut ? new Date(checkOut) : null;
+        if (status) attendance.status = status;
+        if (notes !== undefined) attendance.notes = notes;
+
+        attendance.markedBy = req.user.id;
+        await attendance.save();
+
+        res.status(200).json({ message: 'Attendance updated successfully', attendance });
+    } catch (err) {
+        console.error('Error in updateAttendance:', err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+exports.createStaffAttendance = async(req, res) => {
+    try {
+        const { userId, date, checkIn, checkOut, status, notes } = req.body;
+        if (!userId || !date || !status) {
+            return res.status(400).json({ message: 'User ID, date, and status are required.' });
+        }
+
+        const queryDate = getStartOfDay(date);
+        if (!queryDate) {
+            return res.status(400).json({ message: 'Invalid date format.' });
+        }
+
+        const staff = await User.findById(userId);
+        if (!staff || !['receptionist', 'cashier'].includes(staff.role)) {
+            return res.status(400).json({ message: 'Invalid staff user ID.' });
+        }
+
+        const existing = await Attendance.findOne({ user: userId, date: queryDate });
+        if (existing) {
+            return res.status(400).json({ message: 'Attendance already exists. Use update instead.' });
+        }
+
+        const attendance = await Attendance.create({
+            user: userId,
+            date: queryDate,
+            checkIn: checkIn ? new Date(checkIn) : null,
+            checkOut: checkOut ? new Date(checkOut) : null,
+            status,
+            notes,
+            markedBy: req.user.id,
+        });
+
+        res.status(201).json({ message: 'Attendance created successfully', attendance });
+    } catch (err) {
+        console.error('Error in createStaffAttendance:', err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+exports.getStaffAttendanceHistory = async(req, res) => {
+    try {
+        const { userId } = req.params;
+        const staff = await User.findById(userId);
+        if (!staff || !['receptionist', 'cashier'].includes(staff.role)) {
+            return res.status(400).json({ message: 'Invalid staff user ID.' });
+        }
+
+        const history = await Attendance.find({ user: userId })
+            .sort({ date: -1 })
+            .populate('markedBy', 'firstName lastName')
+            .lean();
+
+        res.status(200).json(history);
+    } catch (err) {
+        console.error('Error in getStaffAttendanceHistory:', err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+module.exports = {
+    checkIn: exports.checkIn,
+    checkOut: exports.checkOut,
+    getMyAttendance: exports.getMyAttendance,
+    getStaffAttendanceByDate: exports.getStaffAttendanceByDate,
+    updateAttendance: exports.updateAttendance,
+    createStaffAttendance: exports.createStaffAttendance,
+    getStaffAttendanceHistory: exports.getStaffAttendanceHistory
 };

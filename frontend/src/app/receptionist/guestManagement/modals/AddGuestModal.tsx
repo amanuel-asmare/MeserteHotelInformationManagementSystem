@@ -10,7 +10,7 @@ interface Props {
 }
 
 export default function AddGuestModal({ open, onClose }: Props) {
- if(open) return null;
+
 
   return (
     <Modal title="Add New Guest" onClose={onClose} className="p-0">

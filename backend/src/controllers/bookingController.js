@@ -121,8 +121,8 @@ exports.createBookingByReceptionist = async(req, res) => {
                     first_name: user.firstName, // <--- Using the fetched user object
                     last_name: user.lastName, // <--- Using the fetched user object
                     tx_ref,
-                    callback_url: `${process.env.NEGROK_API_URL}/api/bookings/verify-payment`,
-                    return_url: `${process.env.NEGROK_CLIENT_URL}/receptionist/rooms`
+                    callback_url: `${process.env.API_URL}/api/bookings/verify-payment`,
+                    return_url: `${process.env.CLIENT_URL}/receptionist/rooms`
                 }, { headers: { Authorization: `Bearer ${process.env.CHAPA_SECRET_KEY}` } }
             );
             booking.paymentId = chapaRes.data.data.tx_ref;
@@ -161,8 +161,8 @@ exports.initiatePayment = async(req, res) => {
                 first_name: booking.user.firstName,
                 last_name: booking.user.lastName,
                 tx_ref,
-                callback_url: `${process.env.NEGROK_API_URL}/api/bookings/verify-payment`,
-                return_url: `${process.env.NEGROK_CLIENT_URL}/customer/bookings`
+                callback_url: `${process.env.API_URL}/api/bookings/verify-payment`,
+                return_url: `${process.env.CLIENT_URL}/customer/bookings`
             }, {
                 headers: {
                     Authorization: `Bearer ${process.env.CHAPA_SECRET_KEY}`,
@@ -249,7 +249,7 @@ exports.getCustomerBookings = async(req, res) => {
             })
             .sort({ createdAt: -1 });
 
-        const API_BASE = process.env.API_URL || 'http://localhost:5000';
+        const API_BASE = process.env.API_URL || 'https://localhost:5000';
         const formattedBookings = bookings.map(booking => {
             const b = booking.toObject();
             if (b.room && b.room.images) {
@@ -324,7 +324,7 @@ exports.getAllBookings = async(req, res) => {
             .sort({ createdAt: -1 }); // Sort by most recent
 
         // Format image URLs as done for customer bookings
-        const API_BASE = process.env.API_URL || 'http://localhost:5000';
+        const API_BASE = process.env.API_URL || 'https://localhost:5000';
         const formattedBookings = bookings.map(booking => {
             const b = booking.toObject();
             if (b.room && b.room.images) {

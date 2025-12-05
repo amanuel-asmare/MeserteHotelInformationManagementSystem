@@ -26,7 +26,7 @@ interface ReportHistoryItem {
   createdAt: string;
 }
 
-const API_URL = 'http://localhost:5000';
+const API_URL = 'https://localhost:5000';
 
 export default function AdminReportsPage() {
   const { user, loading: authLoading } = useAuth();

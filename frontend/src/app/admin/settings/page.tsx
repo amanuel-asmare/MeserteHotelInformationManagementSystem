@@ -21,7 +21,7 @@ export default function SettingsPage() {
   const [uploading, setUploading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

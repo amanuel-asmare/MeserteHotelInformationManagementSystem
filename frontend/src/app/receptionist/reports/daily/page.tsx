@@ -24,7 +24,7 @@ interface DailyReportData {
   totalRooms: number;
 }
 
-const API_URL = 'http://localhost:5000'; // Or your deployed API URL
+const API_URL = 'https://localhost:5000'; // Or your deployed API URL
 
 export default function DailyReportPage() {
   const { user, loading: authLoading } = useAuth();

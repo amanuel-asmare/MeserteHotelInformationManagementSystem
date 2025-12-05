@@ -1,24 +1,24 @@
 'use client';
+import { View, Modal } from 'react-native';
 
-import { useState, useEffect, useMemo, FC } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../../context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { 
-  FileBarChart, 
-  CalendarDays, 
-  UserRound, 
-  ChevronLeft, 
-  ChevronRight, 
-  Hotel, 
-  DollarSign, 
-  Users 
+import {
+  FileBarChart,
+  CalendarDays,
+  UserRound,
+  ChevronLeft,
+  ChevronRight,
+  Hotel,
+  DollarSign,
+  Users
 } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import ReportViewModal from '../../../components/reportRecep/ReportViewModal';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// Interface now correctly includes all report types
 interface ReportHistoryItem {
   _id: string;
   reportType: 'Daily' | 'Occupancy' | 'Revenue' | 'Guest' | 'Comprehensive Cashier';
@@ -28,10 +28,9 @@ interface ReportHistoryItem {
   createdAt: string;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
 const REPORTS_PER_PAGE = 5;
 
-// For the "Today's Snapshots" section
 const snapshotReportTypes = [
   { name: 'Daily', icon: CalendarDays, description: "Today's performance.", endpoint: 'daily' },
   { name: 'Occupancy', icon: Hotel, description: "Today's room occupancy.", endpoint: 'occupancy' },
@@ -46,46 +45,52 @@ export default function ManagerReportsPage() {
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('receptionist');
-  // ✅ FIX: Use a single state for the report list to ensure it's always in sync with the tab
   const [reports, setReports] = useState<ReportHistoryItem[]>([]);
-  
   const [loading, setLoading] = useState(true);
   const [snapshotLoading, setSnapshotLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState<ReportHistoryItem | null>(null);
 
+  // ROYAL LOADING - 4.5 seconds minimum
+  const [showRoyalLoading, setShowRoyalLoading] = useState(true);
+
   useEffect(() => {
-    if (!authLoading && (!user || (user.role !== 'manager' && user.role !== 'admin'))) {
+    const timer = setTimeout(() => setShowRoyalLoading(false), 4500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Auth guard
+  useEffect(() => {
+    if (!authLoading && (!user || !['manager', 'admin'].includes(user.role))) {
       router.push('/');
     }
   }, [user, authLoading, router]);
-  
-  // ✅ FIX: This effect now triggers a data fetch every time the activeTab changes
-  useEffect(() => {
-    if (user) {
-      fetchReportsHistory(activeTab);
-    }
-  }, [user, activeTab]);
 
-  const fetchReportsHistory = async (category: ActiveTab) => {
+  // Fetch reports when tab changes or royal loading ends
+  const fetchReportsHistory = useCallback(async (category: ActiveTab) => {
     setLoading(true);
     setError(null);
     try {
       const response = await axios.get<ReportHistoryItem[]>(`${API_URL}/api/reports/history`, {
-        params: { category }, // Pass the correct category to the backend
+        params: { category },
         withCredentials: true,
       });
-      // ✅ FIX: Always set the single, unified 'reports' state
       setReports(response.data);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to fetch reports history.');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleGenerateSnapshot = async (reportEndpoint: string, reportType: any) => {
+  useEffect(() => {
+    if (user && !showRoyalLoading) {
+      fetchReportsHistory(activeTab);
+    }
+  }, [activeTab, user, showRoyalLoading, fetchReportsHistory]);
+
+  const handleGenerateSnapshot = async (reportEndpoint: string, reportType: string) => {
     setSnapshotLoading(reportType);
     try {
       const today = new Date().toISOString().split('T')[0];
@@ -93,14 +98,21 @@ export default function ManagerReportsPage() {
         params: { date: today, startDate: today, endDate: today },
         withCredentials: true,
       });
+
       const snapshotReport: ReportHistoryItem = {
         _id: `snapshot-${Date.now()}`,
-        reportType: reportType,
+        reportType: reportType as any,
         reportData: response.data,
-        generatedBy: { _id: user?._id || 'N/A', firstName: user?.firstName || 'System', lastName: user?.lastName || 'Generated', role: user?.role || 'manager' },
+        generatedBy: {
+          _id: user?._id || 'system',
+          firstName: user?.firstName || 'System',
+          lastName: user?.lastName || '',
+          role: user?.role || 'manager'
+        },
         createdAt: new Date().toISOString(),
         note: "This is a live snapshot generated for today. It has not been saved."
       };
+
       setSelectedReport(snapshotReport);
       setIsModalOpen(true);
     } catch (err: any) {
@@ -114,27 +126,103 @@ export default function ManagerReportsPage() {
     setSelectedReport(report);
     setIsModalOpen(true);
   };
-  
-  if (authLoading || !user) {
-    return <div className="flex justify-center items-center min-h-screen">Loading Report Center...</div>;
+
+  // ROYAL LOADING SCREEN - 4.5 seconds guaranteed
+  if (showRoyalLoading || authLoading || !user) {
+    return (
+      <div className="fixed inset-0 bg-gradient-to-br from-amber-950 via-black to-amber-900 flex items-center justify-center overflow-hidden z-50">
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-amber-950/80 to-transparent" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(251,191,36,0.35),transparent_70%)]" />
+          {[...Array(16)].map((_, i) => (
+            <motion.div
+              key={i}
+              animate={{ y: [0, -200, 0], x: [0, Math.sin(i) * 250, 0], opacity: [0.1, 0.9, 0.1] }}
+              transition={{ duration: 18 + i, repeat: Infinity, ease: "easeInOut", delay: i * 0.9 }}
+              className="absolute w-96 h-96 bg-gradient-to-r from-yellow-400/35 via-orange-600/30 to-transparent rounded-full blur-3xl"
+              style={{ top: `${8 + i * 6}%`, left: i % 2 === 0 ? "-45%" : "100%" }}
+            />
+          ))}
+        </div>
+
+        <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 2.2 }} className="relative z-10 text-center px-8">
+          <motion.div
+            animate={{ rotateY: [0, 360], scale: [1, 1.3, 1] }}
+            transition={{ rotateY: { duration: 32, repeat: Infinity, ease: "linear" }, scale: { duration: 15, repeat: Infinity } }}
+            className="relative mx-auto w-[420px] h-[420px] mb-20 perspective-1000"
+            style={{ transformStyle: "preserve-3d" }}
+          >
+            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-yellow-300 via-amber-500 to-orange-700 shadow-2xl ring-20 ring-yellow-400/70 blur-xl" />
+            <div className="absolute inset-16 rounded-full bg-gradient-to-tr from-amber-950 to-black flex items-center justify-center shadow-inner">
+              <motion.div animate={{ rotate: -360 }} transition={{ duration: 50, repeat: Infinity, ease: "linear" }} className="text-10xl font-black text-yellow-400 tracking-widest drop-shadow-2xl" style={{ textShadow: "0 0 140px rgba(251,191,36,1)" }}>
+                MH
+              </motion.div>
+            </div>
+            <motion.div animate={{ y: [0, -50, 0] }} transition={{ duration: 8, repeat: Infinity }} className="absolute -top-32 left-1/2 -translate-x-1/2">
+              <svg width="280" height="220" viewBox="0 0 280 220" className="drop-shadow-2xl">
+                <path d="M140 30 L190 100 L250 100 L210 150 L230 200 L140 170 L50 200 L70 150 L30 100 L90 100 Z" fill="#fbbf24" stroke="#f59e0b" strokeWidth="12"/>
+                <circle cx="140" cy="95" r="35" fill="#f59e0b"/>
+                <circle cx="140" cy="85" r="18" fill="#fbbf24"/>
+              </svg>
+            </motion.div>
+          </motion.div>
+
+          <div className="flex justify-center gap-7 mb-14">
+            {["R","E","P","O","R","T"," ","H","U","B"].map((l, i) => (
+              <motion.span key={i} initial={{ opacity: 0, y: 180, rotateX: -110 }} animate={{ opacity: 1, y: 0, rotateX: 0 }} transition={{ delay: 2 + i * 0.24, duration: 1.5 }}
+                className="text-8xl md:text-9xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-amber-400 to-orange-600"
+                style={{ textShadow: "0 0 160px rgba(251,191,36,1)", fontFamily: "'Playfair Display', serif" }}
+              >
+                {l === " " ? "\u00A0" : l}
+              </motion.span>
+            ))}
+          </div>
+
+          <motion.h1 initial={{ opacity: 0, y: 70 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 4.8, duration: 2.2 }} className="text-7xl md:text-9xl font-black text-amber-300 tracking-widest mb-12" style={{ fontFamily: "'Playfair Display', serif" }}>
+            ROYAL INSIGHTS
+          </motion.h1>
+
+          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 6.2, duration: 2.8 }} className="text-4xl text-amber-100 font-light tracking-widest mb-28">
+            Where Data Meets Majesty
+          </motion.p>
+
+          <div className="w-full max-w-4xl mx-auto">
+            <div className="h-6 bg-black/80 rounded-full overflow-hidden border-6 border-amber-700/95 backdrop-blur-3xl shadow-2xl">
+              <motion.div initial={{ width: "0%" }} animate={{ width: "100%" }} transition={{ duration: 7, ease: "easeInOut" }} className="h-full bg-gradient-to-r from-yellow-400 via-amber-500 to-orange-700 relative overflow-hidden">
+                <motion.div animate={{ x: ["-100%", "100%"] }} transition={{ duration: 3.5, repeat: Infinity }} className="absolute inset-0 bg-gradient-to-r from-transparent via-white/70 to-transparent" />
+              </motion.div>
+            </div>
+            <motion.div animate={{ opacity: [0.6, 1, 0.6] }} transition={{ duration: 4.5, repeat: Infinity }} className="text-center mt-20 text-5xl font-medium text-amber-200 tracking-widest">
+              Loading Imperial Analytics...
+            </motion.div>
+          </div>
+        </motion.div>
+      </div>
+    );
   }
 
   return (
     <>
+      {/* Main Content */}
       <div className="container mx-auto p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
-           <h1 className="text-4xl font-bold mb-2 text-gray-900 dark:text-white flex items-center">
-             <FileBarChart className="mr-3 text-amber-500" size={36} />
-             Reporting Hub
-           </h1>
-           <p className="text-gray-500 dark:text-gray-400 mb-10">Generate live snapshots or browse the complete report history.</p>
+          <h1 className="text-4xl font-bold mb-2 text-gray-900 dark:text-white flex items-center">
+            <FileBarChart className="mr-3 text-amber-500" size={36} />
+            Reporting Hub
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400 mb-10">Generate live snapshots or browse the complete report history.</p>
         </motion.div>
-        
+
+        {/* Today's Snapshots */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
-           <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Today's Snapshots</h2>
-           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+          <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Today's Snapshots</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
             {snapshotReportTypes.map(rt => (
-              <motion.div key={rt.name} className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col justify-between" whileHover={{ y: -5, boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1)" }}>
+              <motion.div
+                key={rt.name}
+                className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col justify-between"
+                whileHover={{ y: -5, boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1)" }}
+              >
                 <div>
                   <div className="flex items-center gap-3 mb-2">
                     <rt.icon className="text-amber-500" size={24} />
@@ -142,7 +230,11 @@ export default function ManagerReportsPage() {
                   </div>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{rt.description}</p>
                 </div>
-                <Button onClick={() => handleGenerateSnapshot(rt.endpoint, rt.name as any)} className="w-full bg-amber-500 hover:bg-amber-600 text-white" disabled={!!snapshotLoading}>
+                <Button
+                  onClick={() => handleGenerateSnapshot(rt.endpoint, rt.name)}
+                  className="w-full bg-amber-500 hover:bg-amber-600 text-white"
+                  disabled={!!snapshotLoading}
+                >
                   {snapshotLoading === rt.name ? 'Generating...' : 'Generate & View'}
                 </Button>
               </motion.div>
@@ -150,96 +242,143 @@ export default function ManagerReportsPage() {
           </div>
         </motion.div>
 
+        {/* Report History */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
-            <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Report History</h2>
-            <div className="border-b border-gray-200 dark:border-gray-700">
-                <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-                    <button onClick={() => setActiveTab('receptionist')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'receptionist' ? 'border-amber-500 text-amber-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                        Receptionist Reports
-                    </button>
-                    <button onClick={() => setActiveTab('cashier')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'cashier' ? 'border-amber-500 text-amber-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                        Cashier Reports
-                    </button>
-                </nav>
-            </div>
+          <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Report History</h2>
+          <div className="border-b border-gray-200 dark:border-gray-700">
+            <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+              <button
+                onClick={() => setActiveTab('receptionist')}
+                className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'receptionist' ? 'border-amber-500 text-amber-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+              >
+                Receptionist Reports
+              </button>
+              <button
+                onClick={() => setActiveTab('cashier')}
+                className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'cashier' ? 'border-amber-500 text-amber-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+              >
+                Cashier Reports
+              </button>
+            </nav>
+          </div>
 
-            <div className="mt-6">
-                {error && <div className="p-4 mb-4 text-red-600 bg-red-100 rounded-lg">{error}</div>}
-                <AnimatePresence mode="wait">
-                    <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                        {loading ? <div className="text-center p-12 text-gray-500">Loading reports...</div> : <ReportList reports={reports} onViewReport={handleViewReport} />}
-                    </motion.div>
-                </AnimatePresence>
-            </div>
+          <div className="mt-6">
+            {error && <div className="p-4 mb-4 text-red-600 bg-red-100 dark:bg-red-900/30 rounded-lg">{error}</div>}
+
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+              >
+                {loading ? (
+                  <div className="text-center p-12 text-gray-500">Loading reports...</div>
+                ) : (
+                  <ReportList reports={reports} onViewReport={handleViewReport} />
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </motion.div>
       </div>
 
-      {selectedReport && <ReportViewModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} report={selectedReport} />}
+      {/* Modal */}
+      {selectedReport && (
+        <ReportViewModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          report={selectedReport}
+        />
+      )}
     </>
   );
 }
 
-// Reusable Report List Component (This remains the same but will now receive a correctly filtered list)
+// Reusable Report List Component
 interface ReportListProps {
   reports: ReportHistoryItem[];
   onViewReport: (report: ReportHistoryItem) => void;
 }
 
-const ReportList: FC<ReportListProps> = ({ reports, onViewReport }) => {
-    const [currentPage, setCurrentPage] = useState(1);
-    
-    const totalPages = Math.ceil(reports.length / REPORTS_PER_PAGE);
-    const paginatedReports = useMemo(() => {
-        const startIndex = (currentPage - 1) * REPORTS_PER_PAGE;
-        return reports.slice(startIndex, startIndex + REPORTS_PER_PAGE);
-    }, [reports, currentPage]);
+const ReportList: React.FC<ReportListProps> = ({ reports, onViewReport }) => {
+  const [currentPage, setCurrentPage] = useState(1);
 
-    const handlePageChange = (newPage: number) => {
-        if (newPage >= 1 && newPage <= totalPages) setCurrentPage(newPage);
-    };
-    
-    useEffect(() => { setCurrentPage(1); }, [reports]);
+  const totalPages = Math.ceil(reports.length / REPORTS_PER_PAGE);
+  const paginatedReports = useMemo(() => {
+    const startIndex = (currentPage - 1) * REPORTS_PER_PAGE;
+    return reports.slice(startIndex, startIndex + REPORTS_PER_PAGE);
+  }, [reports, currentPage]);
 
-    return (
-        <div>
-            <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl border border-gray-200 dark:border-gray-700">
-                {paginatedReports.length > 0 ? (
-                    <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                        {paginatedReports.map((report) => (
-                           <motion.div key={report._id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                               <div className="flex items-center gap-4 flex-1 mb-3 sm:mb-0">
-                                   <div className="bg-amber-100 dark:bg-amber-900/50 p-3 rounded-xl"><FileBarChart className="text-amber-600 dark:text-amber-400" size={24}/></div>
-                                   <div>
-                                       <p className="font-bold text-gray-900 dark:text-white text-lg">{report.reportType} Report</p>
-                                       <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                           <span className="flex items-center gap-1"><UserRound size={12} /> {report.generatedBy.firstName} {report.generatedBy.lastName}</span>
-                                           <span className="flex items-center gap-1"><CalendarDays size={12} /> {new Date(report.createdAt).toLocaleString()}</span>
-                                       </div>
-                                       {report.note && <p className="text-xs text-gray-600 dark:text-gray-300 mt-2 italic">Note: "{report.note}"</p>}
-                                   </div>
-                               </div>
-                               <Button onClick={() => onViewReport(report)} className="px-4 py-2 text-sm w-full sm:w-auto">View Details</Button>
-                           </motion.div>
-                        ))}
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) setCurrentPage(newPage);
+  };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [reports]);
+
+  return (
+    <div>
+      <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl border border-gray-200 dark:border-gray-700">
+        {paginatedReports.length > 0 ? (
+          <div className="divide-y divide-gray-200 dark:divide-gray-700">
+            {paginatedReports.map((report) => (
+              <motion.div
+                key={report._id}
+                layout
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+              >
+                <div className="flex items-center gap-4 flex-1 mb-3 sm:mb-0">
+                  <div className="bg-amber-100 dark:bg-amber-900/50 p-3 rounded-xl">
+                    <FileBarChart className="text-amber-600 dark:text-amber-400" size={24} />
+                  </div>
+                  <div>
+                    <p className="font-bold text-gray-900 dark:text-white text-lg">{report.reportType} Report</p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      <span className="flex items-center gap-1">
+                        <UserRound size={12} /> {report.generatedBy.firstName} {report.generatedBy.lastName}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <CalendarDays size={12} /> {new Date(report.createdAt).toLocaleString()}
+                      </span>
                     </div>
-                ) : (
-                    <div className="text-center p-12 text-gray-500 dark:text-gray-400"><p>No reports found in this category.</p></div>
-                )}
-            </div>
-
-            {totalPages > 1 && (
-                <div className="flex justify-center items-center mt-8 space-x-2">
-                    <Button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} variant="outline" className="px-3 py-2"><ChevronLeft size={18} /></Button>
-                    <span className="text-sm text-gray-600 dark:text-gray-300">Page {currentPage} of {totalPages}</span>
-                    <Button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} variant="outline" className="px-3 py-2"><ChevronRight size={18} /></Button>
+                    {report.note && <p className="text-xs text-gray-600 dark:text-gray-300 mt-2 italic">Note: "{report.note}"</p>}
+                  </div>
                 </div>
-            )}
+                <Button onClick={() => onViewReport(report)} className="px-4 py-2 text-sm w-full sm:w-auto">
+                  View Details
+                </Button>
+              </motion.div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center p-12 text-gray-500 dark:text-gray-400">
+            <p>No reports found in this category.</p>
+          </div>
+        )}
+      </div>
+
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center mt-8 space-x-2">
+          <Button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} variant="outline" className="px-3 py-2">
+            <ChevronLeft size={18} />
+          </Button>
+          <span className="text-sm text-gray-600 dark:text-gray-300">Page {currentPage} of {totalPages}</span>
+          <Button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} variant="outline" className="px-3 py-2">
+            <ChevronRight size={18} />
+          </Button>
         </div>
-    );
-}
+      )}
+    </div>
+  );
+};
 /*'use client';
 
-import { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../../context/AuthContext';
 import { useRouter } from 'next/navigation';

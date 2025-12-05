@@ -130,4 +130,37 @@ const uploadChatFile = multer({
     }
 });
 
-module.exports = { uploadAvatar, uploadMenu, uploadRoom, uploadChatFile };
+// 5. News/Announcement Upload
+const uploadNews = multer({
+    storage: createStorage('news'),
+    limits: { fileSize: 100 * 1024 * 1024 }, // 100MB Limit
+    fileFilter: (req, file, cb) => {
+        // Regex to check for media types
+        const isMedia = /^(image|video|audio)\//.test(file.mimetype);
+
+        // Exact match for document types
+        const isDocument = [
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'text/plain'
+        ].includes(file.mimetype);
+
+        if (isMedia || isDocument) {
+            cb(null, true);
+        } else {
+            cb(new Error('Unsupported file type. Please upload images, videos, audio, or documents only.'));
+        }
+    }
+});
+// 6. Logo Upload (NEW)
+const uploadLogo = multer({
+    storage: createStorage('logo'),
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype.startsWith('image/')) cb(null, true);
+        else cb(new Error('Only image files allowed for logo'));
+    }
+});
+
+module.exports = { uploadAvatar, uploadMenu, uploadRoom, uploadChatFile, uploadNews, uploadLogo };

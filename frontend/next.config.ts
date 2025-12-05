@@ -11,12 +11,13 @@ const nextConfig = {
 };
 
 module.exports = nextConfig;*/
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
     remotePatterns: [
       {
-        protocol: 'http',
+        protocol: 'https',
         hostname: 'localhost',
         port: '5000',
         // FIX: Allow any path from this host, not just /uploads/**
@@ -29,7 +30,7 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:5000/api/:path*', // <-- exact match
+        destination: 'https://localhost:5000/api/:path*', // <-- exact match
       },
     ];
   },

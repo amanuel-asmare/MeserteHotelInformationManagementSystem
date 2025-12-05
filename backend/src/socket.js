@@ -2,7 +2,7 @@ const ChatMessage = require('./models/ChatMessage'); // Make sure to import the 
 
 module.exports = (server) => {
     const io = require('socket.io')(server, {
-        cors: { origin: 'http://localhost:3000', credentials: true }
+        cors: { origin: 'https://localhost:3000', credentials: true }
     });
 
     const onlineUsers = new Map();

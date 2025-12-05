@@ -25,8 +25,15 @@ const roomSchema = new mongoose.Schema({
             values: ['single', 'double', 'triple'],
             message: 'Invalid room type. Must be single, double, or triple'
         },
+
         required: [true, 'Room type is required']
     },
+    // --- DYNAMIC TRANSLATION FIELD ---
+    // type: {
+    //     en: { type: String, required: true }, // e.g., "Single"
+    //     am: { type: String, required: true } // e.g., "ነጠላ"
+    // },
+
     price: {
         type: Number,
         required: [true, 'Price is required'],
@@ -47,6 +54,11 @@ const roomSchema = new mongoose.Schema({
         trim: true,
         minlength: [10, 'Description must be at least 10 characters']
     },
+    // --- DYNAMIC TRANSLATION FIELD ---
+    // description: {
+    //     en: { type: String, required: true },
+    //     am: { type: String, required: true }
+    // },
     images: {
         type: [String],
         validate: [arrayLimit, 'Maximum 3 images allowed']

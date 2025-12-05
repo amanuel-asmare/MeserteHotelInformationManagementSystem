@@ -1,5 +1,327 @@
 'use client';
 
+import { useState, useEffect, useMemo } from 'react';
+import { motion } from 'framer-motion';
+import { 
+  BedDouble, TrendingUp, Utensils, Users, 
+  Clock, DollarSign, Activity, ArrowUpRight, MoreHorizontal
+} from 'lucide-react';
+import axios from 'axios';
+import { useAuth } from '../../../context/AuthContext';
+import Link from 'next/link';
+import { 
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, Cell
+} from 'recharts';
+import NewsFeed from '../../../components/NewsFeed'; 
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
+const COLORS = ['#8B5CF6', '#EC4899', '#10B981', '#F59E0B'];
+
+// ... (Keep StatCard and QuickLink components as they are) ...
+// I am omitting them here to save space, but DO NOT DELETE THEM from your file.
+const StatCard = ({ title, value, subValue, icon, color, trend }: any) => (
+  <motion.div
+    whileHover={{ y: -5 }}
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between h-full"
+  >
+    <div className="flex justify-between items-start mb-4">
+      <div className={`p-3 rounded-2xl ${color} text-white shadow-lg shadow-opacity-20`}>
+        {icon}
+      </div>
+      {trend && (
+        <span className="flex items-center text-xs font-bold px-2 py-1 rounded-full text-green-600 bg-green-50 border border-green-100">
+          <ArrowUpRight size={14} className="mr-1" />
+          {trend}
+        </span>
+      )}
+    </div>
+    <div>
+      <p className="text-gray-500 text-sm font-bold uppercase tracking-wide mb-1">{title}</p>
+      <h3 className="text-3xl font-black text-gray-800 tracking-tight">{value}</h3>
+      {subValue && <p className="text-sm text-gray-400 mt-2 font-medium">{subValue}</p>}
+    </div>
+  </motion.div>
+);
+
+const QuickLink = ({ title, desc, icon, color, href }: any) => (
+  <Link href={href} className="block h-full">
+    <motion.div 
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      className={`${color} p-6 rounded-3xl text-white shadow-xl cursor-pointer h-full flex flex-col justify-center relative overflow-hidden`}
+    >
+      <div className="absolute -bottom-4 -right-4 opacity-20 transform rotate-12">
+        {icon}
+      </div>
+      <div className="relative z-10 flex items-center gap-4">
+        <div className="p-3 bg-white/20 rounded-xl backdrop-blur-md">
+          {icon}
+        </div>
+        <div>
+          <h3 className="text-lg font-bold">{title}</h3>
+          <p className="text-white/80 text-xs">{desc}</p>
+        </div>
+      </div>
+    </motion.div>
+  </Link>
+);
+
+export default function ManagerDashboard() {
+  const { user } = useAuth();
+  const [stats, setStats] = useState({
+    occupiedRooms: 0,
+    totalRooms: 0,
+    totalRevenue: 0,
+    pendingOrders: 0,
+    staffOnDuty: 0,
+    recentOrders: []
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/api/dashboard/manager`, { withCredentials: true });
+        setStats(res.data);
+      } catch (err) {
+        console.error("Error loading manager stats", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  // Mock Data for Visuals
+  const revenueData = useMemo(() => [
+    { name: '8am', value: stats.totalRevenue * 0.1 },
+    { name: '10am', value: stats.totalRevenue * 0.2 },
+    { name: '12pm', value: stats.totalRevenue * 0.5 },
+    { name: '2pm', value: stats.totalRevenue * 0.6 },
+    { name: '4pm', value: stats.totalRevenue * 0.8 },
+    { name: 'Now', value: stats.totalRevenue },
+  ], [stats.totalRevenue]);
+
+  const orderStatusData = useMemo(() => [
+    { name: 'Pending', value: stats.pendingOrders },
+    { name: 'Completed', value: 12 }, 
+    { name: 'Cancelled', value: 2 },  
+  ], [stats.pendingOrders]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[70vh]">
+        <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+        <p className="text-gray-500 font-medium mt-4">Loading Manager Overview...</p>
+      </div>
+    );
+  }
+
+  const occupancyRate = stats.totalRooms > 0 ? Math.round((stats.occupiedRooms / stats.totalRooms) * 100) : 0;
+
+  return (
+    <div className="space-y-8 pb-10">
+      {/* Header */}
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }} 
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4"
+      >
+        <div>
+          <h1 className="text-4xl font-black text-gray-900 tracking-tight">
+            Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">{user?.firstName || 'Manager'}!</span>
+          </h1>
+          <p className="text-gray-600 mt-2 text-lg">Operational Overview & Analytics</p>
+        </div>
+        <div className="bg-white px-5 py-2 rounded-2xl shadow-sm border border-gray-100">
+           <p className="text-xs font-bold text-gray-400 uppercase">Current Time</p>
+           <p className="text-xl font-bold text-gray-800">
+             {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+           </p>
+        </div>
+      </motion.div>
+
+      {/* Stat Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard 
+          title="Occupied Rooms" 
+          value={`${stats.occupiedRooms}/${stats.totalRooms}`} 
+          subValue={`${occupancyRate}% Occupancy`}
+          icon={<BedDouble size={24} />} 
+          color="bg-blue-500"
+          trend="+12%"
+        />
+        <StatCard 
+          title="Today's Revenue" 
+          value={`ETB ${stats.totalRevenue.toLocaleString()}`} 
+          subValue="Total Earnings"
+          icon={<DollarSign size={24} />} 
+          color="bg-green-500"
+          trend="+8%"
+        />
+        <StatCard 
+          title="Pending Orders" 
+          value={stats.pendingOrders} 
+          subValue="Kitchen & Bar"
+          icon={<Utensils size={24} />} 
+          color="bg-purple-500"
+          trend="-3"
+        />
+        <StatCard 
+          title="Staff On Duty" 
+          value={stats.staffOnDuty} 
+          subValue="Active Now"
+          icon={<Users size={24} />} 
+          color="bg-amber-500"
+          trend="100%"
+        />
+      </div>
+
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Revenue Area Chart */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white p-6 rounded-3xl shadow-lg border border-gray-100"
+          >
+            <div className="mb-6 flex justify-between items-center">
+               <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                 <Activity className="text-green-500" /> Live Revenue
+               </h3>
+               <span className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-bold">Today</span>
+            </div>
+            <div className="h-[250px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={revenueData}>
+                  <defs>
+                    <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 12}} />
+                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 12}} />
+                  <Tooltip 
+                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
+                     formatter={(value: number) => [`ETB ${value.toLocaleString()}`, 'Revenue']}
+                  />
+                  <Area type="monotone" dataKey="value" stroke="#10B981" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </motion.div>
+
+           {/* Order Status Bar Chart */}
+           <motion.div 
+             initial={{ opacity: 0, y: 20 }}
+             animate={{ opacity: 1, y: 0 }}
+             transition={{ delay: 0.1 }}
+             className="bg-white p-6 rounded-3xl shadow-lg border border-gray-100"
+           >
+             <h3 className="text-lg font-bold text-gray-800 mb-4">Order Status</h3>
+             <div className="h-[250px] w-full">
+               <ResponsiveContainer width="100%" height="100%">
+                 <BarChart data={orderStatusData}>
+                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 10}} />
+                   <Tooltip cursor={{fill: 'transparent'}} contentStyle={{borderRadius: '12px'}} />
+                   <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={40}>
+                     {orderStatusData.map((entry, index) => (
+                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                     ))}
+                   </Bar>
+                 </BarChart>
+               </ResponsiveContainer>
+             </div>
+           </motion.div>
+      </div>
+
+      {/* Quick Links Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <QuickLink 
+          title="Manage Staff" 
+          desc="Add, edit, or remove employees"
+          icon={<Users size={28} />} 
+          color="bg-blue-600"
+          href="/manager/staff"
+        />
+        <QuickLink 
+          title="Room Status" 
+          desc="Monitor free & occupied rooms"
+          icon={<BedDouble size={28} />} 
+          color="bg-indigo-600"
+          href="/manager/rooms"
+        />
+        <QuickLink 
+          title="Menu Orders" 
+          desc="Track live food & drink orders"
+          icon={<Utensils size={28} />} 
+          color="bg-pink-600"
+          href="/manager/orders"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+         {/* Recent Orders Table */}
+         <div className="xl:col-span-2 bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+             <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+               <h3 className="text-lg font-bold text-gray-900">Recent Food Orders</h3>
+               <Link href="/manager/orders" className="p-2 hover:bg-gray-50 rounded-full transition">
+                 <MoreHorizontal size={20} className="text-gray-500" />
+               </Link>
+             </div>
+             <div className="overflow-x-auto">
+               <table className="w-full">
+                 <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+                   <tr>
+                     <th className="px-6 py-4 text-left">Order ID</th>
+                     <th className="px-6 py-4 text-left">Items</th>
+                     <th className="px-6 py-4 text-left">Amount</th>
+                     <th className="px-6 py-4 text-left">Status</th>
+                   </tr>
+                 </thead>
+                 <tbody className="divide-y divide-gray-100">
+                   {stats.recentOrders.map((order: any) => (
+                     <tr key={order._id} className="hover:bg-gray-50/50 transition">
+                       <td className="px-6 py-4 text-sm font-medium text-gray-900">{order.orderNumber}</td>
+                       <td className="px-6 py-4 text-sm text-gray-500">
+                         {order.items.length} items ({order.items[0]?.name || 'Food'}...)
+                       </td>
+                       <td className="px-6 py-4 text-sm font-bold text-gray-800">ETB {order.totalAmount}</td>
+                       <td className="px-6 py-4">
+                         <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                           order.status === 'delivered' ? 'bg-green-100 text-green-700' : 
+                           order.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 
+                           'bg-blue-100 text-blue-700'
+                         }`}>
+                           {order.status}
+                         </span>
+                       </td>
+                     </tr>
+                   ))}
+                 </tbody>
+               </table>
+               {stats.recentOrders.length === 0 && (
+                 <div className="p-6 text-center text-gray-400">No active orders</div>
+               )}
+             </div>
+         </div>
+
+         {/* News Feed - NOW FULL WIDTH IN COLUMN */}
+         <div className="bg-white p-6 rounded-3xl shadow-lg border border-gray-100 flex flex-col">
+             <NewsFeed /> 
+         </div>
+      </div>
+
+    </div>
+  );
+}/*'use client';
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import Link from 'next/link';
@@ -7,7 +329,7 @@ import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import StatModal from '../../../components/ui/StatModal';
 import { Bed, BarChart3, Coffee, Users, FileText, UserCheck } from 'lucide-react';
-
+import NewsFeed from '../../../components/NewsFeed';
 interface Stat {
   label: string;
   value: string;
@@ -94,124 +416,7 @@ export default function ManagerDashboard() {
           </motion.div>
         ))}
       </div>
+      <div><NewsFeed/></div>
     </>
-  );
-}/*'use client';
-
-import { useState, useEffect, ReactNode } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
-import { useAuth } from '../../../context/AuthContext';
-import { motion, AnimatePresence } from 'framer-motion';
-import Navbar from './layout/Navbar';
-import Sidebar from './layout/Sidebar';
-import Footer from './layout/Footer';
-import { Home } from 'lucide-react';
-
-// Define the structure for notifications
-interface Notification {
-  id: string;
-  title: string;
-  message: string;
-  time: string;
-  type: 'info' | 'success' | 'warning';
-  read: boolean;
-}
-
-export default function ManagerLayout({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
-  const router = useRouter();
-  const pathname = usePathname();
-
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
-  
-  // Dummy notifications - this state now lives in the layout
-  const [notifications] = useState<Notification[]>([
-    { id: '1', title: 'New Check-in', message: 'Room 304 - Abebe Kebede', time: '2 min ago', type: 'info', read: false },
-    { id: '2', title: 'Low Stock Alert', message: 'Coffee beans running low', time: '15 min ago', type: 'warning', read: false },
-    { id: '3', title: 'Feedback Received', message: '5-star review from guest', time: '1 hour ago', type: 'success', read: true },
-  ]);
-
-  // Redirect if not a manager
-  useEffect(() => {
-    if (user && user.role !== 'manager') {
-      router.push('/');
-    }
-  }, [user, router]);
-
-  // Effect for handling dark mode
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [darkMode]);
-  
-  // A loading/unauthorized state
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
-        <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="text-center">
-          <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }} className="w-32 h-32 mx-auto mb-8 relative">
-            <div className="absolute inset-0 rounded-full border-8 border-amber-200"></div>
-            <div className="absolute inset-0 rounded-full border-8 border-t-amber-600 border-r-amber-600 border-b-transparent border-l-transparent animate-spin"></div>
-            <div className="absolute inset-4 bg-amber-600 rounded-full flex items-center justify-center">
-              <Home className="w-12 h-12 text-white" />
-            </div>
-          </motion.div>
-          <h2 className="text-3xl font-bold text-amber-700 dark:text-amber-400">Loading Manager Portal...</h2>
-        </motion.div>
-      </div>
-    );
-  }
-
-  return (
-    <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors ${darkMode ? 'dark' : ''}`}>
-      <Navbar
-        onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
-        isSidebarOpen={sidebarOpen}
-        darkMode={darkMode}
-        toggleDarkMode={() => setDarkMode(!darkMode)}
-        notifications={notifications}
-        showNotifications={showNotifications}
-        setShowNotifications={setShowNotifications}
-      />
-
-      <div className="flex">
-        {/* === SIDEBAR === 
-        <AnimatePresence>
-          {/* Show sidebar permanently on large screens, or when toggled on smaller screens 
-          {(sidebarOpen || (typeof window !== 'undefined' && window.innerWidth >= 1024)) && (
-            <motion.aside
-              initial={{ x: -300 }}
-              animate={{ x: 0 }}
-              exit={{ x: -300 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white dark:bg-gray-800 shadow-xl lg:shadow-none border-r border-gray-200 dark:border-gray-700 pt-20 lg:pt-0"
-            >
-              <Sidebar activePath={pathname} />
-            </motion.aside>
-          )}
-        </AnimatePresence>
-        
-        {/* === MAIN DYNAMIC CONTENT === 
-        {/* The {children} prop is where your page.tsx content will be rendered! 
-        <main className="flex-1 p-4 lg:p-8">
-          {children}
-        </main>
-      </div>
-
-      <Footer />
-
-      {/* Backdrop for mobile sidebar 
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden" 
-          onClick={() => setSidebarOpen(false)} 
-        />
-      )}
-    </div>
   );
 }*/

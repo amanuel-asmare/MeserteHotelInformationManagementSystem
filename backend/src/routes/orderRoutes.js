@@ -1,5 +1,4 @@
-/*// backend/src/routes/orderRoutes.js
-const express = require('express');
+/*const express = require('express');
 const router = express.Router();
 const { protect, authorize } = require('../middleware/auth');
 const {
@@ -7,59 +6,150 @@ const {
     getOrder,
     updateOrderStatus,
     getOrderStats,
-    createOrder
+    createChapaOrder,
+    chapaVerify
 } = require('../controllers/orderController');
 
-// Customer can create order
-router.post('/', protect, authorize('customer'), createOrder);
+// Customer routes
+router.post('/', protect, authorize('customer'), require('../controllers/orderController').createOrder);
 
-// Manager routes
+// GET MY ORDERS — FIXED: No more "? .name" syntax error
+router.get('/my', protect, authorize('customer'), async(req, res) => {
+    try {
+        const orders = await require('../models/orderModel')
+            .find({ createdBy: req.user._id })
+            .populate({
+                path: 'items.menuItem',
+                select: 'name price image'
+            })
+            .sort({ orderedAt: -1 });
+
+        const formatted = orders.map(order => {
+            const o = order.toObject();
+            return {
+                ...o,
+                items: o.items.map(item => ({
+                    _id: item._id,
+                    name: item.name || (item.menuItem ? item.menuItem.name : 'Unknown Item'),
+                    price: item.price || (item.menuItem ? item.menuItem.price : 0),
+                    quantity: item.quantity || 1,
+                    notes: item.notes || ''
+                }))
+            };
+        });
+
+        res.json(formatted);
+    } catch (err) {
+        console.error('get my orders error:', err);
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Chapa payment routes
+router.post('/chapa', protect, authorize('customer'), createChapaOrder);
+router.post('/chapa/verify', chapaVerify); // Webhook → POST
+
+// Admin / Manager routes
 router.get('/', protect, authorize('admin', 'manager'), getAllOrders);
 router.get('/:id', protect, authorize('admin', 'manager'), getOrder);
 router.put('/:id/status', protect, authorize('admin', 'manager'), updateOrderStatus);
 router.get('/stats', protect, authorize('admin', 'manager'), getOrderStats);
+
 module.exports = router;*/
-// backend/src/routes/orderRoutes.js (Backend - Fixed)
+// backend/src/routes/orderRoutes.js
 const express = require('express');
 const router = express.Router();
+const path = require('path');
 const { protect, authorize } = require('../middleware/auth');
+const Order = require('../models/orderModel');
+
 const {
     getAllOrders,
     getOrder,
     updateOrderStatus,
     getOrderStats,
-    createOrder,
     createChapaOrder,
     chapaVerify
 } = require('../controllers/orderController');
-const Order = require('../models/orderModel');
-const { getFullImageUrl } = require('../controllers/userController');
-// Customer
-router.post('/', protect, authorize('customer'), createOrder);
+
+// === GET MY ORDERS (Customer) ===
 router.get('/my', protect, authorize('customer'), async(req, res) => {
     try {
         const orders = await Order.find({ createdBy: req.user._id })
             .populate('items.menuItem', 'name price image')
             .sort({ orderedAt: -1 });
-        const formatted = orders.map(o => ({
-            ...o.toObject(),
-            items: o.items.map(i => ({
-                ...i,
-                menuItem: {...i.menuItem.toObject(), image: getFullImageUrl(i.menuItem.image) }
-            }))
-        }));
+
+        const formatted = orders.map(order => {
+            const o = order.toObject();
+            return {
+                ...o,
+                items: o.items.map(item => ({
+                    _id: item._id,
+                    name: item.name || (item.menuItem && item.menuItem.name) || 'Unknown Item',
+                    price: item.price || (item.menuItem && item.menuItem.price) || 0,
+                    quantity: item.quantity || 1,
+                    notes: item.notes || '',
+                    image: item.menuItem && item.menuItem.image ?
+                        `/uploads/menu/${path.basename(item.menuItem.image)}` :
+                        null
+                }))
+            };
+        });
+
         res.json(formatted);
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: err.message });
+        console.error('Error fetching my orders:', err);
+        res.status(500).json({ message: 'Server error' });
     }
 });
-// Chapa
+
+// === GET SINGLE ORDER (Customer sees own, Staff sees all) ===
+router.get('/:id', protect, async(req, res) => {
+    try {
+        const order = await Order.findById(req.params.id)
+            .populate('items.menuItem', 'name price image')
+            .populate('createdBy', 'firstName lastName');
+
+        if (!order) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        // Security check
+        const isOwner = order.createdBy && order.createdBy._id.toString() === req.user._id.toString();
+        const isStaff = req.user.role === 'admin' || req.user.role === 'manager';
+
+        if (!isOwner && !isStaff) {
+            return res.status(403).json({ message: 'Access denied' });
+        }
+
+        const o = order.toObject();
+        const formatted = {
+            ...o,
+            items: o.items.map(item => ({
+                _id: item._id,
+                name: item.name || (item.menuItem && item.menuItem.name) || 'Unknown Item',
+                price: item.price || (item.menuItem && item.menuItem.price) || 0,
+                quantity: item.quantity || 1,
+                notes: item.notes || '',
+                image: item.menuItem && item.menuItem.image ?
+                    `/uploads/menu/${path.basename(item.menuItem.image)}` :
+                    null
+            }))
+        };
+
+        res.json(formatted);
+    } catch (err) {
+        console.error('Error fetching order:', err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// === PAYMENT & ADMIN ROUTES ===
 router.post('/chapa', protect, authorize('customer'), createChapaOrder);
-router.post('/chapa/verify', chapaVerify); // FIXED: Changed to POST for Chapa callback/webhook
-// Manager / Admin
+router.post('/chapa/verify', chapaVerify);
+
 router.get('/', protect, authorize('admin', 'manager'), getAllOrders);
-router.get('/:id', protect, authorize('admin', 'manager'), getOrder);
 router.put('/:id/status', protect, authorize('admin', 'manager'), updateOrderStatus);
 router.get('/stats', protect, authorize('admin', 'manager'), getOrderStats);
+
 module.exports = router;

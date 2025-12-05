@@ -1,4 +1,4 @@
-'use client';
+/*'use client';
 
 import { motion } from 'framer-motion';
 import { Phone, Mail, MapPin, Clock, Facebook, Twitter, Instagram, Linkedin, ChevronUp } from 'lucide-react';
@@ -17,7 +17,7 @@ export default function Footer() {
     <footer className="mt-20 bg-gradient-to-t from-gray-100 to-white dark:from-gray-900 dark:to-gray-800 border-t border-gray-200 dark:border-gray-700">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
-          {/* HOTEL INFO */}
+          {/* HOTEL INFO /}
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg">M</div>
@@ -38,7 +38,7 @@ export default function Footer() {
             </div>
           </motion.div>
 
-          {/* CONTACT */}
+          {/* CONTACT /}
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="space-y-4">
             <h4 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2"><Phone size={20} className="text-amber-600 dark:text-amber-400" /> Contact Us</h4>
             <div className="space-y-3 text-sm text-gray-600 dark:text-gray-400">
@@ -49,7 +49,7 @@ export default function Footer() {
             </div>
           </motion.div>
 
-          {/* SERVICES */}
+          {/* SERVICES /}
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="space-y-4">
             <h4 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2"><Clock size={20} className="text-amber-600 dark:text-amber-400" /> Our Services</h4>
             <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
@@ -61,7 +61,7 @@ export default function Footer() {
             </ul>
           </motion.div>
 
-          {/* QUICK LINKS */}
+          {/* QUICK LINKS /}
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="space-y-4">
             <h4 className="text-lg font-semibold text-gray-900 dark:text-white">Quick Links</h4>
             <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
@@ -97,6 +97,120 @@ export default function Footer() {
           </div>
           <motion.button whileHover={{ scale: 1.1, rotate: -5 }} whileTap={{ scale: 0.95 }} onClick={scrollToTop} className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-amber-600 to-amber-700 text-white rounded-full text-sm font-semibold shadow-lg hover:shadow-xl transition-all duration-300">
             <ChevronUp size={18} /> Back to Top
+          </motion.button>
+        </div>
+      </div>
+    </footer>
+  );
+}*/'use client';
+
+import { motion } from 'framer-motion';
+import { Phone, Mail, MapPin, Clock, Facebook, Twitter, Instagram, Linkedin, ChevronUp } from 'lucide-react';
+import { useLanguage } from '../../../context/LanguageContext';
+
+export default function Footer() {
+  const { t, language } = useLanguage();
+  const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  // Translation helpers
+  const contactText = language === 'am' ? 'ያግኙን' : 'Contact Us';
+  const servicesText = language === 'am' ? 'አገልግሎቶቻችን' : 'Our Services';
+  const quickLinksText = language === 'am' ? 'ፈጣን ሊንኮች' : 'Quick Links';
+  const rightsText = language === 'am' ? 'መብቱ በህግ የተጠበቀ ነው።' : 'All rights reserved.';
+  const backToTopText = language === 'am' ? 'ወደ ላይ' : 'Back to Top';
+  const descText = language === 'am' 
+    ? 'በወልዲያ ፣ ኢትዮጵያ ውስጥ ምርጥ መስተንግዶን ያግኙ።'
+    : 'Experience world-class hospitality in the heart of Woldia, Ethiopia.';
+
+  // Services List (Dynamic)
+  const services = language === 'am' ? [
+    '24/7 ክፍል አገልግሎት', 'ምርጥ ምግብ ቤት', 'ስብሰባ እና ዝግጅቶች', 'ነጻ ዋይፋይ', 'የልብስ ንጽህና', 'ቢዝነስ ማዕከል'
+  ] : [
+    '24/7 Room Service', 'Fine Dining Restaurant', 'Conference & Events', 'Free High-Speed WiFi', 'Laundry & Dry Cleaning', 'Business Center'
+  ];
+
+  // Quick Links (Using t())
+  const links = [
+    { label: t('admin'), href: '/admin' },
+    { label: t('roomManagement'), href: '/admin/rooms' },
+    { label: t('menuManagement'), href: '/admin/menu' },
+    { label: t('feedback'), href: '/admin/feedback' }
+  ];
+
+  const socialLinks = [
+    { icon: Facebook, href: '#', label: 'Facebook' },
+    { icon: Twitter, href: '#', label: 'Twitter' },
+    { icon: Instagram, href: '#', label: 'Instagram' },
+    { icon: Linkedin, href: '#', label: 'LinkedIn' },
+  ];
+
+  return (
+    <footer className="mt-20 bg-gradient-to-t from-gray-100 to-white border-t border-gray-200">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
+          {/* HOTEL INFO */}
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg">M</div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">{t('meseretHotel')}</h3>
+                <p className="text-sm text-amber-600">Luxury Redefined</p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-600 leading-relaxed">{descText}</p>
+            <div className="flex gap-3">
+              {socialLinks.map(({ icon: Icon, href, label }) => (
+                <motion.a key={label} href={href} whileHover={{ scale: 1.2, rotate: 5 }} className="p-2 bg-amber-100 rounded-lg hover:bg-amber-200 transition shadow-sm">
+                  <Icon size={18} className="text-amber-600" />
+                </motion.a>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* CONTACT */}
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="space-y-4">
+            <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2"><Phone size={20} className="text-amber-600" /> {contactText}</h4>
+            <div className="space-y-3 text-sm text-gray-600">
+              <a href="tel:+251911234567" className="flex items-center gap-2 hover:text-amber-600 transition group"><div className="w-1 h-1 bg-amber-500 rounded-full group-hover:scale-150 transition"></div> +251 911 234 567</a>
+              <a href="mailto:info@meserethotel.com" className="flex items-center gap-2 hover:text-amber-600 transition group"><Mail size={16} /> info@meserethotel.com</a>
+              <div className="flex items-start gap-2"><MapPin size={16} className="mt-0.5 text-amber-600" /><p>P.O. Box 1234, Woldia, Ethiopia</p></div>
+            </div>
+          </motion.div>
+
+          {/* SERVICES */}
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="space-y-4">
+            <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2"><Clock size={20} className="text-amber-600" /> {servicesText}</h4>
+            <ul className="space-y-2 text-sm text-gray-600">
+              {services.map(s => (
+                <li key={s} className="flex items-center gap-2 hover:text-amber-600 transition cursor-default group">
+                  <div className="w-1 h-1 bg-amber-500 rounded-full group-hover:scale-150 transition"></div>{s}
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+
+          {/* QUICK LINKS */}
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="space-y-4">
+            <h4 className="text-lg font-semibold text-gray-900">{quickLinksText}</h4>
+            <ul className="space-y-2 text-sm text-gray-600">
+              {links.map(l => (
+                <li key={l.label}>
+                  <a href={l.href} className="hover:text-amber-600 transition flex items-center gap-2 group">
+                    <div className="w-1 h-1 bg-amber-500 rounded-full opacity-0 group-hover:opacity-100 transition"></div>
+                    {l.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+        </div>
+
+        <div className="border-t border-gray-200 pt-6 flex flex-col md:flex-row justify-between items-center text-xs text-gray-500">
+          <div className="flex flex-col sm:flex-row items-center gap-4 mb-4 md:mb-0">
+            <p>© 2025 <span className="font-semibold text-amber-600">{t('meseretHotel')}</span>. {rightsText}</p>
+          </div>
+          <motion.button whileHover={{ scale: 1.1 }} onClick={scrollToTop} className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-amber-600 to-amber-700 text-white rounded-full text-sm font-semibold shadow-lg hover:shadow-xl transition-all">
+            <ChevronUp size={18} /> {backToTopText}
           </motion.button>
         </div>
       </div>

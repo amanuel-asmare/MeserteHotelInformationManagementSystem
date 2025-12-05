@@ -19,7 +19,7 @@ const userSchema = new mongoose.Schema({
         default: 'customer'
     },
     roomNumber: { type: String }, // <-- NEW: Added roomNumber to User model
-    salary: { type: Number, default: 0 },
+    salary: { type: Number, default: 0, min: 0 },
     gender: { type: String, enum: ['male', 'female', 'other'] },
     education: {
         level: { type: String, enum: ['9-12', 'diploma', 'degree', 'master', 'phd'] },

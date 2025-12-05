@@ -1,9 +1,239 @@
-// frontend/src/app/cashier/payroll/page.tsx
-import PayrollClient from './components/PayrollClient';
+'use client';
 
-// Note: Although this is in the "cashier" folder, the backend logic
-// will prevent a cashier from accessing it if they try to navigate here directly.
-// You might consider moving this to a "/manager" route in the future.
-export default function PayrollPage() {
-    return <PayrollClient />;
+import { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
+import toast, { Toaster } from 'react-hot-toast';
+import PayrollTable from './components/PayrollTable';
+import PayslipModal from './components/PayslipModal';
+import { DollarSign, Users, Clock, Calendar } from 'lucide-react';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
+const StatCard = ({ title, value, icon, color }: { title: string; value: string | number; icon: React.ReactNode; color: string }) => (
+  <motion.div
+    whileHover={{ y: -4, scale: 1.02 }}
+    className="bg-white/95 backdrop-blur-sm p-5 rounded-2xl shadow-xl border border-amber-200"
+  >
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-amber-700 font-semibold text-sm">{title}</p>
+        <p className="text-2xl font-black text-gray-800 mt-1">{value}</p>
+      </div>
+      <div className={`p-3 rounded-xl ${color} shadow-md`}>{icon}</div>
+    </div>
+  </motion.div>
+);
+
+export default function PayrollClient() {
+  const [staff, setStaff] = useState<any[]>([]);
+  const [payslips, setPayslips] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedPeriod, setSelectedPeriod] = useState({
+    month: new Date().getMonth() + 1,
+    year: new Date().getFullYear(),
+  });
+  const [viewingPayslip, setViewingPayslip] = useState<any>(null);
+  const [userRole, setUserRole] = useState<string>(''); // Changed to generic string to avoid type issues initially
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/api/auth/me`, { withCredentials: true });
+        // Ensure we compare lowercase to lowercase
+        setUserRole(res.data.user.role.toLowerCase()); 
+      } catch (err) {
+        console.error("Error fetching user role", err);
+        setUserRole('cashier'); // Default fallback
+      }
+    };
+    fetchUser();
+  }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [staffRes, payrollRes] = await Promise.all([
+        axios.get(`${API_URL}/api/staff/payroll-preview`, { withCredentials: true }),
+        axios.get(`${API_URL}/api/payroll/${selectedPeriod.year}/${selectedPeriod.month}`, { withCredentials: true }).catch(() => ({ data: [] }))
+      ]);
+      setStaff(staffRes.data);
+      setPayslips(payrollRes.data);
+    } catch (err) {
+      toast.error("Failed to load payroll data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [selectedPeriod]);
+
+  const handleGeneratePayroll = async () => {
+    if (!confirm("Generate payroll for this period?")) return;
+    try {
+      await axios.post(`${API_URL}/api/payroll/generate`, selectedPeriod, { withCredentials: true });
+      toast.success("Payroll generated!");
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed");
+    }
+  };
+
+  // This function must be passed to modal for the Edit button to appear
+  const handleUpdatePayslip = async (id: string, updates: any): Promise<boolean> => {
+    try {
+      const { data } = await axios.put(`${API_URL}/api/payroll/${id}`, updates, { withCredentials: true });
+      
+      // Update local state
+      setPayslips(prev => prev.map(p => p._id === data._id ? data : p));
+      setViewingPayslip(data); // Update the modal view with new data
+      
+      return true; // Success
+    } catch (err) {
+      toast.error("Update failed");
+      return false; // Failure
+    }
+  };
+
+  const displayData = useMemo(() => {
+    return staff.map(s => {
+      const p = payslips.find(ps => ps.user._id === s._id);
+      if (p) return p;
+
+      const base = s.salary || 15000;
+      const { tax, pension } = calculateEthiopianTax(base);
+      return {
+        _id: null, // No ID means not generated yet
+        user: s,
+        baseSalary: base,
+        bonus: 0,
+        deductions: 0,
+        tax,
+        pension,
+        netPay: base - tax - pension,
+        status: 'pending',
+      };
+    });
+  }, [staff, payslips]);
+
+  const calculateEthiopianTax = (gross: number) => {
+    let tax = 0;
+    const pension = Math.round(gross * 0.07);
+    if (gross <= 600) tax = 0;
+    else if (gross <= 1650) tax = gross * 0.10 - 60;
+    else if (gross <= 3200) tax = gross * 0.15 - 142.50;
+    else if (gross <= 5250) tax = gross * 0.20 - 302.50;
+    else if (gross <= 7800) tax = gross * 0.25 - 565;
+    else if (gross <= 10900) tax = gross * 0.30 - 955;
+    else tax = gross * 0.35 - 1500;
+    return { tax: Math.round(tax), pension };
+  };
+
+  const stats = useMemo(() => {
+    const total = displayData.reduce((sum, p) => sum + p.netPay, 0);
+    const paid = payslips.filter(p => p.status === 'paid').length;
+    const pending = payslips.filter(p => p.status === 'pending').length;
+    const generated = payslips.length;
+    const period = new Date(selectedPeriod.year, selectedPeriod.month - 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+
+    return { total, paid, pending, generated, totalStaff: staff.length, period };
+  }, [displayData, payslips, staff, selectedPeriod]);
+
+  // Logic: Who can generate? Admin & Manager.
+  // Logic: Who can edit? Admin & Manager (if payroll is generated).
+  const isAdminOrManager = ['admin', 'manager'].includes(userRole);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50 p-6">
+      <Toaster position="top-right" />
+
+      <div className="text-center mb-10">
+        <h1 className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-orange-700">
+          PAYROLL MANAGEMENT
+        </h1>
+        <p className="text-2xl text-amber-700 mt-3">Where Excellence Meets Royal Compensation</p>
+      </div>
+
+      <div className="max-w-7xl mx-auto space-y-8">
+
+        {/* Controls */}
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
+          <div className="flex gap-4">
+            {/* Added text-gray-700 to ensure visibility */}
+            <select 
+              value={selectedPeriod.month} 
+              onChange={e => setSelectedPeriod(p => ({ ...p, month: +e.target.value }))} 
+              className="px-6 py-3 bg-white border-2 border-amber-300 rounded-xl font-bold text-lg shadow-md text-gray-700 cursor-pointer"
+            >
+              {[...Array(12)].map((_, i) => (
+                <option key={i+1} value={i+1}>{new Date(2025, i).toLocaleString('default', { month: 'long' })}</option>
+              ))}
+            </select>
+            <input 
+              type="number" 
+              value={selectedPeriod.year} 
+              onChange={e => setSelectedPeriod(p => ({ ...p, year: +e.target.value }))} 
+              className="w-28 px-4 py-3 border-2 border-amber-300 rounded-xl font-bold text-center shadow-md text-gray-700" 
+            />
+          </div>
+          
+          {/* Only Admin/Manager can see Generate Button */}
+          {isAdminOrManager && (
+            <motion.button 
+              whileHover={{ scale: 1.05 }} 
+              onClick={handleGeneratePayroll}
+              className="px-8 py-4 bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold rounded-2xl shadow-xl hover:shadow-2xl transition-all"
+            >
+              Generate Payroll
+            </motion.button>
+          )}
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <StatCard title="Total Payroll" value={`ETB ${stats.total.toLocaleString()}`} icon={<DollarSign size={32} className="text-green-600" />} color="bg-green-100" />
+          <StatCard title="Paid" value={`${stats.paid}/${stats.generated}`} icon={<Users size={32} className="text-blue-600" />} color="bg-blue-100" />
+          <StatCard title="Pending" value={stats.pending} icon={<Clock size={32} className="text-yellow-600" />} color="bg-yellow-100" />
+          <StatCard title="Period" value={stats.period} icon={<Calendar size={32} className="text-purple-600" />} color="bg-purple-100" />
+        </div>
+
+        {/* Warning if not generated */}
+        {!isAdminOrManager && payslips.length === 0 && (
+          <div className="bg-pink-100 border-l-4 border-pink-500 p-5 rounded-xl shadow-sm">
+            <p className="font-bold text-pink-800">Payroll has not been generated for this period yet.</p>
+          </div>
+        )}
+
+        {loading ? (
+          <div className="text-center py-20">
+             <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-amber-600 mx-auto"></div>
+             <p className="mt-4 text-xl text-gray-600 font-medium">Loading payroll data...</p>
+          </div>
+        ) : (
+          <PayrollTable
+            payslips={displayData}
+            onViewPayslip={setViewingPayslip}
+            onUpdatePayslip={handleUpdatePayslip}
+            isGenerated={payslips.length > 0}
+            isAdmin={isAdminOrManager} // This controls the Edit icon in table row
+          />
+        )}
+      </div>
+
+      {/* Modal */}
+      <AnimatePresence>
+        {viewingPayslip && (
+          <PayslipModal
+            payslip={viewingPayslip}
+            onClose={() => setViewingPayslip(null)}
+            // Crucial: This prop controls the Edit button inside the modal.
+            // It passes the update function ONLY if the user is admin/manager.
+            onUpdate={isAdminOrManager ? handleUpdatePayslip : undefined}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
 }

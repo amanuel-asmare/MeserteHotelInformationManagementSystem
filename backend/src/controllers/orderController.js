@@ -1,35 +1,481 @@
-// backend/src/controllers/orderController.js (Backend - Fixed)
+// backend/src/controllers/orderController.js
 const Order = require('../models/orderModel.js');
 const Menu = require('../models/Menu');
 const User = require('../models/User');
-const { getFullImageUrl } = require('./userController'); // Ensure this is correctly exported
 const axios = require('axios');
+const path = require('path');
+// ──────────────────────────────────────────────────────────────
+// IMAGE URL HELPER - FULL ABSOLUTE URL
+// ──────────────────────────────────────────────────────────────
+const getFullImageUrl = (path) => {
+    if (!path) return null;
+    if (path.startsWith('http')) return path;
+    const base = process.env.API_URL || 'https://localhost:5000';
+    const cleanPath = path.startsWith('/') ? path : '/' + path;
+    return base + cleanPath;
+};
+
+// ──────────────────────────────────────────────────────────────
+// ORDER NUMBER GENERATOR
+// ──────────────────────────────────────────────────────────────
+const generateOrderNumber = async() => {
+    const lastOrder = await Order.findOne().sort({ createdAt: -1 });
+    const lastNumber = lastOrder ? parseInt(lastOrder.orderNumber.split('-')[1]) || 0 : 0;
+    return 'ORD-' + String(lastNumber + 1).padStart(4, '0');
+};
+
+// ──────────────────────────────────────────────────────────────
+// FORMAT ORDER ITEMS WITH FULL IMAGE URL
+// ──────────────────────────────────────────────────────────────
+const formatOrderItems = (items, menuItemsList) => {
+    return items.map(item => {
+        let menuItem = null;
+        if (menuItemsList && Array.isArray(menuItemsList)) {
+            menuItem = menuItemsList.find(m => m && m._id && item.menuItem && m._id.toString() === item.menuItem.toString());
+        }
+
+        return {
+            _id: item._id || item.menuItem,
+            name: item.name || (menuItem && menuItem.name) || 'Unknown Item',
+            price: item.price || (menuItem && menuItem.price) || 0,
+            quantity: item.quantity || 1,
+            notes: item.notes || '',
+            image: item.menuItem && item.menuItem.image ?
+                `/uploads/menu/${path.basename(item.menuItem.image)}` : null
+        };
+    });
+};
+
+// ──────────────────────────────────────────────────────────────
+// GET ALL ORDERS (Manager + Kitchen)
+// ──────────────────────────────────────────────────────────────
+exports.getAllOrders = async(req, res) => {
+    try {
+        const orders = await Order.find()
+            .populate({
+                path: 'items.menuItem',
+                select: 'name price image'
+            })
+            .populate('createdBy', 'firstName lastName')
+            .sort({ orderedAt: -1 });
+
+        const formatted = orders.map(order => {
+            const o = order.toObject();
+            const menuItems = o.items.map(i => i.menuItem).filter(Boolean);
+            return {
+                ...o,
+                items: formatOrderItems(o.items, menuItems)
+            };
+        });
+
+        res.json(formatted);
+    } catch (err) {
+        console.error('getAllOrders error:', err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+// ──────────────────────────────────────────────────────────────
+// GET SINGLE ORDER (Receipt page)
+// ──────────────────────────────────────────────────────────────
+exports.getOrder = async(req, res) => {
+    try {
+        const order = await Order.findById(req.params.id)
+            .populate({
+                path: 'items.menuItem',
+                select: 'name price image'
+            })
+            .populate('createdBy', 'firstName lastName');
+
+        if (!order) return res.status(404).json({ message: 'Order not found' });
+
+        const o = order.toObject();
+        const menuItems = o.items.map(i => i.menuItem).filter(Boolean);
+
+        res.json({
+            ...o,
+            items: formatOrderItems(o.items, menuItems)
+        });
+    } catch (err) {
+        console.error('getOrder error:', err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+// ──────────────────────────────────────────────────────────────
+// UPDATE ORDER STATUS
+// ──────────────────────────────────────────────────────────────
+exports.updateOrderStatus = async(req, res) => {
+    const { status } = req.body;
+    const valid = ['pending', 'preparing', 'ready', 'delivered', 'cancelled'];
+    if (!valid.includes(status)) {
+        return res.status(400).json({ message: 'Invalid status' });
+    }
+
+    try {
+        const order = await Order.findById(req.params.id);
+        if (!order) return res.status(404).json({ message: 'Order not found' });
+
+        order.status = status;
+        if (status === 'delivered') order.deliveredAt = new Date();
+        await order.save();
+
+        const populated = await Order.findById(order._id)
+            .populate({
+                path: 'items.menuItem',
+                select: 'name price image'
+            });
+
+        const o = populated.toObject();
+        const menuItems = o.items.map(i => i.menuItem).filter(Boolean);
+        const formattedOrder = {
+            ...o,
+            items: formatOrderItems(o.items, menuItems)
+        };
+
+        if (global.io) global.io.emit('orderUpdate', formattedOrder);
+
+        res.json(formattedOrder);
+    } catch (err) {
+        console.error('updateOrderStatus error:', err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+// ──────────────────────────────────────────────────────────────
+// CREATE ORDER (Direct order - no payment)
+// ──────────────────────────────────────────────────────────────
+exports.createOrder = async(req, res) => {
+    try {
+        const { items, notes, roomNumber, tableNumber } = req.body;
+        const user = req.user;
+
+        if (!Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ message: 'Order must contain items' });
+        }
+        if (!roomNumber && !tableNumber) {
+            return res.status(400).json({ message: 'Room or table number is required.' });
+        }
+
+        let totalAmount = 0;
+        const orderItems = [];
+
+        for (const i of items) {
+            const menu = await Menu.findById(i.menuItem);
+            if (!menu) return res.status(404).json({ message: 'Menu item not found: ' + i.menuItem });
+
+            const qty = i.quantity || 1;
+            totalAmount += menu.price * qty;
+
+            orderItems.push({
+                menuItem: menu._id,
+                name: menu.name,
+                price: menu.price,
+                quantity: qty,
+                notes: i.notes || ''
+            });
+        }
+
+        const orderNumber = await generateOrderNumber();
+
+        const order = await Order.create({
+            orderNumber,
+            customer: {
+                name: user.firstName + ' ' + user.lastName,
+                roomNumber: roomNumber || undefined,
+                tableNumber: tableNumber || undefined,
+                phone: user.phone || 'N/A'
+            },
+            items: orderItems,
+            totalAmount,
+            notes: notes || '',
+            status: 'pending',
+            createdBy: user._id
+        });
+
+        const populated = await Order.findById(order._id)
+            .populate({
+                path: 'items.menuItem',
+                select: 'name price image'
+            });
+
+        const o = populated.toObject();
+        const menuItems = o.items.map(i => i.menuItem).filter(Boolean);
+        const formattedOrder = {
+            ...o,
+            items: formatOrderItems(o.items, menuItems)
+        };
+
+        if (global.io) global.io.emit('orderUpdate', formattedOrder);
+
+        res.status(201).json(formattedOrder);
+    } catch (err) {
+        console.error('createOrder error:', err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+// ──────────────────────────────────────────────────────────────
+// CREATE CHAPA ORDER (Payment)
+// ──────────────────────────────────────────────────────────────
+exports.createChapaOrder = async(req, res) => {
+    try {
+        const { items, notes, totalAmount, customerName, email, phone, roomNumber, tableNumber } = req.body;
+        const user = req.user;
+
+        if (!Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ message: 'Order must contain items' });
+        }
+        if (!roomNumber && !tableNumber) {
+            return res.status(400).json({ message: 'Room or table number is required.' });
+        }
+
+        let calcTotal = 0;
+        const orderItems = [];
+
+        for (const item of items) {
+            const menu = await Menu.findById(item.menuItem);
+            if (!menu) return res.status(404).json({ message: 'Menu item not found: ' + item.menuItem });
+
+            const qty = item.quantity || 1;
+            calcTotal += menu.price * qty;
+
+            orderItems.push({
+                menuItem: menu._id,
+                name: menu.name,
+                price: menu.price,
+                quantity: qty,
+                notes: item.notes || ''
+            });
+        }
+
+        if (Math.abs(calcTotal - totalAmount) > 0.01) {
+            return res.status(400).json({ message: 'Total amount mismatch. Refresh your cart.' });
+        }
+
+        const orderNumber = await generateOrderNumber();
+
+        const order = await Order.create({
+            orderNumber,
+            customer: {
+                name: customerName || (user.firstName + ' ' + user.lastName),
+                roomNumber: roomNumber || undefined,
+                tableNumber: tableNumber || undefined,
+                phone: phone || user.phone
+            },
+            items: orderItems,
+            totalAmount: calcTotal,
+            notes: notes || '',
+            status: 'pending',
+            paymentStatus: 'pending',
+            createdBy: user._id
+        });
+
+        // Format phone for Chapa
+        let phoneStr = (phone || user.phone || '').toString().trim().replace(/\D/g, '');
+        if (phoneStr.startsWith('0') && phoneStr.length === 10) phoneStr = '251' + phoneStr.slice(1);
+        else if (phoneStr.startsWith('9') && phoneStr.length === 9) phoneStr = '251' + phoneStr;
+        else if (!/^2519\d{8}$/.test(phoneStr)) phoneStr = '251912345678';
+
+        const chapaPayload = {
+            amount: calcTotal.toFixed(2),
+            currency: 'ETB',
+            email: email || user.email || 'guest@meserethotel.com',
+            first_name: (user.firstName || 'Guest').trim(),
+            last_name: (user.lastName || '').trim(),
+            phone_number: '+' + phoneStr,
+            tx_ref: order._id.toString(),
+            callback_url: process.env.API_URL + '/api/orders/chapa/verify',
+            return_url: process.env.CLIENT_URL + '/customer/menu?paid=1',
+            customization: {
+                title: 'Order ' + orderNumber,
+                description: 'Meseret Hotel Food and Drinks'
+            }
+        };
+
+        const chapaRes = await axios.post(
+            'https://api.chapa.co/v1/transaction/initialize',
+            chapaPayload, {
+                headers: {
+                    Authorization: 'Bearer ' + process.env.CHAPA_SECRET_KEY,
+                    'Content-Type': 'application/json'
+                },
+                timeout: 15000
+            }
+        );
+
+        if (chapaRes.data && chapaRes.data.status === 'success' && chapaRes.data.data && chapaRes.data.data.checkout_url) {
+            return res.json({
+                checkout_url: chapaRes.data.data.checkout_url,
+                orderId: order._id
+            });
+        }
+
+        console.error('Chapa rejected:', chapaRes.data);
+        await Order.findByIdAndDelete(order._id);
+        res.status(400).json({ message: chapaRes.data.message || 'Payment failed' });
+
+    } catch (err) {
+        console.error('createChapaOrder error:', err.response ? err.response.data : err.message);
+        if (err.config && err.config.data) {
+            try {
+                const sent = JSON.parse(err.config.data);
+                if (sent.tx_ref) await Order.findByIdAndDelete(sent.tx_ref);
+            } catch (e) {}
+        }
+        res.status(500).json({ message: 'Payment setup failed. Please try again.' });
+    }
+};
+
+// ──────────────────────────────────────────────────────────────
+// CHAPA VERIFY
+// ──────────────────────────────────────────────────────────────
+exports.chapaVerify = async(req, res) => {
+    const tx_ref = req.body.tx_ref || req.query.tx_ref;
+    if (!tx_ref) return res.status(400).json({ message: 'Missing tx_ref' });
+
+    try {
+        const order = await Order.findById(tx_ref);
+        if (!order) return res.status(404).json({ message: 'Order not found' });
+
+        const verifyRes = await fetch('https://api.chapa.co/v1/transaction/verify/' + tx_ref, {
+            headers: { Authorization: 'Bearer ' + process.env.CHAPA_SECRET_KEY }
+        });
+        const data = await verifyRes.json();
+
+        if (verifyRes.ok && data.status === 'success' && data.data && data.data.status === 'success') {
+            order.paymentStatus = 'completed';
+            await order.save();
+
+            const populated = await Order.findById(order._id)
+                .populate({ path: 'items.menuItem', select: 'name price image' });
+
+            const o = populated.toObject();
+            const menuItems = o.items.map(i => i.menuItem).filter(Boolean);
+            const formatted = {
+                ...o,
+                items: formatOrderItems(o.items, menuItems)
+            };
+
+            if (global.io) global.io.emit('orderUpdate', formatted);
+            return res.json({ message: 'Payment verified' });
+        } else {
+            order.paymentStatus = 'failed';
+            await order.save();
+            res.status(400).json({ message: 'Payment failed' });
+        }
+    } catch (err) {
+        console.error('chapaVerify error:', err);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// ──────────────────────────────────────────────────────────────
+// GET ORDER STATS
+// ──────────────────────────────────────────────────────────────
+exports.getOrderStats = async(req, res) => {
+    try {
+        const days = parseInt(req.query.days) || 30;
+        const daysAgo = new Date();
+        daysAgo.setDate(daysAgo.getDate() - days);
+
+        const dailySales = await Order.aggregate([
+            { $match: { createdAt: { $gte: daysAgo }, status: 'delivered' } },
+            {
+                $group: {
+                    _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+                    total: { $sum: '$totalAmount' },
+                    count: { $sum: 1 }
+                }
+            },
+            { $sort: { _id: 1 } }
+        ]);
+
+        const topItems = await Order.aggregate([
+            { $match: { createdAt: { $gte: daysAgo }, status: 'delivered' } },
+            { $unwind: '$items' },
+            {
+                $group: {
+                    _id: '$items.menuItem',
+                    totalSold: { $sum: '$items.quantity' },
+                    totalRevenue: { $sum: { $multiply: ['$items.quantity', '$items.price'] } }
+                }
+            },
+            {
+                $lookup: {
+                    from: 'menus',
+                    localField: '_id',
+                    foreignField: '_id',
+                    as: 'menuItem'
+                }
+            },
+            { $unwind: '$menuItem' },
+            { $sort: { totalSold: -1 } },
+            { $limit: 5 },
+            {
+                $project: {
+                    name: '$menuItem.name',
+                    image: '$menuItem.image',
+                    totalSold: 1,
+                    totalRevenue: 1
+                }
+            }
+        ]);
+
+        const formattedTopItems = topItems.map(t => ({
+            ...t,
+            image: getFullImageUrl(t.image)
+        }));
+
+        res.json({ dailySales, topItems: formattedTopItems });
+    } catch (err) {
+        console.error('getOrderStats error:', err);
+        res.status(500).json({ message: err.message });
+    }
+};
+/*// backend/src/controllers/orderController.js
+const Order = require('../models/orderModel.js');
+const Menu = require('../models/Menu');
+const User = require('../models/User');
+const { getFullImageUrl } = require('./userController');
+const axios = require('axios');
+
 // ---------- Helpers ----------
 const generateOrderNumber = async() => {
     const lastOrder = await Order.findOne().sort({ createdAt: -1 });
     const lastNumber = lastOrder ? parseInt(lastOrder.orderNumber.split('-')[1]) || 0 : 0;
     return `ORD-${String(lastNumber + 1).padStart(4, '0')}`;
 };
-// ---------- Public ----------
+
+// Public routes (admin/manager)
+// FIXED: getAllOrders - Removed invalid "? ."
 exports.getAllOrders = async(req, res) => {
     try {
         const orders = await Order.find()
-            .populate('items.menuItem', 'name price image')
+            .populate({
+                path: 'items.menuItem',
+                select: 'name price image'
+            })
             .populate('createdBy', 'firstName lastName')
             .sort({ orderedAt: -1 });
-        const formatted = orders.map(o => ({
-            ...o.toObject(),
-            items: o.items.map(i => ({
-                ...i,
-                menuItem: {
-                    ...i.menuItem,
-                    image: getFullImageUrl(i.menuItem.image)
-                }
-            }))
-        }));
+
+        const formatted = orders.map(order => {
+            const o = order.toObject();
+            return {
+                ...o,
+                items: o.items.map(item => ({
+                    _id: item._id,
+                    name: item.name || (item.menuItem ? item.menuItem.name : 'Unknown Item'),
+                    price: item.price || (item.menuItem ? item.menuItem.price : 0),
+                    quantity: item.quantity || 1,
+                    notes: item.notes || ''
+                }))
+            };
+        });
+
         res.json(formatted);
     } catch (err) {
-        console.error(err);
+        console.error('getAllOrders error:', err);
         res.status(500).json({ message: err.message });
     }
 };
@@ -39,6 +485,7 @@ exports.getOrder = async(req, res) => {
             .populate('items.menuItem', 'name price image')
             .populate('createdBy', 'firstName lastName');
         if (!order) return res.status(404).json({ message: 'Order not found' });
+
         res.json({
             ...order.toObject(),
             items: order.items.map(i => ({
@@ -54,24 +501,40 @@ exports.getOrder = async(req, res) => {
         res.status(500).json({ message: err.message });
     }
 };
+
+// Also fix updateOrderStatus emit (replace the old one)
 exports.updateOrderStatus = async(req, res) => {
     const { status } = req.body;
     const valid = ['pending', 'preparing', 'ready', 'delivered', 'cancelled'];
     if (!valid.includes(status)) return res.status(400).json({ message: 'Invalid status' });
+
     try {
         const order = await Order.findById(req.params.id);
         if (!order) return res.status(404).json({ message: 'Order not found' });
+
         order.status = status;
         if (status === 'delivered') order.deliveredAt = new Date();
         await order.save();
+
+        // Properly populate before emitting
+        const populated = await Order.findById(order._id)
+            .populate({
+                path: 'items.menuItem',
+                select: 'name price image'
+            });
+
+        const cleanItems = populated.items.map(item => ({
+            ...item.toObject(),
+            name: item.name || (item.menuItem ? item.menuItem.name : 'Unknown'),
+            price: item.price || (item.menuItem ? item.menuItem.price : 0)
+        }));
+
         global.io.emit('orderUpdate', {
-            ...order.toObject(),
-            items: order.items.map(i => ({
-                ...i,
-                menuItem: {...i.menuItem, image: getFullImageUrl(i.menuItem.image) }
-            }))
+            ...populated.toObject(),
+            items: cleanItems
         });
-        res.json(order);
+
+        res.json({...populated.toObject(), items: cleanItems });
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: err.message });
@@ -82,6 +545,7 @@ exports.getOrderStats = async(req, res) => {
         const days = parseInt(req.query.days) || 30;
         const daysAgo = new Date();
         daysAgo.setDate(daysAgo.getDate() - days);
+
         const dailySales = await Order.aggregate([
             { $match: { createdAt: { $gte: daysAgo }, status: 'delivered' } },
             {
@@ -93,6 +557,7 @@ exports.getOrderStats = async(req, res) => {
             },
             { $sort: { _id: 1 } }
         ]);
+
         const topItems = await Order.aggregate([
             { $match: { createdAt: { $gte: daysAgo }, status: 'delivered' } },
             { $unwind: '$items' },
@@ -115,30 +580,34 @@ exports.getOrderStats = async(req, res) => {
             { $sort: { totalSold: -1 } },
             { $limit: 5 }
         ]);
+
         res.json({ dailySales, topItems });
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: err.message });
     }
 };
-// ---------- Customer ----------
+
+// FIXED: createOrder - emit properly populated items
 exports.createOrder = async(req, res) => {
     try {
-        // This 'createOrder' typically handles direct API calls, not Chapa
-        // It might not be used for frontend Chapa flow but keeping it consistent
-        const { items, notes, roomNumber, tableNumber } = req.body; // Added tableNumber
+        const { items, notes, roomNumber, tableNumber } = req.body;
         const user = req.user;
+
         if (!Array.isArray(items) || items.length === 0) {
             return res.status(400).json({ message: 'Order must contain items' });
         }
-        if (!roomNumber && !tableNumber) { // Require either room or table number
-            return res.status(400).json({ message: 'Room number or table number is required to place an order.' });
+        if (!roomNumber && !tableNumber) {
+            return res.status(400).json({ message: 'Room number or table number is required.' });
         }
+
         let totalAmount = 0;
         const orderItems = [];
+
         for (const i of items) {
             const menu = await Menu.findById(i.menuItem);
             if (!menu) return res.status(404).json({ message: `Menu item not found: ${i.menuItem}` });
+
             const qty = i.quantity || 1;
             totalAmount += menu.price * qty;
             orderItems.push({
@@ -149,13 +618,14 @@ exports.createOrder = async(req, res) => {
                 notes: i.notes || ''
             });
         }
+
         const orderNumber = await generateOrderNumber();
         const order = await Order.create({
             orderNumber,
             customer: {
                 name: `${user.firstName} ${user.lastName}`,
-                roomNumber: roomNumber || undefined, // Store if provided
-                tableNumber: tableNumber || undefined, // Store if provided
+                roomNumber: roomNumber || undefined,
+                tableNumber: tableNumber || undefined,
                 phone: user.phone || 'N/A'
             },
             items: orderItems,
@@ -164,477 +634,215 @@ exports.createOrder = async(req, res) => {
             status: 'pending',
             createdBy: user._id
         });
-        const populated = await Order.findById(order._id)
-            .populate('items.menuItem', 'name price image')
-            .populate('createdBy', 'firstName lastName');
-        res.status(201).json(populated);
+
+        // Properly populate and emit to Socket.IO
+        const populatedOrder = await Order.findById(order._id)
+            .populate({
+                path: 'items.menuItem',
+                select: 'name price image'
+            });
+
+        const cleanItems = populatedOrder.items.map(item => ({
+            ...item.toObject(),
+            name: item.name || (item.menuItem ? item.menuItem.name : 'Unknown'),
+            price: item.price || (item.menuItem ? item.menuItem.price : 0)
+        }));
+
+        global.io.emit('orderUpdate', {
+            ...populatedOrder.toObject(),
+            items: cleanItems
+        });
+
+        res.status(201).json({
+            ...populatedOrder.toObject(),
+            items: cleanItems
+        });
+
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: err.message });
     }
 };
-// ---------- Chapa ----------
+// ──────────────────────────────────────────────────────────────
+// FINAL 100% SAFE createChapaOrder – NO ?. ANYWHERE (copy-paste safe)
+// ──────────────────────────────────────────────────────────────
 exports.createChapaOrder = async(req, res) => {
     try {
-        const { items, notes, totalAmount, customerName, email, phone, roomNumber, tableNumber } = req.body; // Added tableNumber
+        const { items, notes, totalAmount, customerName, email, phone, roomNumber, tableNumber } = req.body;
         const user = req.user;
+
+        // ── Basic validation ──
         if (!Array.isArray(items) || items.length === 0) {
             return res.status(400).json({ message: "Order must contain items" });
         }
-        // Require either roomNumber or tableNumber
         if (!roomNumber && !tableNumber) {
-            return res.status(400).json({ message: "Room number or table number is required to place an order." });
+            return res.status(400).json({ message: "Room or table number is required." });
         }
-        // Secure: Server recalculates the real total
+
+        // ── Recalculate total (security) ──
         let calcTotal = 0;
         const orderItems = [];
-        for (const i of items) {
-            const menu = await Menu.findById(i.menuItem);
-            if (!menu) return res.status(404).json({ message: `Menu item not found: ${i.menuItem}` });
-            const qty = i.quantity || 1;
+
+        for (const item of items) {
+            const menu = await Menu.findById(item.menuItem);
+            if (!menu) return res.status(404).json({ message: `Menu item not found: ${item.menuItem}` });
+
+            const qty = item.quantity || 1;
             calcTotal += menu.price * qty;
             orderItems.push({
                 menuItem: menu._id,
                 name: menu.name,
                 price: menu.price,
                 quantity: qty,
-                notes: i.notes || "",
+                notes: item.notes || ""
             });
         }
-        if (Math.abs(calcTotal - totalAmount) > 0.01) { // Allow for tiny floating point differences
-            return res.status(400).json({ message: "Total amount mismatch. Please refresh your cart." });
+
+        if (Math.abs(calcTotal - totalAmount) > 0.01) {
+            return res.status(400).json({ message: "Total amount mismatch. Refresh your cart." });
         }
+
         const orderNumber = await generateOrderNumber();
+
         const order = await Order.create({
             orderNumber,
             customer: {
-                name: customerName,
-                roomNumber: roomNumber || undefined, // Store room number if provided
-                tableNumber: tableNumber || undefined, // Store table number if provided
-                phone
+                name: customerName || `${user.firstName} ${user.lastName}`,
+                roomNumber: roomNumber || undefined,
+                tableNumber: tableNumber || undefined,
+                phone: phone || user.phone
             },
             items: orderItems,
-            totalAmount: calcTotal, // Use calculated total for security
+            totalAmount: calcTotal,
             notes: notes || "",
             status: "pending",
-            createdBy: user._id,
+            paymentStatus: "pending",
+            createdBy: user._id
         });
-        // Call Chapa payment API
-        const chapaBody = { // FIXED: Conditional phone_number to avoid invalid values
-            amount: calcTotal, // Use calculated total
-            currency: 'ETB',
-            email,
-            first_name: user.firstName,
-            last_name: user.lastName,
-            tx_ref: order._id.toString(), // Transaction reference should be unique
+
+        // ── Phone formatting for Chapa ──
+        let phoneStr = (phone || user.phone || "").toString().trim().replace(/\D/g, '');
+        if (phoneStr.startsWith('0') && phoneStr.length === 10) phoneStr = '251' + phoneStr.slice(1);
+        else if (phoneStr.startsWith('9') && phoneStr.length === 9) phoneStr = '251' + phoneStr;
+        else if (!/^2519\d{8}$/.test(phoneStr)) phoneStr = '251912345678';
+
+        const chapaPayload = {
+            amount: calcTotal.toFixed(2),
+            currency: "ETB",
+            email: email || user.email || "guest@hotel.com",
+            first_name: (user.firstName || "Guest").trim(),
+            last_name: (user.lastName || "").trim(),
+            phone_number: "+" + phoneStr,
+            tx_ref: order._id.toString(),
             callback_url: `${process.env.API_URL}/api/orders/chapa/verify`,
-            return_url: `${process.env.CLIENT_URL}/customer/menu?paid=1`, // Redirect after success
-            customization: { title: `Payment for Order ${orderNumber}`, description: "Hotel Food Order" },
+            return_url: `${process.env.CLIENT_URL}/customer/menu?paid=1`,
+            customization: {
+                title: `Order ${orderNumber}`,
+                description: "Meseret Hotel Food and Drinks"
+            }
         };
-        if (phone && phone.trim()) { // Only add if valid (non-empty)
-            chapaBody.phone_number = phone.trim();
-        }
-        const chapaRes = await fetch("https://api.chapa.co/v1/transaction/initialize", {
-            method: "POST",
-            headers: {
-                Authorization: `Bearer ${process.env.CHAPA_SECRET_KEY}`,
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify(chapaBody),
+
+        // ── DEBUG LOG (safe – no optional chaining) ──
+        const secretPreview = process.env.CHAPA_SECRET_KEY ?
+            process.env.CHAPA_SECRET_KEY.substring(0, 15) + "..." :
+            "MISSING";
+
+        console.log("Sending to Chapa →", {
+            amount: chapaPayload.amount,
+            tx_ref: chapaPayload.tx_ref,
+            email: chapaPayload.email,
+            phone: chapaPayload.phone_number,
+            secret_key_preview: secretPreview
         });
-        const chapaData = await chapaRes.json();
-        if (!chapaRes.ok || chapaData.status !== 'success') {
-            // Delete the order if Chapa payment initiation fails
-            await Order.findByIdAndDelete(order._id);
-            console.error("Chapa initiation error:", chapaData.message || chapaData);
-            return res.status(400).json({ message: chapaData.message || "Payment initiation failed. Please try again." });
+
+        const chapaRes = await axios.post(
+            "https://api.chapa.co/v1/transaction/initialize?test=1",
+            chapaPayload, {
+                headers: {
+                    Authorization: `Bearer ${process.env.CHAPA_SECRET_KEY}`,
+                    "Content-Type": "application/json"
+                },
+                timeout: 15000
+            }
+        );
+
+        // ── SUCCESS ──
+        if (chapaRes.data && chapaRes.data.status === "success" && chapaRes.data.data && chapaRes.data.data.checkout_url) {
+            return res.json({
+                checkout_url: chapaRes.data.data.checkout_url,
+                orderId: order._id
+            });
         }
-        res.json({ checkout_url: chapaData.data.checkout_url });
+
+        // ── CHAPA REJECTED ──
+        console.error("Chapa rejected payload:", chapaRes.data);
+        await Order.findByIdAndDelete(order._id);
+        const errorMsg = chapaRes.data && chapaRes.data.message ? chapaRes.data.message : "Failed to initialize payment.";
+        return res.status(400).json({ message: errorMsg });
+
     } catch (err) {
-        console.error("Error in createChapaOrder:", err);
-        res.status(500).json({ message: err.message || "Internal server error during payment initiation" });
+        console.error("createChapaOrder error:", err.response ? err.response.data : err.message);
+
+        // Cleanup failed order
+        if (err.config && err.config.data) {
+            try {
+                const sent = JSON.parse(err.config.data);
+                if (sent.tx_ref) await Order.findByIdAndDelete(sent.tx_ref);
+            } catch {}
+        }
+
+        return res.status(500).json({ message: "Payment setup failed. Please try again." });
     }
 };
-// FIXED: Chapa Webhook Verification (now uses req.body for POST)
+// chapaVerify - also fix emit
 exports.chapaVerify = async(req, res) => {
-    const tx_ref = req.body.tx_ref; // FIXED: Use req.body.tx_ref (Chapa sends POST with body)
+    const tx_ref = req.body.tx_ref;
     if (!tx_ref) {
         return res.status(400).json({ message: 'Transaction reference is missing.' });
     }
+
     try {
         const order = await Order.findById(tx_ref);
         if (!order) {
-            return res.status(404).json({ message: 'Order not found for this transaction reference.' });
+            return res.status(404).json({ message: 'Order not found.' });
         }
-        // Verify with Chapa
+
         const verificationRes = await fetch(`https://api.chapa.co/v1/transaction/verify/${tx_ref}`, {
-            method: "GET",
             headers: {
-                Authorization: `Bearer ${process.env.CHAPA_SECRET_KEY}`,
-            },
+                Authorization: `Bearer ${process.env.CHAPA_SECRET_KEY}`
+            }
         });
         const verificationData = await verificationRes.json();
+
         if (verificationRes.ok && verificationData.status === 'success' && verificationData.data.status === 'success') {
-            // Payment is successful
-            order.status = 'pending'; // Set to pending, then preparing, etc., by kitchen staff
-            order.paymentStatus = 'completed'; // Assuming you add this field to your Order model
+            order.paymentStatus = 'completed';
             await order.save();
-            // Emit update to all connected clients
+
+            const populated = await Order.findById(order._id)
+                .populate({
+                    path: 'items.menuItem',
+                    select: 'name price image'
+                });
+
+            const cleanItems = populated.items.map(item => ({
+                ...item.toObject(),
+                name: item.name || (item.menuItem ? item.menuItem.name : 'Unknown'),
+                price: item.price || (item.menuItem ? item.menuItem.price : 0)
+            }));
+
             global.io.emit('orderUpdate', {
-                ...order.toObject(),
-                items: order.items.map(i => ({
-                    ...i,
-                    menuItem: {...i.menuItem, image: getFullImageUrl(i.menuItem.image) }
-                }))
+                ...populated.toObject(),
+                items: cleanItems
             });
-            // Redirect user (this is for the return_url, not the callback_url)
-            // The callback_url is usually a backend endpoint that Chapa calls directly.
-            // For the return_url, Chapa will redirect the user's browser.
-            // This endpoint (chapaVerify) is generally used by the callback_url, so it doesn't
-            // typically send a browser redirect. The frontend handles the redirect from Chapa's `return_url`.
-            // So, for the actual verification endpoint (callback_url), we just send a success status.
-            return res.status(200).json({ message: 'Payment verified and order updated successfully.' });
+
+            return res.status(200).json({ message: 'Payment verified.' });
         } else {
-            // Payment failed or not successful
             order.paymentStatus = 'failed';
-            // You might want to cancel the order or mark it as 'payment_failed'
-            // For now, let's keep it simple: if verification fails, the order status remains 'pending' or can be set to 'cancelled_payment'
-            // To be safe, if payment initiation worked, but verification failed, we might want to still keep the order
-            // and maybe an admin can manually review it. Or, simply cancel it.
-            // For this example, if verification fails, we don't change the order status from pending.
             await order.save();
-            console.error("Chapa verification failed:", verificationData);
-            return res.status(400).json({ message: verificationData.message || 'Payment verification failed.' });
+            return res.status(400).json({ message: 'Payment verification failed.' });
         }
     } catch (err) {
-        console.error("Error verifying Chapa payment:", err);
-        res.status(500).json({ message: err.message || "Internal server error during payment verification." });
-    }
-};
-/*const Order = require('../models/orderModel.js');
-const Menu = require('../models/Menu');
-const User = require('../models/User');
-const { getFullImageUrl } = require('./userController'); // Ensure this is correctly exported
-const axios = require('axios');
-
-// ---------- Helpers ----------
-const generateOrderNumber = async() => {
-    const lastOrder = await Order.findOne().sort({ createdAt: -1 });
-    const lastNumber = lastOrder ? parseInt(lastOrder.orderNumber.split('-')[1]) || 0 : 0;
-    return `ORD-${String(lastNumber + 1).padStart(4, '0')}`;
-};
-
-// ---------- Public ----------
-exports.getAllOrders = async(req, res) => {
-    try {
-        const orders = await Order.find()
-            .populate('items.menuItem', 'name price image')
-            .populate('createdBy', 'firstName lastName')
-            .sort({ orderedAt: -1 });
-
-        const formatted = orders.map(o => ({
-            ...o.toObject(),
-            items: o.items.map(i => ({
-                ...i,
-                menuItem: {
-                    ...i.menuItem,
-                    image: getFullImageUrl(i.menuItem.image)
-                }
-            }))
-        }));
-        res.json(formatted);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: err.message });
-    }
-};
-
-exports.getOrder = async(req, res) => {
-    try {
-        const order = await Order.findById(req.params.id)
-            .populate('items.menuItem', 'name price image')
-            .populate('createdBy', 'firstName lastName');
-
-        if (!order) return res.status(404).json({ message: 'Order not found' });
-
-        res.json({
-            ...order.toObject(),
-            items: order.items.map(i => ({
-                ...i,
-                menuItem: {
-                    ...i.menuItem,
-                    image: getFullImageUrl(i.menuItem.image)
-                }
-            }))
-        });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: err.message });
-    }
-};
-
-exports.updateOrderStatus = async(req, res) => {
-    const { status } = req.body;
-    const valid = ['pending', 'preparing', 'ready', 'delivered', 'cancelled'];
-    if (!valid.includes(status)) return res.status(400).json({ message: 'Invalid status' });
-
-    try {
-        const order = await Order.findById(req.params.id);
-        if (!order) return res.status(404).json({ message: 'Order not found' });
-
-        order.status = status;
-        if (status === 'delivered') order.deliveredAt = new Date();
-        await order.save();
-
-        global.io.emit('orderUpdate', {
-            ...order.toObject(),
-            items: order.items.map(i => ({
-                ...i,
-                menuItem: {...i.menuItem, image: getFullImageUrl(i.menuItem.image) }
-            }))
-        });
-
-        res.json(order);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: err.message });
-    }
-};
-
-exports.getOrderStats = async(req, res) => {
-    try {
-        const days = parseInt(req.query.days) || 30;
-        const daysAgo = new Date();
-        daysAgo.setDate(daysAgo.getDate() - days);
-
-        const dailySales = await Order.aggregate([
-            { $match: { createdAt: { $gte: daysAgo }, status: 'delivered' } },
-            {
-                $group: {
-                    _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-                    total: { $sum: '$totalAmount' },
-                    count: { $sum: 1 }
-                }
-            },
-            { $sort: { _id: 1 } }
-        ]);
-
-        const topItems = await Order.aggregate([
-            { $match: { createdAt: { $gte: daysAgo }, status: 'delivered' } },
-            { $unwind: '$items' },
-            {
-                $group: {
-                    _id: '$items.menuItem',
-                    totalSold: { $sum: '$items.quantity' },
-                    totalRevenue: { $sum: { $multiply: ['$items.quantity', '$items.price'] } }
-                }
-            },
-            {
-                $lookup: {
-                    from: 'menus',
-                    localField: '_id',
-                    foreignField: '_id',
-                    as: 'menuItem'
-                }
-            },
-            { $unwind: '$menuItem' },
-            { $sort: { totalSold: -1 } },
-            { $limit: 5 }
-        ]);
-
-        res.json({ dailySales, topItems });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: err.message });
-    }
-};
-
-// ---------- Customer ----------
-exports.createOrder = async(req, res) => {
-    try {
-        const { items, notes } = req.body;
-        const user = req.user;
-
-        if (!Array.isArray(items) || items.length === 0) {
-            return res.status(400).json({ message: 'Order must contain items' });
-        }
-
-        let totalAmount = 0;
-        const orderItems = [];
-
-        for (const i of items) {
-            const menu = await Menu.findById(i.menuItem);
-            if (!menu) return res.status(404).json({ message: `Menu item not found: ${i.menuItem}` });
-
-            const qty = i.quantity || 1;
-            totalAmount += menu.price * qty;
-            orderItems.push({
-                menuItem: menu._id,
-                name: menu.name,
-                price: menu.price,
-                quantity: qty,
-                notes: i.notes || ''
-            });
-        }
-
-        const orderNumber = await generateOrderNumber();
-        const order = await Order.create({
-            orderNumber,
-            customer: {
-                name: `${user.firstName} ${user.lastName}`,
-                roomNumber: user.roomNumber || 'N/A', // Assuming roomNumber is on user object
-                phone: user.phone || 'N/A'
-            },
-            items: orderItems,
-            totalAmount,
-            notes: notes || '',
-            status: 'pending',
-            createdBy: user._id
-        });
-
-        const populated = await Order.findById(order._id)
-            .populate('items.menuItem', 'name price image')
-            .populate('createdBy', 'firstName lastName');
-
-        res.status(201).json(populated);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: err.message });
-    }
-};
-
-// ---------- Chapa ----------
-
-exports.createChapaOrder = async(req, res) => {
-    try {
-        const { items, notes, totalAmount, customerName, email, phone, roomNumber } = req.body;
-        const user = req.user;
-
-        if (!Array.isArray(items) || items.length === 0) {
-            return res.status(400).json({ message: "Order must contain items" });
-        }
-        if (!roomNumber) {
-            return res.status(400).json({ message: "Room number is required to place an order." });
-        }
-
-        // Secure: Server recalculates the real total
-        let calcTotal = 0;
-        const orderItems = [];
-        for (const i of items) {
-            const menu = await Menu.findById(i.menuItem);
-            if (!menu) return res.status(404).json({ message: `Menu item not found: ${i.menuItem}` });
-            const qty = i.quantity || 1;
-            calcTotal += menu.price * qty;
-            orderItems.push({
-                menuItem: menu._id,
-                name: menu.name,
-                price: menu.price,
-                quantity: qty,
-                notes: i.notes || "",
-            });
-        }
-
-        if (Math.abs(calcTotal - totalAmount) > 0.01) { // Allow for tiny floating point differences
-            return res.status(400).json({ message: "Total amount mismatch. Please refresh your cart." });
-        }
-
-        const orderNumber = await generateOrderNumber();
-        const order = await Order.create({
-            orderNumber,
-            customer: { name: customerName, roomNumber, phone },
-            items: orderItems,
-            totalAmount: calcTotal, // Use calculated total for security
-            notes: notes || "",
-            status: "pending",
-            createdBy: user._id,
-        });
-
-        // Call Chapa payment API
-        const chapaRes = await fetch("https://api.chapa.co/v1/transaction/initialize", { // Corrected endpoint
-            method: "POST",
-            headers: {
-                Authorization: `Bearer ${process.env.CHAPA_SECRET_KEY}`,
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                amount: calcTotal, // Use calculated total
-                currency: 'ETB',
-                email,
-                first_name: user.firstName,
-                last_name: user.lastName,
-                phone_number: phone,
-                tx_ref: order._id.toString(), // Transaction reference should be unique
-                callback_url: `${process.env.API_URL}/api/orders/chapa/verify`,
-                return_url: `${process.env.CLIENT_URL}/customer/menu?paid=1`, // Redirect after success
-                customization: { title: `Payment for Order ${orderNumber}`, description: "Hotel Food Order" },
-            }),
-        });
-
-        const chapaData = await chapaRes.json();
-
-        if (!chapaRes.ok || chapaData.status !== 'success') {
-            // Delete the order if Chapa payment initiation fails
-            await Order.findByIdAndDelete(order._id);
-            console.error("Chapa initiation error:", chapaData.message || chapaData);
-            return res.status(400).json({ message: chapaData.message || "Payment initiation failed. Please try again." });
-        }
-
-        res.json({ checkout_url: chapaData.data.checkout_url });
-    } catch (err) {
-        console.error("Error in createChapaOrder:", err);
-        res.status(500).json({ message: err.message || "Internal server error during payment initiation" });
-    }
-};
-
-// ---------- Chapa Verify (webhook) ----------
-// This route is primarily for Chapa's redirect after payment.
-// For true webhook verification, Chapa sends a POST request to callback_url.
-// You might need a separate POST route for that if you want more robust verification.
-exports.chapaVerify = async(req, res) => {
-    try {
-        const { status, tx_ref } = req.query; // Chapa typically sends status and tx_ref in query for GET return_url
-
-        // You might want to also verify the transaction with Chapa's API here for robustness
-        // const verifyRes = await fetch(`https://api.chapa.co/v1/transaction/verify/${tx_ref}`, {
-        //     headers: { Authorization: `Bearer ${process.env.CHAPA_SECRET_KEY}` }
-        // });
-        // const verifyData = await verifyRes.json();
-        // if (!verifyRes.ok || verifyData.status !== 'success') {
-        //     // Handle failed verification
-        //     return res.redirect(`${process.env.CLIENT_URL}/customer/menu?paid=0`);
-        // }
-
-        const order = await Order.findById(tx_ref);
-
-        if (!order) {
-            console.warn(`Chapa verification failed: Order with tx_ref ${tx_ref} not found.`);
-            return res.redirect(`${process.env.CLIENT_URL}/customer/menu?paid=0`);
-        }
-
-        // Update order status only if it's pending and payment was successful
-        if (order.status === 'pending' && status === 'success') {
-            order.status = 'preparing'; // Or 'pending-paid' if you want a separate status
-            await order.save();
-
-            global.io.emit('orderUpdate', {
-                ...order.toObject(),
-                items: order.items.map(i => ({
-                    ...i,
-                    menuItem: {...i.menuItem, image: getFullImageUrl(i.menuItem.image) }
-                }))
-            });
-
-            // Clear the cart if payment was successful and order confirmed
-            // This logic might be better handled on the client-side after redirect
-            // req.session.cart = []; // If you were using sessions for cart
-            return res.redirect(`${process.env.CLIENT_URL}/customer/menu?paid=1`);
-        } else {
-            // Payment was not successful or order not in pending state
-            return res.redirect(`${process.env.CLIENT_URL}/customer/menu?paid=0`);
-        }
-
-    } catch (err) {
-        console.error("Error in chapaVerify:", err);
-        res.redirect(`${process.env.CLIENT_URL}/customer/menu?paid=0`);
+        console.error("Chapa verify error:", err);
+        res.status(500).json({ message: "Server error" });
     }
 };*/

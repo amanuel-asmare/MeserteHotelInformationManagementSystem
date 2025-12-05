@@ -11,7 +11,7 @@ export default function CustomerSettings() {
   const { user, updateUser } = useAuth();
   
   // 1. Define API Base for images
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
 
   const [form, setForm] = useState({
     firstName: user?.firstName || '',

@@ -1,28 +1,42 @@
+// backend/src/routes/payrollRoutes.js
 const express = require('express');
 const router = express.Router();
-const { protect, authorize } = require('../middleware/auth');
+const { protect } = require('../middleware/auth');
 const {
     getPayrollForMonth,
     generateMonthlyPayroll,
-    updatePayslip
+    updatePayslip,
+    getPayrollHistory,
+    getMyPayroll // <--- Import this
 } = require('../controllers/payrollController');
 
-// ✅ FIX: Define more granular permissions.
-// Managers, Admins, AND Cashiers can view payroll and update payslips (e.g., mark as paid).
-const canAccessPayroll = authorize('manager', 'admin', 'cashier');
+// Helper function
+const allowPayrollAccess = (req) => {
+    return ['manager', 'admin', 'cashier'].includes(req.user.role.toLowerCase());
+};
 
-// Only Managers and Admins can generate the initial payroll for the month.
-const canGeneratePayroll = authorize('manager', 'admin');
+// Middleware: Allow manager, admin, cashier
+const canAccessPayroll = (req, res, next) => {
+    if (!req.user || !allowPayrollAccess(req)) {
+        return res.status(403).json({ message: 'Access denied: Insufficient permissions' });
+    }
+    next();
+};
 
-// ✅ FIX: Apply the correct authorization middleware to each route.
-// Cashiers can now GET the list of payslips for a month.
+// Middleware: Only manager/admin can generate payroll
+const canGeneratePayroll = (req, res, next) => {
+    if (!req.user || !['manager', 'admin'].includes(req.user.role.toLowerCase())) {
+        return res.status(403).json({ message: 'Only managers and admins can generate payroll' });
+    }
+    next();
+};
+// Routes
+router.get('/my-history', protect, getMyPayroll); // <--- NEW ROUTE (Accessible by any logged in user)
+// Routes
 router.get('/:year/:month', protect, canAccessPayroll, getPayrollForMonth);
-
-// Generating payroll remains restricted to managers and admins.
 router.post('/generate', protect, canGeneratePayroll, generateMonthlyPayroll);
-
-// Cashiers can now PUT updates to a payslip (e.g., change status to 'paid').
 router.put('/:payslipId', protect, canAccessPayroll, updatePayslip);
+router.get('/history', protect, canAccessPayroll, getPayrollHistory);
 
 module.exports = router;
 /*// backend/src/routes/payrollRoutes.js

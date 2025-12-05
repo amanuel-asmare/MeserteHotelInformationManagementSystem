@@ -24,7 +24,7 @@ interface RevenueReportData {
   numberOfOrders: number;
 }
 
-const API_URL = 'http://localhost:5000'; // Or your deployed API URL
+const API_URL = 'https://localhost:5000'; // Or your deployed API URL
 
 export default function RevenueReportPage() {
   const { user, loading: authLoading } = useAuth();

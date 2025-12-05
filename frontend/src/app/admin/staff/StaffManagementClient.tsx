@@ -1,12 +1,14 @@
 'use client';
+import { Text, Image, Alert, Keyboard } from 'react-native';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+
 import {
   Search, Plus, Edit, Trash2, Filter, ChevronDown, Users,
   CheckCircle, Upload, Mail, Lock, Phone, MapPin, DollarSign,
   User, GraduationCap, Clock, Image as ImageIcon, Briefcase,
   ToggleLeft, ToggleRight, X, AlertTriangle, ArrowUpDown,
-  ChevronLeft, ChevronRight
+  ChevronLeft, ChevronRight, Crown, BadgeCheck, Key, Utensils
 } from 'lucide-react';
 import { format } from 'date-fns';
 import axios from 'axios';
@@ -67,6 +69,8 @@ export default function StaffManagementClient({
   // --- STATE MANAGEMENT ---
   const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
+  const [minTimePassed, setMinTimePassed] = useState(false); // For Royal Loading
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'manager' | 'cashier' | 'receptionist'>('all');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -89,6 +93,13 @@ export default function StaffManagementClient({
   });
 
   // --- DATA FETCHING & SIDE EFFECTS ---
+  
+  // Royal Loading Delay
+  useEffect(() => {
+    const timer = setTimeout(() => setMinTimePassed(true), 4000); // 4 seconds of luxury
+    return () => clearTimeout(timer);
+  }, []);
+
   useEffect(() => {
     fetchStaff();
   }, []);
@@ -247,11 +258,90 @@ export default function StaffManagementClient({
     </th>
   );
   
-  // --- RENDER LOGIC ---
-  if (loading) {
+  // --- ROYAL LOADING SCREEN ---
+  if (loading || !minTimePassed) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 to-amber-100">
-        <div className="relative"><div className="w-24 h-24 rounded-full border-8 border-t-amber-600 border-amber-200 animate-spin"></div><div className="absolute inset-0 flex items-center justify-center"><Users className="w-10 h-10 text-amber-600" /></div></div>
+      <div className="fixed inset-0 bg-gradient-to-br from-indigo-950 via-blue-900 to-slate-900 flex items-center justify-center overflow-hidden z-50">
+        
+        {/* Animated Background Mesh */}
+        <div className="absolute inset-0 opacity-20">
+           <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+        </div>
+
+        {/* Floating Role Icons */}
+        {[Key, Utensils, Users, BadgeCheck].map((Icon, i) => (
+           <motion.div
+             key={i}
+             className="absolute text-blue-400/20"
+             initial={{ y: '100vh', x: Math.random() * 100 - 50 + '%', rotate: 0 }}
+             animate={{ y: '-20vh', rotate: 360 }}
+             transition={{ 
+               duration: 10 + Math.random() * 5, 
+               repeat: Infinity, 
+               delay: i * 2,
+               ease: "linear"
+             }}
+             style={{ left: `${20 + i * 20}%` }}
+           >
+             <Icon size={60 + Math.random() * 40} />
+           </motion.div>
+        ))}
+
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 1, ease: "easeOut" }}
+          className="relative z-10 text-center px-10"
+        >
+          {/* 3D Rotating Badge Card */}
+          <div className="perspective-1000 mx-auto mb-12 w-64 h-40 relative">
+             <motion.div
+               animate={{ rotateY: [0, 360] }}
+               transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+               className="w-full h-full bg-gradient-to-br from-amber-300 to-yellow-600 rounded-2xl shadow-2xl border-2 border-yellow-200 flex items-center justify-center transform-style-3d"
+               style={{ transformStyle: 'preserve-3d' }}
+             >
+                {/* Front Side */}
+                <div className="absolute inset-0 backface-hidden flex flex-col items-center justify-center p-4">
+                   <div className="w-16 h-16 bg-white rounded-full mb-2 border-4 border-blue-900 flex items-center justify-center">
+                      <Users size={32} className="text-blue-900"/>
+                   </div>
+                   <div className="h-2 w-24 bg-blue-900/20 rounded mb-1"></div>
+                   <div className="h-2 w-16 bg-blue-900/20 rounded"></div>
+                </div>
+                
+                {/* Back Side (Simulated by transparency for simple effect or duplicate div) */}
+             </motion.div>
+          </div>
+
+          {/* Text */}
+          <motion.h2 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-200 via-white to-blue-200 mb-4 tracking-tighter"
+          >
+            STAFF PORTAL
+          </motion.h2>
+
+          <motion.div 
+            initial={{ width: 0 }}
+            animate={{ width: "100%" }}
+            transition={{ duration: 3.5, ease: "easeInOut" }}
+            className="h-1 bg-blue-500/50 mx-auto rounded-full mb-6 max-w-md relative overflow-hidden"
+          >
+             <div className="absolute top-0 left-0 h-full w-1/3 bg-white blur-sm animate-slide"></div>
+          </motion.div>
+
+          <motion.p 
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 2, repeat: Infinity }}
+            className="text-blue-200 font-mono text-lg tracking-widest uppercase"
+          >
+            Verifying Credentials...
+          </motion.p>
+
+        </motion.div>
       </div>
     );
   }
@@ -303,8 +393,8 @@ export default function StaffManagementClient({
 
       {/* --- HEADER & CONTROLS --- */}
       <div className="mb-6 flex flex-col sm:flex-row gap-4 items-center justify-between">
-        <div><h1 className="text-3xl font-bold text-gray-800">{title}</h1><p className="text-gray-500 mt-1">Manage, view, and organize hotel employees.</p></div>
-        {showAddButton && (<button onClick={openAddModal} className="flex items-center gap-2 px-5 py-2.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition shadow hover:shadow-lg transform hover:-translate-y-0.5"><Plus size={20} /> Add New Staff</button>)}
+        <div><h1 className="text-3xl font-bold text-gray-800"></h1><p className="text-gray-500 mt-1"></p></div>
+        {showAddButton && (<button onClick={openAddModal} className="flex items-center gap-2 px-5 py-2.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition shadow hover:shadow-lg transform hover:-translate-y-0.5 mr-2"><Plus size={20} /> Add New Staff</button>)}
       </div>
 
       <div className="mb-4 flex flex-col sm:flex-row gap-3">
@@ -463,11 +553,9 @@ export default function StaffManagementClient({
   );
 }
 
-
 /*//
 'use client';
 
-import { useState, useEffect } from 'react';
 import {
   Search, Plus, Edit, Trash2, Filter, ChevronDown, Users,
   CheckCircle, Upload, Mail, Lock, Phone, MapPin, DollarSign,

@@ -26,7 +26,7 @@ import { CalendarCheck, Clock, CheckCircle2, XCircle, Info, RefreshCcw } from 'l
 import { useAuth } from '../../../../context/AuthContext'; // Adjust path
 import { DatePicker } from '../../../../components/attendance/DataPicker';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
 
 interface AttendanceRecord {
     _id: string;
@@ -75,52 +75,81 @@ export default function StaffAttendancePage() {
     const [isHistoryLoading, setIsHistoryLoading] = useState(false);
 
 
-    const fetchTodayAttendance = async () => {
-        setLoading(true);
-        try {
-            const today = format(new Date(), 'yyyy-MM-dd');
-            const res = await axios.get(`${API_URL}/api/attendance/my/${today}`, { withCredentials: true });
-            setTodayAttendance(res.data);
-        } catch (error: any) {
-            if (error.response && error.response.status === 404) {
-                setTodayAttendance(null); // No attendance found for today
-            } else {
-                console.error('Failed to fetch today\'s attendance:', error);
-                toast.error('Failed to load today\'s attendance.');
-            }
-        } finally {
-            setLoading(false);
-        }
-    };
+// Fix: Use /my for today, or /my/2025-11-24 for specific date
+const fetchTodayAttendance = async () => {
+    if (!user) return;
 
-    const fetchHistoryAttendance = async (date: Date) => {
-        setIsHistoryLoading(true);
-        try {
-            const formattedDate = format(date, 'yyyy-MM-dd');
-            const res = await axios.get(`${API_URL}/api/attendance/my/${formattedDate}`, { withCredentials: true });
-            setHistoryAttendance(res.data);
-        } catch (error: any) {
-            if (error.response && error.response.status === 404) {
-                setHistoryAttendance(null); // No attendance found for this history date
-            } else {
-                console.error('Failed to fetch history attendance:', error);
-                toast.error('Failed to load attendance for this date.');
-            }
-        } finally {
-            setIsHistoryLoading(false);
+    setLoading(true);
+    try {
+        const res = await axios.get(`${API_URL}/api/attendance/my`, {
+            withCredentials: true
+        });
+        setTodayAttendance(res.data);
+    } catch (error: any) {
+        if (error.response?.status === 404) {
+            setTodayAttendance(null);
+        } else {
+            console.error('Error:', error);
+            toast.error(error.response?.data?.message || 'Failed to load attendance');
         }
-    };
+    } finally {
+        setLoading(false);
+    }
+};
 
-    useEffect(() => {
-        if (!authLoading && user) {
-            fetchTodayAttendance();
-            if (selectedHistoryDate) {
+const fetchHistoryAttendance = async (date: Date) => {
+    setIsHistoryLoading(true);
+    setHistoryAttendance(null); // ← Important: clear old data
+    try {
+        const formatted = format(date, 'yyyy-MM-dd');
+        const res = await axios.get(`${API_URL}/api/attendance/my/${formatted}`, {
+            withCredentials: true
+        });
+        setHistoryAttendance(res.data);
+    } catch (error: any) {
+        if (error.response?.status === 404) {
+            setHistoryAttendance(null);
+        } else {
+            toast.error('Failed to load history');
+        }
+    } finally {
+        setIsHistoryLoading(false);
+    }
+};
+  
+ useEffect(() => {
+    if (!authLoading && user) {
+        fetchTodayAttendance();
+
+        // Always show today's attendance in history card on first load
+        if (selectedHistoryDate) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const selected = new Date(selectedHistoryDate);
+            selected.setHours(0, 0, 0, 0);
+
+            if (selected.getTime() !== today.getTime()) {
                 fetchHistoryAttendance(selectedHistoryDate);
             }
+            // Removed the else block — we handle it via todayAttendance dependency below
         }
-    }, [authLoading, user, selectedHistoryDate]);
+    }
+}, [authLoading, user, selectedHistoryDate]);
 
+// NEW: Separate effect to sync todayAttendance → history when today is selected
+useEffect(() => {
+    if (selectedHistoryDate) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const selected = new Date(selectedHistoryDate);
+        selected.setHours(0, 0, 0, 0);
 
+        if (selected.getTime() === today.getTime() && todayAttendance) {
+            setHistoryAttendance(todayAttendance);
+            setIsHistoryLoading(false);
+        }
+    }
+}, [todayAttendance, selectedHistoryDate]);
     const handleCheckIn = async () => {
         setIsCheckingIn(true);
         try {

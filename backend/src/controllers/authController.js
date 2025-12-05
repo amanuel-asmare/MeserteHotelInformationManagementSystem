@@ -11,7 +11,7 @@ const generateToken = (id, role) => {
 const getFullImageUrl = (path) => {
     if (!path) return '/default-avatar.png';
     if (path.startsWith('http')) return path;
-    const API_BASE = process.env.API_URL || 'http://localhost:5000';
+    const API_BASE = process.env.API_URL || 'https://localhost:5000';
     return `${API_BASE}${path}`;
 };
 
