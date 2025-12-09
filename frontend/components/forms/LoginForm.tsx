@@ -1,4 +1,187 @@
 'use client';
+
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { motion } from 'framer-motion';
+import { Mail, Lock, LogIn, Facebook, Github, Chrome } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { Modal } from '../ui/Modal';
+
+// --- Schema ---
+const loginSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
+
+interface LoginFormProps {
+  onClose: () => void;
+  onSwitch?: () => void; // Fixed prop name to match AuthModal usage
+  onSwitchToRegister?: () => void; // Kept for compatibility if used elsewhere
+}
+
+export default function LoginForm({ onClose, onSwitch, onSwitchToRegister }: LoginFormProps) {
+  const { login } = useAuth();
+  const [globalError, setGlobalError] = useState<string | null>(null);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+  });
+
+  const onSubmit = async (data: LoginFormData) => {
+    setGlobalError(null);
+    try {
+      await login(data.email, data.password);
+      onClose();
+    } catch (err: any) {
+      const msg = err.message || 'Login failed';
+      if (msg.includes('deactivated')) {
+        setGlobalError('Your account is deactivated. Please contact admin.');
+      } else {
+        setGlobalError('Invalid email or password.');
+      }
+    }
+  };
+
+  const handleSwitch = onSwitch || onSwitchToRegister;
+
+  return (
+    <Modal 
+      title="" // We create a custom header inside for better visuals
+      onClose={onClose} 
+      // Removed className prop to fix build error
+    >
+      {/* Moved styling to this wrapper div */}
+      <div className="max-w-md w-full mx-auto overflow-hidden rounded-3xl bg-white dark:bg-gray-900 shadow-xl">
+        <div className="flex flex-col">
+          {/* Header Section */}
+          <div className="bg-gradient-to-r from-amber-600 to-amber-800 p-8 text-center relative overflow-hidden">
+            <motion.div 
+              initial={{ scale: 0.8, opacity: 0 }} 
+              animate={{ scale: 1, opacity: 1 }} 
+              transition={{ duration: 0.5 }}
+              className="relative z-10"
+            >
+              <div className="mx-auto bg-white/20 w-16 h-16 rounded-full flex items-center justify-center backdrop-blur-sm mb-4 border border-white/30 shadow-lg">
+                <LogIn className="text-white w-8 h-8" />
+              </div>
+              <h2 className="text-3xl font-bold text-white tracking-wide font-serif">Welcome Back</h2>
+              <p className="text-amber-100 mt-2 text-sm">Sign in to access your dashboard</p>
+            </motion.div>
+            
+            {/* Decorative Circles */}
+            <div className="absolute top-[-50%] left-[-20%] w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+            <div className="absolute bottom-[-20%] right-[-20%] w-40 h-40 bg-amber-400/20 rounded-full blur-2xl"></div>
+          </div>
+
+          {/* Form Body */}
+          <div className="p-8">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              
+              {/* Global Error Alert */}
+              {globalError && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }} 
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm text-center"
+                >
+                  {globalError}
+                </motion.div>
+              )}
+
+              {/* Email Field */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold uppercase tracking-wider text-gray-500 ml-1">Email</label>
+                <div className="relative group">
+                  <Mail className="absolute left-4 top-3.5 text-gray-400 group-focus-within:text-amber-600 transition-colors" size={20} />
+                  <input
+                    type="email"
+                    placeholder="name@example.com"
+                    {...register('email')}
+                    className={`w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-gray-800 border-2 ${errors.email ? 'border-red-400' : 'border-gray-100 dark:border-gray-700'} rounded-2xl focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 transition-all`}
+                  />
+                </div>
+                {errors.email && <p className="text-red-500 text-xs ml-1">{errors.email.message}</p>}
+              </div>
+
+              {/* Password Field */}
+              <div className="space-y-1">
+                <div className="flex justify-between items-center ml-1">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-gray-500">Password</label>
+                  <a href="#" className="text-xs text-amber-600 hover:underline">Forgot password?</a>
+                </div>
+                <div className="relative group">
+                  <Lock className="absolute left-4 top-3.5 text-gray-400 group-focus-within:text-amber-600 transition-colors" size={20} />
+                  <input
+                    type="password"
+                    placeholder="••••••••"
+                    {...register('password')}
+                    className={`w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-gray-800 border-2 ${errors.password ? 'border-red-400' : 'border-gray-100 dark:border-gray-700'} rounded-2xl focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 transition-all`}
+                  />
+                </div>
+                {errors.password && <p className="text-red-500 text-xs ml-1">{errors.password.message}</p>}
+              </div>
+
+              {/* Submit Button */}
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-3.5 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-bold rounded-2xl shadow-lg shadow-amber-600/30 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isSubmitting ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  'Sign In'
+                )}
+              </motion.button>
+
+              {/* Switch to Register */}
+              {handleSwitch && (
+                <div className="text-center mt-4 text-sm text-gray-600 dark:text-gray-400">
+                  Don't have an account?{' '}
+                  <button type="button" onClick={handleSwitch} className="text-amber-600 hover:underline font-semibold">
+                    Sign up
+                  </button>
+                </div>
+              )}
+
+              {/* Social Login */}
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-200 dark:border-gray-700"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-3 bg-white dark:bg-gray-900 text-gray-500">Or continue with</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <button type="button" className="flex items-center justify-center py-2.5 border-2 border-gray-100 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                  <Chrome className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                </button>
+                <button type="button" className="flex items-center justify-center py-2.5 border-2 border-gray-100 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                  <Facebook className="w-5 h-5 text-blue-600" />
+                </button>
+                <button type="button" className="flex items-center justify-center py-2.5 border-2 border-gray-100 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                  <Github className="w-5 h-5 text-gray-900 dark:text-white" />
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+}/*'use client';
 import { Alert } from 'react-native';
 
 import { useState } from 'react';
@@ -58,7 +241,7 @@ export default function LoginForm({ onClose, onSwitchToRegister }: LoginFormProp
       className="max-w-md w-full p-0 overflow-hidden rounded-3xl"
     >
       <div className="flex flex-col">
-        {/* Header Section */}
+      
         <div className="bg-gradient-to-r from-amber-600 to-amber-800 p-8 text-center relative overflow-hidden">
           <motion.div 
             initial={{ scale: 0.8, opacity: 0 }} 
@@ -73,16 +256,16 @@ export default function LoginForm({ onClose, onSwitchToRegister }: LoginFormProp
             <p className="text-amber-100 mt-2 text-sm">Sign in to access your dashboard</p>
           </motion.div>
           
-          {/* Decorative Circles */}
+        
           <div className="absolute top-[-50%] left-[-20%] w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
           <div className="absolute bottom-[-20%] right-[-20%] w-40 h-40 bg-amber-400/20 rounded-full blur-2xl"></div>
         </div>
 
-        {/* Form Body */}
+        
         <div className="p-8 bg-white dark:bg-gray-900">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             
-            {/* Global Error Alert */}
+            
             {globalError && (
               <motion.div 
                 initial={{ opacity: 0, y: -10 }} 
@@ -93,7 +276,7 @@ export default function LoginForm({ onClose, onSwitchToRegister }: LoginFormProp
               </motion.div>
             )}
 
-            {/* Email Field */}
+          
             <div className="space-y-1">
               <label className="text-xs font-semibold uppercase tracking-wider text-gray-500 ml-1">Email</label>
               <div className="relative group">
@@ -108,7 +291,7 @@ export default function LoginForm({ onClose, onSwitchToRegister }: LoginFormProp
               {errors.email && <p className="text-red-500 text-xs ml-1">{errors.email.message}</p>}
             </div>
 
-            {/* Password Field */}
+           
             <div className="space-y-1">
               <div className="flex justify-between items-center ml-1">
                 <label className="text-xs font-semibold uppercase tracking-wider text-gray-500">Password</label>
@@ -126,7 +309,7 @@ export default function LoginForm({ onClose, onSwitchToRegister }: LoginFormProp
               {errors.password && <p className="text-red-500 text-xs ml-1">{errors.password.message}</p>}
             </div>
 
-            {/* Submit Button */}
+           
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -141,7 +324,7 @@ export default function LoginForm({ onClose, onSwitchToRegister }: LoginFormProp
               )}
             </motion.button>
 
-            {/* Social Login */}
+           
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-200 dark:border-gray-700"></div>
@@ -167,7 +350,9 @@ export default function LoginForm({ onClose, onSwitchToRegister }: LoginFormProp
       </div>
     </Modal>
   );
-}/*'use client';
+}*/
+  
+/*'use client';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
