@@ -18,7 +18,7 @@ const registerSchema = z.object({
   lastName: z.string().min(2, 'Last name required'),
   email: z.string().email('Invalid email address'),
   password: z.string().min(6, 'Password must be 6+ chars'),
-  // Use .optional().or(z.literal('')) to handle empty string inputs from forms
+  // Allow empty strings or undefined for optional fields
   phone: z.string().optional().or(z.literal('')), 
   country: z.string().default('Ethiopia'),
   city: z.string().min(2, 'City required'),
@@ -31,7 +31,6 @@ interface RegisterFormProps {
   onClose: () => void;
   forceRole?: 'customer';
   onSwitchToLogin?: () => void;
-  // Added onSwitch prop to match AuthModal usage if passed
   onSwitch?: () => void; 
 }
 
@@ -78,7 +77,7 @@ export default function RegisterForm({ onClose, forceRole, onSwitchToLogin, onSw
     trigger,
     watch,
     formState: { errors, isSubmitting },
-  } = useForm<RegisterFormData>({
+  } = useForm({ // <--- FIXED: Removed explicit <RegisterFormData> to allow automatic type inference
     resolver: zodResolver(registerSchema),
     defaultValues: {
       country: 'Ethiopia',
