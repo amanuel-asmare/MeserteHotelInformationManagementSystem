@@ -65,16 +65,12 @@ export default function ClientWrapper() {
       )}
     </div>
   );
-}*/'use client';
-
-// Imports for Navbar, Sidebar, useState, motion, etc., have been removed.
+}*/
+'use client';
 import ManagerRoomStatusClient from './ManagerRoomStatusClient';
 
 export default function ClientWrapper() {
-  // All state and logic for sidebarOpen, darkMode, and notifications have been removed.
-  
-  // The component now returns only the specific content for this page.
-  // The main layout file will provide the surrounding Navbar, Sidebar, and styling.
+
   return (
     <>
       <ManagerRoomStatusClient />

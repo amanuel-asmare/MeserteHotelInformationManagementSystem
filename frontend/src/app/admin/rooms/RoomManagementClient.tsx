@@ -11,8 +11,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
-import ImageCarousel from '../../../../components/ui/ImageCarousel';
-import { useLanguage } from '../../../../context/LanguageContext';
+import ImageCarousel from '../../../../components/ui/ImageCarousel'; // Ensure path is correct
+import { useLanguage } from '../../../../context/LanguageContext'; // Import Hook
 import ReactCanvasConfetti from 'react-canvas-confetti';
 
 interface Room {
@@ -30,6 +30,17 @@ interface Room {
   numberOfBeds: number;
   bathrooms: number;
   createdAt: string;
+}
+
+// Interface for the floating animation icons to resolve hydration error
+interface FloatingIconData {
+  Icon: any;
+  key: number;
+  x: string;
+  duration: number;
+  delay: number;
+  left: string;
+  size: number;
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
@@ -115,10 +126,14 @@ const SuccessModal = ({ message, onClose }: { message: string, onClose: () => vo
 };
 
 export default function RoomManagementClient() {
+  const { t, language } = useLanguage(); // Use Translation Hook
+
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
-  // Min time passed state for loading animation
   const [minTimePassed, setMinTimePassed] = useState(false);
+
+  // State to hold random values for animation to prevent hydration mismatch
+  const [floatingIcons, setFloatingIcons] = useState<FloatingIconData[]>([]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'single' | 'double' | 'triple'>('all');
@@ -128,7 +143,6 @@ export default function RoomManagementClient() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
   
-  // Success Message State for Modal
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const [uploading, setUploading] = useState(false);
@@ -136,11 +150,9 @@ export default function RoomManagementClient() {
   const [imageCarousel, setImageCarousel] = useState<string[] | null>(null);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   
-  // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
 
-  const { t, language } = useLanguage();
   const [form, setForm] = useState({
     roomNumber: '',
     type: 'single' as 'single' | 'double' | 'triple',
@@ -155,9 +167,23 @@ export default function RoomManagementClient() {
     bathrooms: ''
   });
 
-  // Minimum loading time effect
+  // Calculate random values once on mount to fix hydration error
   useEffect(() => {
-    const timer = setTimeout(() => setMinTimePassed(true), 3000); // 3 seconds minimum
+    const icons = [BedDouble, KeyRound, Bath];
+    const generatedIcons = icons.map((Icon, i) => ({
+      Icon: Icon,
+      key: i,
+      x: (Math.random() * 100 - 50) + '%',
+      size: 60 + Math.random() * 30,
+      duration: 7 + Math.random() * 4,
+      delay: i * 1.2,
+      left: `${15 + i * 35}%`
+    }));
+    setFloatingIcons(generatedIcons);
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setMinTimePassed(true), 3000); 
     return () => clearTimeout(timer);
   }, []);
 
@@ -171,7 +197,6 @@ export default function RoomManagementClient() {
       setRooms(res.data);
       setLoading(false);
     } catch (err: any) {
-      // console.error to avoid alert spam on load, handle error properly in UI if needed
       console.error(err);
       setLoading(false);
     }
@@ -226,13 +251,8 @@ export default function RoomManagementClient() {
         await axios.post(`${API_BASE}/api/rooms`, formData, { withCredentials: true });
       }
 
-      // 1. Close the Form
       setShowAddModal(false);
-      
-      // 2. Trigger Success Modal
-      setSuccessMessage(`Room ${editingRoom ? t('updateSuccessfully') : t('addSuccessfully')}!`);
-      
-      // 3. Refresh Data & Reset
+      setSuccessMessage(editingRoom ? t('updateSuccessfully') : t('addSuccessfully'));
       resetForm();
       fetchRooms();
       setEditingRoom(null);
@@ -279,36 +299,28 @@ export default function RoomManagementClient() {
     return `${API_BASE}${image}`;
   };
 
-  const roomIcons = {
-    single: BedSingle,
-    double: BedDouble,
-    triple: Triple
-  };
-
-  // --- ROYAL LOADING SCREEN (ROOM THEME) ---
+  // --- ROYAL LOADING SCREEN ---
   if (loading || !minTimePassed) {
     return (
       <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-blue-950 to-black flex items-center justify-center overflow-hidden z-50">
-        
-        {/* Animated Blueprint Grid Background */}
         <div className="absolute inset-0 opacity-10 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
-
-        {/* Floating Room Icons */}
-        {[BedDouble, KeyRound, Bath].map((Icon, i) => (
+        
+        {/* Render floating icons from state to avoid hydration mismatch */}
+        {floatingIcons.map((data) => (
            <motion.div
-             key={i}
+             key={data.key}
              className="absolute text-blue-400/20"
-             initial={{ y: '100vh', x: Math.random() * 100 - 50 + '%', opacity: 0 }}
+             initial={{ y: '100vh', x: data.x, opacity: 0 }}
              animate={{ y: '-20vh', opacity: [0, 0.6, 0] }}
              transition={{ 
-               duration: 7 + Math.random() * 4, 
+               duration: data.duration, 
                repeat: Infinity, 
-               delay: i * 1.2,
+               delay: data.delay,
                ease: "linear"
              }}
-             style={{ left: `${15 + i * 35}%` }}
+             style={{ left: data.left }}
            >
-             <Icon size={60 + Math.random() * 30} />
+             <data.Icon size={data.size} />
            </motion.div>
         ))}
 
@@ -318,7 +330,6 @@ export default function RoomManagementClient() {
           transition={{ duration: 1, ease: "easeOut" }}
           className="relative z-10 text-center px-8"
         >
-          {/* Central Rotating Room Key Card */}
           <div className="relative w-48 h-64 mx-auto mb-10 perspective-1000">
              <motion.div 
                animate={{ rotateY: 360 }}
@@ -326,7 +337,6 @@ export default function RoomManagementClient() {
                className="w-full h-full bg-gradient-to-br from-amber-400 to-yellow-600 rounded-2xl shadow-2xl border-2 border-yellow-200 flex flex-col items-center justify-center transform-style-3d"
                style={{ transformStyle: 'preserve-3d' }}
              >
-                {/* Front of Key Card */}
                 <div className="absolute inset-0 backface-hidden flex flex-col items-center justify-center">
                    <div className="w-20 h-20 bg-white/90 rounded-full flex items-center justify-center mb-4 shadow-inner">
                       <KeyRound size={40} className="text-amber-600" />
@@ -336,8 +346,6 @@ export default function RoomManagementClient() {
                    <div className="absolute bottom-4 text-white/80 text-xs font-mono tracking-widest">VIP ACCESS</div>
                 </div>
              </motion.div>
-             
-             {/* Scanning Ring */}
              <motion.div
                animate={{ scale: [1, 1.4, 1], opacity: [0.5, 0, 0.5] }}
                transition={{ duration: 2, repeat: Infinity }}
@@ -351,7 +359,7 @@ export default function RoomManagementClient() {
             transition={{ delay: 0.5 }}
             className="text-4xl md:text-5xl font-black text-white tracking-tight mb-2"
           >
-            ROOM <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-500">MANAGEMENT</span>
+            {language === 'am' ? 'ክፍል' : 'ROOM'} <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-500">{language === 'am' ? 'አስተዳደር' : 'MANAGEMENT'}</span>
           </motion.h2>
 
           <motion.div 
@@ -369,7 +377,7 @@ export default function RoomManagementClient() {
             transition={{ duration: 2, repeat: Infinity }}
             className="text-gray-400 font-mono text-sm tracking-widest uppercase"
           >
-            Synchronizing Floor Plans...
+            {language === 'am' ? 'ፕላኖችን በማመሳሰል ላይ...' : 'Synchronizing Floor Plans...'}
           </motion.p>
 
         </motion.div>
@@ -459,20 +467,20 @@ export default function RoomManagementClient() {
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Trash2 className="w-8 h-8 text-red-600" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">Delete Room?</h3>
-              <p className="text-gray-500 mb-6">Are you sure you want to delete this room? This action cannot be undone.</p>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">{t('deleteRoom')}</h3>
+              <p className="text-gray-500 mb-6">{t('deleteRoomConfirm')}</p>
               <div className="flex gap-4">
                 <button 
                   onClick={() => setShowDeleteModal(null)}
                   className="flex-1 py-3 border border-gray-300 rounded-xl font-medium hover:bg-gray-50 transition"
                 >
-                  Cancel
+                  {t('cancel')}
                 </button>
                 <button 
                   onClick={handleDelete}
                   className="flex-1 py-3 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition"
                 >
-                  Yes, Delete
+                  {t('yesDelete')}
                 </button>
               </div>
             </motion.div>
@@ -488,7 +496,7 @@ export default function RoomManagementClient() {
           </div>
           <div>
             <h1 className="text-3xl font-black text-gray-900 tracking-tight">{t('roomManagement')}</h1>
-            <p className="text-gray-500 font-medium">{t('Add, edit, or delete hotel rooms')}</p>
+            <p className="text-gray-500 font-medium">{t('manageRoomsDesc')}</p>
           </div>
         </div>
         <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 px-6 py-3 bg-amber-600 text-white rounded-xl hover:bg-amber-700 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-bold">
@@ -500,7 +508,7 @@ export default function RoomManagementClient() {
       <div className="mb-8 flex flex-col sm:flex-row gap-4 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-          <input type="text" placeholder="Search rooms..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition bg-gray-50 focus:bg-white" />
+          <input type="text" placeholder={t('searchRooms')} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition bg-gray-50 focus:bg-white" />
         </div>
         <div className="flex gap-3 overflow-x-auto pb-2 sm:pb-0">
            <div className="relative min-w-[140px]">
@@ -575,12 +583,12 @@ export default function RoomManagementClient() {
 
               <div className="flex justify-between items-start mb-2">
                  <div>
-                    <h3 className="text-xl font-black text-gray-900">Room {room.roomNumber}</h3>
-                    <p className="text-sm text-gray-500 font-medium">Floor {room.floorNumber}</p>
+                    <h3 className="text-xl font-black text-gray-900">{t('Room')} {room.roomNumber}</h3>
+                    <p className="text-sm text-gray-500 font-medium">{t('floorNumber')} {room.floorNumber}</p>
                  </div>
                  <div className="text-right">
                     <span className="block text-2xl font-bold text-amber-600">ETB {room.price}</span>
-                    <span className="text-xs text-gray-400">per night</span>
+                    <span className="text-xs text-gray-400">{t('perNight')}</span>
                  </div>
               </div>
 
@@ -588,22 +596,23 @@ export default function RoomManagementClient() {
               
               <div className="flex gap-4 border-t border-gray-100 pt-4 mb-4">
                   <div className="flex items-center gap-1 text-xs font-bold text-gray-500">
-                     <Users size={14} /> {room.capacity} Guests
+                     <Users size={14} /> {room.capacity} {t('guests')}
                   </div>
                   <div className="flex items-center gap-1 text-xs font-bold text-gray-500">
-                     <Bed size={14} /> {room.numberOfBeds} Beds
+                     <Bed size={14} /> {room.numberOfBeds} {t('beds')}
                   </div>
                   <div className="flex items-center gap-1 text-xs font-bold text-gray-500">
-                     <Bath size={14} /> {room.bathrooms} Baths
+                     <Bath size={14} /> {room.bathrooms} {t('baths')}
                   </div>
-                     <span className={`px-2 py-1 text-xs rounded-full ${
+                 
+              </div>
+              <div>    <span className={`px-2 py-1 text-xs rounded-full ${
   room.status === 'clean' ? 'bg-green-100 text-green-700' : 
   room.status === 'dirty' ? 'bg-yellow-100 text-yellow-700' : 
   'bg-red-100 text-red-700'
 }`}>
   {t(room.status)}
-</span>
-              </div>
+</span></div>
 
               <div className="flex gap-3">
                 <button
@@ -688,7 +697,7 @@ export default function RoomManagementClient() {
               className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-8 my-8 max-h-screen overflow-y-auto"
             >
               <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                {editingRoom ? t('update') : t('addNewRoom')}
+                {editingRoom ? t('updateRoom') : t('addNewRoom')}
               </h2>
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div className="grid grid-cols-2 gap-3">
@@ -702,49 +711,49 @@ export default function RoomManagementClient() {
                   </div>
                   <div className="relative">
                     <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                    <input placeholder="Capacity *" type="number" required value={form.capacity} onChange={e => setForm({ ...form, capacity: e.target.value })} className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500" />
+                    <input placeholder={`${t('capacity')} *`} type="number" required value={form.capacity} onChange={e => setForm({ ...form, capacity: e.target.value })} className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500" />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="relative">
                     <Bed size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input placeholder="Number of Beds *" type="number" required value={form.numberOfBeds} onChange={e => setForm({ ...form, numberOfBeds: e.target.value })} className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500" />
+                    <input placeholder={`${t('numberOfBeds')} *`} type="number" required value={form.numberOfBeds} onChange={e => setForm({ ...form, numberOfBeds: e.target.value })} className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500" />
                   </div>
                   <div className="relative">
                     <Bath size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input placeholder="Number of Bathrooms *" type="number" required value={form.bathrooms} onChange={e => setForm({ ...form, bathrooms: e.target.value })} className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500" />
+                    <input placeholder={`${t('numberOfBathrooms')} *`} type="number" required value={form.bathrooms} onChange={e => setForm({ ...form, bathrooms: e.target.value })} className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500" />
                   </div>
                 </div>
 
                 <div className="relative">
                   <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                  <input placeholder="Price (ETB) *" type="number" required value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500" />
+                  <input placeholder={`${t('priceAmount')} *`} type="number" required value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500" />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="relative">
                     <ArrowUpDown className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                    <input placeholder="Room Number *" required value={form.roomNumber} onChange={e => setForm({ ...form, roomNumber: e.target.value })} className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500" />
+                    <input placeholder={`${t('roomNumber')} *`} required value={form.roomNumber} onChange={e => setForm({ ...form, roomNumber: e.target.value })} className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500" />
                   </div>
                   <div className="relative">
                     <ArrowUpDown className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                    <input type="number" placeholder="Floor Number *" required value={form.floorNumber} onChange={e => setForm({ ...form, floorNumber: e.target.value })} className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500" />
+                    <input type="number" placeholder={`${t('floorNumber')} *`} required value={form.floorNumber} onChange={e => setForm({ ...form, floorNumber: e.target.value })} className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500" />
                   </div>
                 </div>
 
                 <div className="relative">
                   <FileText className="absolute left-3 top-3 text-gray-400" size={20} />
-                  <textarea placeholder="Description *" required value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={4} className="w-full pl-10 pt-3 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 resize-none" />
+                  <textarea placeholder={`${t('description')} *`} required value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={4} className="w-full pl-10 pt-3 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 resize-none" />
                 </div>
 
                 <div className="relative">
                   <FileText className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                  <input placeholder="Amenities (comma-separated, e.g., WiFi,TV,AC)" value={form.amenities} onChange={e => setForm({ ...form, amenities: e.target.value })} className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500" />
+                  <input placeholder={t('amenities')} value={form.amenities} onChange={e => setForm({ ...form, amenities: e.target.value })} className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500" />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Room Status</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('roomStatus')}</label>
                   <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as any })} className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500">
                     <option value="clean">{t('clean')}</option>
                     <option value="dirty">{t('dirty')}</option>
@@ -753,7 +762,7 @@ export default function RoomManagementClient() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Room Images (up to 3)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('roomImages')}</label>
                   <div className="flex items-center gap-3 mb-2">
                     <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden border-2 border-dashed border-gray-300">
                       {form.images.length > 0 ? (
@@ -761,7 +770,7 @@ export default function RoomManagementClient() {
                       ) : editingRoom?.images[0] ? (
                         <img src={getImageUrl(editingRoom.images[0])} className="w-full h-full object-cover rounded-lg" />
                       ) : (
-                        <div className="text-xs text-gray-400 text-center px-1">No image</div>
+                        <div className="text-xs text-gray-400 text-center px-1">{t('noImage')}</div>
                       )}
                     </div>
                     <input
@@ -773,14 +782,14 @@ export default function RoomManagementClient() {
                     />
                   </div>
                   {editingRoom && editingRoom.images.length > 0 && (
-                    <p className="text-xs text-gray-500">Existing images will be replaced if new ones are uploaded</p>
+                    <p className="text-xs text-gray-500">{t('existingImagesReplaced')}</p>
                   )}
                 </div>
 
                 <div className="flex gap-3 pt-6">
-                  <button type="button" onClick={() => setShowAddModal(false)} className="flex-1 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 transition font-medium">Cancel</button>
+                  <button type="button" onClick={() => setShowAddModal(false)} className="flex-1 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 transition font-medium">{t('cancel')}</button>
                   <button type="submit" disabled={uploading} className="flex-1 py-3 bg-amber-600 text-white rounded-xl hover:bg-amber-700 transition font-medium disabled:opacity-50">
-                    {uploading ? 'Saving...' : editingRoom ? t('updateRoom') : t('addRoom')}
+                    {uploading ? t('saving') : editingRoom ? t('updateRoom') : t('addRoom')}
                   </button>
                 </div>
               </form>

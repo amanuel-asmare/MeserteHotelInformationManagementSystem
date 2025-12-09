@@ -2,6 +2,7 @@
 
 import { Mail, Phone, MapPin, Calendar, Home, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLanguage } from '../../../../../context/LanguageContext'; // Import Language Hook
 
 interface Guest {
   _id: string;
@@ -36,6 +37,8 @@ const modalVariants = {
 };
 
 export default function GuestProfileModal({ guest, onClose }: Props) {
+  const { t } = useLanguage();
+
   if (!guest) return null;
 
   return (
@@ -75,7 +78,7 @@ export default function GuestProfileModal({ guest, onClose }: Props) {
                 <h2 className="text-2xl md:text-3xl font-bold tracking-wide break-all">
                   {guest.firstName} {guest.lastName}
                 </h2>
-                <p className="text-amber-100 text-base md:text-lg opacity-90 mt-1">VIP Hotel Guest</p>
+                <p className="text-amber-100 text-base md:text-lg opacity-90 mt-1">{t('vipHotelGuest')}</p>
               </div>
             </div>
           </div>
@@ -84,10 +87,10 @@ export default function GuestProfileModal({ guest, onClose }: Props) {
           <div className="p-6 md:p-8 space-y-4 md:space-y-5 bg-white/70 dark:bg-gray-800/70">
             {[
               { icon: Mail, label: guest.email },
-              { icon: Phone, label: guest.phone || "Not provided", condition: !!guest.phone },
+              { icon: Phone, label: guest.phone || t('notProvided'), condition: !!guest.phone },
               { icon: MapPin, label: `${guest.address.city}, ${guest.address.country || ''}` },
-              { icon: Home, label: `Kebele ${guest.address.kebele}`, condition: !!guest.address.kebele },
-              { icon: Calendar, label: `Joined ${new Date(guest.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}` },
+              { icon: Home, label: `${t('kebele')} ${guest.address.kebele}`, condition: !!guest.address.kebele },
+              { icon: Calendar, label: `${t('joined')} ${new Date(guest.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}` },
             ].map((item, i) => (
               item.condition !== false && (
                 <motion.div

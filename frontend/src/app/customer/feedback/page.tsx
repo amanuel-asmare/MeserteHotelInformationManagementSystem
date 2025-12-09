@@ -2,12 +2,16 @@
 import { Button } from 'react-native';
 
 import { useState, useEffect } from 'react';
+
 import { motion } from 'framer-motion';
 import { Star, Send, Crown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../../lib/api';
+import { useLanguage } from '../../../../context/LanguageContext'; // Import Hook
 
 const FeedbackPage = () => {
+  const { t } = useLanguage(); // Use Translation Hook
+  
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [category, setCategory] = useState('general');
@@ -26,11 +30,11 @@ const FeedbackPage = () => {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (rating === 0) {
-      toast.error('Please select a star rating.');
+      toast.error(t('selectStarRating'));
       return;
     }
     if (!message.trim()) {
-      toast.error('Please write a message for your feedback.');
+      toast.error(t('writeMessage'));
       return;
     }
     setIsLoading(true);
@@ -44,7 +48,7 @@ const FeedbackPage = () => {
       });
 
       toast.success(
-        "Thank you! Your feedback has been received. You're helping us become better.",
+        t('feedbackReceived'),
         { duration: 6000, icon: 'Crown' }
       );
 
@@ -55,7 +59,7 @@ const FeedbackPage = () => {
       setMessage('');
       setIsAnonymous(false);
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Failed to submit feedback. Please try again.';
+      const errorMessage = error.response?.data?.message || t('failedSubmitFeedback');
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);
@@ -66,6 +70,7 @@ const FeedbackPage = () => {
   if (showLoading) {
     return (
       <div className="fixed inset-0 bg-gradient-to-br from-amber-950 via-black to-amber-900 flex items-center justify-center overflow-hidden">
+        {/* ... (Existing Animation Code Unchanged) ... */}
         <div className="absolute inset-0">
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-amber-950/50 to-transparent" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(251,191,36,0.15),transparent_70%)]" />
@@ -122,11 +127,11 @@ const FeedbackPage = () => {
           </div>
 
           <motion.h2 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2.5, duration: 1.2 }} className="text-5xl md:text-7xl font-bold text-amber-300 tracking-wider mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>
-            LUXURY HOTEL
+            {t('luxuryHotel')}
           </motion.h2>
 
           <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 3.2, duration: 1.5 }} className="text-2xl text-amber-100 font-light tracking-widest">
-            Your Voice Matters
+            {t('yourVoiceMatters')}
           </motion.p>
 
           <div className="mt-20 w-96 mx-auto">
@@ -142,7 +147,7 @@ const FeedbackPage = () => {
             </div>
 
             <motion.div animate={{ opacity: [0.6, 1, 0.6] }} transition={{ duration: 3, repeat: Infinity }} className="text-center mt-8 text-2xl font-medium text-amber-200 tracking-wider">
-              Preparing Your Royal Feedback Experience...
+              {t('preparingFeedback')}
             </motion.div>
           </div>
         </motion.div>
@@ -173,10 +178,10 @@ const FeedbackPage = () => {
             <Crown className="w-20 h-20 text-amber-600 mx-auto mb-4" />
           </motion.div>
           <h1 className="text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-orange-600 mb-4">
-            Your Feedback Matters
+            {t('yourFeedbackMatters')}
           </h1>
           <p className="text-xl text-gray-700 dark:text-gray-300 font-light tracking-wide">
-            Help us serve you better at Meseret Hotel
+            {t('helpUsServeBetter')}
           </p>
         </motion.div>
 
@@ -191,7 +196,7 @@ const FeedbackPage = () => {
             {/* Star Rating */}
             <div>
               <label className="block text-lg font-semibold text-gray-800 dark:text-white mb-4">
-                How would you rate your stay?
+                {t('howRateStay')}
               </label>
               <div className="flex items-center justify-center gap-4">
                 {[1, 2, 3, 4, 5].map((star) => (
@@ -217,55 +222,55 @@ const FeedbackPage = () => {
                 ))}
               </div>
               <p className="text-center mt-4 text-gray-600 dark:text-gray-400">
-                {rating === 5 && "Outstanding! We're honored!"}
-                {rating === 4 && "Great! Thank you!"}
-                {rating === 3 && "Good — we can do better"}
-                {rating === 2 && "We're sorry — tell us more"}
-                {rating === 1 && "Very disappointed — please help us improve"}
-                {rating === 0 && "Tap the stars to rate"}
+                {rating === 5 && t('outstanding')}
+                {rating === 4 && t('greatThankYou')}
+                {rating === 3 && t('goodCanDoBetter')}
+                {rating === 2 && t('sorryTellUsMore')}
+                {rating === 1 && t('veryDisappointed')}
+                {rating === 0 && t('tapStars')}
               </p>
             </div>
 
             {/* Category & Target */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Feedback Category</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">{t('feedbackCategory')}</label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                   className="w-full px-5 py-4 bg-amber-50 dark:bg-gray-700 border border-amber-200 dark:border-amber-800 rounded-xl focus:ring-4 focus:ring-amber-300 dark:focus:ring-amber-700 transition-all"
                 >
-                  <option value="general">General Experience</option>
-                  <option value="room">Room & Facilities</option>
-                  <option value="food">Food & Dining</option>
-                  <option value="service">Staff & Service</option>
+                  <option value="general">{t('generalExperience')}</option>
+                  <option value="room">{t('roomFacilities')}</option>
+                  <option value="food">{t('foodDining')}</option>
+                  <option value="service">{t('staffService')}</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Send To</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">{t('sendTo')}</label>
                 <select
                   value={target}
                   onChange={(e) => setTarget(e.target.value)}
                   className="w-full px-5 py-4 bg-amber-50 dark:bg-gray-700 border border-amber-200 dark:border-amber-800 rounded-xl focus:ring-4 focus:ring-amber-300 dark:focus:ring-amber-700 transition-all"
                 >
-                  <option value="all">All Departments</option>
-                  <option value="admin">Hotel Management</option>
-                  <option value="manager">General Manager</option>
-                  <option value="receptionist">Front Desk</option>
-                  <option value="cashier">Restaurant Staff</option>
+                  <option value="all">{t('allDepartments')}</option>
+                  <option value="admin">{t('hotelManagement')}</option>
+                  <option value="manager">{t('generalManager')}</option>
+                  <option value="receptionist">{t('frontDesk')}</option>
+                  <option value="cashier">{t('restaurantStaff')}</option>
                 </select>
               </div>
             </div>
 
             {/* Message */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Your Message</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">{t('yourMessage')}</label>
               <textarea
                 rows={6}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder="Share your thoughts, suggestions, or any concerns... We are listening."
+                placeholder={t('shareThoughts')}
                 className="w-full px-5 py-4 bg-amber-50 dark:bg-gray-700 border border-amber-200 dark:border-amber-800 rounded-xl focus:ring-4 focus:ring-amber-300 dark:focus:ring-amber-700 transition-all resize-none"
               />
             </div>
@@ -280,7 +285,7 @@ const FeedbackPage = () => {
                   className="w-6 h-6 text-amber-600 rounded focus:ring-amber-500"
                 />
                 <span className="text-lg font-medium text-gray-700 dark:text-gray-300">
-                  Submit anonymously
+                  {t('submitAnonymously')}
                 </span>
               </label>
             </div>
@@ -294,11 +299,11 @@ const FeedbackPage = () => {
               className="w-full py-6 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-2xl font-bold text-xl hover:shadow-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-4"
             >
               {isLoading ? (
-                <>Submitting...</>
+                <>{t('submitting')}</>
               ) : (
                 <>
                   <Send size={28} />
-                  Send Your Feedback
+                  {t('sendFeedback')}
                 </>
               )}
             </motion.button>
@@ -312,7 +317,7 @@ const FeedbackPage = () => {
             className="text-center mt-10"
           >
             <p className="text-gray-600 dark:text-gray-400 italic">
-              "Your feedback is the breakfast of champions at Meseret Hotel"
+              {t('feedbackQuote')}
             </p>
           </motion.div>
         </motion.div>

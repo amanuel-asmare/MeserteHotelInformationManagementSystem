@@ -1,6 +1,5 @@
 'use client';
 import { Image } from 'react-native';
-
 import { useState, useEffect, useMemo } from 'react';
 
 import { motion, AnimatePresence } from 'framer-motion';
@@ -14,6 +13,7 @@ import { format, isPast, parseISO, isToday } from 'date-fns';
 import ImageCarousel from '../../../../../components/ui/ImageCarousel';
 import { useAuth } from '../../../../../context/AuthContext';
 import { Button } from '../../../../../components/ui/Button';
+import { useLanguage } from '../../../../../context/LanguageContext'; // Import Hook
 
 interface Room {
   _id: string;
@@ -51,6 +51,7 @@ interface Booking {
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
 
 export default function ReceptionistViewReservations() {
+  const { t } = useLanguage(); // Init hook
   const { user } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,21 +62,18 @@ export default function ReceptionistViewReservations() {
   const [activeStatusFilter, setActiveStatusFilter] = useState<BookingStatus | 'all'>('all');
   const [minTimePassed, setMinTimePassed] = useState(false);
   
-  // FIX: Store random values in state to avoid hydration mismatch
   const [particles, setParticles] = useState<{x: number, rotate: number}[]>([]);
 
   const bookingsPerPage = 10;
 
-  // Royal Loading Delay & Particle Generation
   useEffect(() => {
-    // Generate stable random values for client-side only
     setParticles([
       { x: Math.random() * 100 - 50, rotate: 0 },
       { x: Math.random() * 100 - 50, rotate: 0 },
       { x: Math.random() * 100 - 50, rotate: 0 }
     ]);
 
-    const timer = setTimeout(() => setMinTimePassed(true), 3000); // 3s luxury load
+    const timer = setTimeout(() => setMinTimePassed(true), 3000); 
     return () => clearTimeout(timer);
   }, []);
 
@@ -117,7 +115,6 @@ export default function ReceptionistViewReservations() {
 
   const filteredAndCategorizedBookings = useMemo(() => {
     return bookings.filter(booking => {
-      // Safety Checks
       const roomNum = booking.room?.roomNumber?.toLowerCase() || '';
       const fName = booking.user?.firstName?.toLowerCase() || '';
       const lName = booking.user?.lastName?.toLowerCase() || '';
@@ -151,41 +148,38 @@ export default function ReceptionistViewReservations() {
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
   const handleMarkAsCompleted = async (bookingId: string) => {
-    if (!confirm("Are you sure you want to mark this booking as 'Completed'? This action cannot be undone.")) {
+    if (!confirm(t('confirmCompleteBooking'))) { // Using Translation
       return;
     }
     try {
       await axios.put(`${API_BASE}/api/bookings/receptionist/${bookingId}/complete`, {}, {
         withCredentials: true,
       });
-      alert('Booking marked as completed successfully!');
+      alert(t('bookingMarkedSuccess')); // Using Translation
       fetchAllBookings();
     } catch (err: any) {
       console.error('Failed to mark booking as completed:', err.response?.data?.message || err.message);
-      alert(err.response?.data?.message || 'Failed to update booking status.');
+      alert(err.response?.data?.message || t('failedUpdateStatus')); // Using Translation
     }
   };
 
   const statusFilterButtons = [
-    { status: 'all', label: 'All', icon: ListChecks },
-    { status: 'pending', label: 'Pending', icon: Hourglass },
-    { status: 'confirmed', label: 'Confirmed', icon: CheckSquare },
-    { status: 'cancelled', label: 'Cancelled', icon: XCircle },
-    { status: 'completed', label: 'Completed', icon: CheckCircle },
+    { status: 'all', label: t('all'), icon: ListChecks },
+    { status: 'pending', label: t('pending'), icon: Hourglass },
+    { status: 'confirmed', label: t('confirmed'), icon: CheckSquare },
+    { status: 'cancelled', label: t('cancelled'), icon: XCircle },
+    { status: 'completed', label: t('completed'), icon: CheckCircle },
   ];
 
-  // --- ROYAL LOADING SCREEN ---
   if (loading || !minTimePassed) {
     return (
       <div className="fixed inset-0 bg-gradient-to-br from-blue-950 via-slate-900 to-black flex items-center justify-center overflow-hidden z-50">
         <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
         
-        {/* Floating Icons - Using stable state 'particles' */}
         {particles.length > 0 && [BookOpenCheck, Hotel, Users].map((Icon, i) => (
            <motion.div
              key={i}
              className="absolute text-blue-500/20"
-             // Use the stable 'x' value from state instead of Math.random() directly
              initial={{ y: '100vh', x: `${particles[i].x}%`, rotate: 0 }}
              animate={{ y: '-20vh', rotate: 360 }}
              transition={{ 
@@ -216,10 +210,10 @@ export default function ReceptionistViewReservations() {
             </div>
 
             <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight mb-2">
-              GUEST <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">RESERVATIONS</span>
+              {t('guest').toUpperCase()} <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">{t('reservations').toUpperCase()}</span>
             </h2>
             <p className="text-blue-200/70 font-medium text-lg tracking-widest uppercase">
-              Syncing Booking Data...
+              {t('syncingBookingData')}...
             </p>
         </motion.div>
       </div>
@@ -275,13 +269,13 @@ export default function ReceptionistViewReservations() {
               <Hotel size={28} />
             </motion.div>
             <div>
-              <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Guest Reservations</h1>
-              <p className="text-gray-600 text-lg">Efficiently manage all room bookings</p>
+              <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">{t('guestReservations')}</h1>
+              <p className="text-gray-600 text-lg">{t('manageBookingsDesc')}</p>
             </div>
           </div>
         </div>
 
-        {/* Category Tabs for Active/History */}
+        {/* Category Tabs */}
         <div className="mb-6 flex gap-4 border-b border-gray-200">
           <motion.button
             whileHover={{ scale: 1.05 }}
@@ -289,7 +283,7 @@ export default function ReceptionistViewReservations() {
             className={`pb-3 px-4 flex items-center gap-2 font-semibold text-lg transition-colors duration-200 ${activeCategoryTab === 'active' ? 'border-b-3 border-blue-600 text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}
             onClick={() => { setActiveCategoryTab('active'); setActiveStatusFilter('all'); setCurrentPage(1); }}
           >
-            <ListChecks size={22} /> Active Reservations
+            <ListChecks size={22} /> {t('activeReservations')}
           </motion.button>
           <motion.button
             whileHover={{ scale: 1.05 }}
@@ -297,7 +291,7 @@ export default function ReceptionistViewReservations() {
             className={`pb-3 px-4 flex items-center gap-2 font-semibold text-lg transition-colors duration-200 ${activeCategoryTab === 'history' ? 'border-b-3 border-blue-600 text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}
             onClick={() => { setActiveCategoryTab('history'); setActiveStatusFilter('all'); setCurrentPage(1); }}
           >
-            <History size={22} /> Reservation History
+            <History size={22} /> {t('reservationHistory')}
           </motion.button>
         </div>
 
@@ -330,7 +324,7 @@ export default function ReceptionistViewReservations() {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
           <input
             type="text"
-            placeholder="Search by room, guest name, email, or status..."
+            placeholder={t('searchReservationsPlaceholder')}
             value={searchTerm}
             onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }}
             className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 shadow-sm"
@@ -346,12 +340,11 @@ export default function ReceptionistViewReservations() {
                 const isCheckOutToday = isToday(parseISO(booking.checkOut));
                 const shouldShowCheckoutWarning = (isCheckOutDatePast || isCheckOutToday) && booking.status !== 'completed' && booking.status !== 'cancelled';
 
-                // Safely access nested properties with defaults
-                const roomNumber = booking.room?.roomNumber || 'Unknown';
-                const roomType = booking.room?.type || 'Unknown';
+                const roomNumber = booking.room?.roomNumber || t('unknown');
+                const roomType = booking.room?.type || t('unknown');
                 const roomPrice = booking.room?.price || 0;
-                const guestName = booking.user ? `${booking.user.firstName} ${booking.user.lastName}` : 'Unknown Guest';
-                const guestEmail = booking.user?.email || 'No Email';
+                const guestName = booking.user ? `${booking.user.firstName} ${booking.user.lastName}` : t('unknownGuest');
+                const guestEmail = booking.user?.email || t('noEmail');
                 const guestPhone = booking.user?.phoneNumber;
                 const roomImages = booking.room?.images;
 
@@ -372,7 +365,7 @@ export default function ReceptionistViewReservations() {
                         transition={{ delay: 0.2 }}
                         className="absolute top-4 right-4 bg-amber-500 text-white px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1 shadow-md z-10"
                       >
-                        <Clock size={16} /> {isCheckOutToday ? 'Check-out Today!' : 'Checkout Passed!'}
+                        <Clock size={16} /> {isCheckOutToday ? t('checkoutToday') : t('checkoutPassed')}
                       </motion.div>
                     )}
 
@@ -380,7 +373,7 @@ export default function ReceptionistViewReservations() {
                       {roomImages && roomImages[0] ? (
                         <motion.img
                           src={getImageUrl(roomImages[0])}
-                          alt={`Room ${roomNumber}`}
+                          alt={`${t('room')} ${roomNumber}`}
                           className="w-full h-40 object-cover rounded-xl group-hover:scale-105 transition-transform duration-300"
                           onClick={() => setImageCarousel(roomImages!)}
                           whileHover={{ scale: 1.02 }}
@@ -398,38 +391,38 @@ export default function ReceptionistViewReservations() {
                           whileHover={{ opacity: 1 }}
                           className="absolute bottom-2 right-2 bg-black/50 text-white px-2 py-1 rounded-full text-xs flex items-center gap-1"
                         >
-                          <ImageIcon size={12} /> {roomImages.length} photos
+                          <ImageIcon size={12} /> {roomImages.length} {t('photos').toLowerCase()}
                         </motion.div>
                       )}
                     </div>
 
                     <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-3 gap-x-6">
                       <div className="flex flex-col">
-                        <h3 className="font-bold text-xl text-gray-900 mb-1">Room {roomNumber}</h3>
-                        <p className="text-base text-gray-700"><Hotel size={16} className="inline mr-1 text-blue-500" /> {roomType.charAt(0).toUpperCase() + roomType.slice(1)} Room</p>
-                        <p className="text-sm text-gray-500">ETB {roomPrice}/night</p>
+                        <h3 className="font-bold text-xl text-gray-900 mb-1">{t('room')} {roomNumber}</h3>
+                        <p className="text-base text-gray-700"><Hotel size={16} className="inline mr-1 text-blue-500" /> {roomType.charAt(0).toUpperCase() + roomType.slice(1)} {t('room')}</p>
+                        <p className="text-sm text-gray-500">ETB {roomPrice}/{t('night').toLowerCase()}</p>
                       </div>
 
                       <div className="flex flex-col">
-                        <p className="text-sm text-gray-600 font-medium">Guest:</p>
+                        <p className="text-sm text-gray-600 font-medium">{t('guest')}:</p>
                         <p className="text-base font-semibold text-gray-800">{guestName}</p>
                         <p className="text-sm text-gray-500">{guestEmail}</p>
                         {guestPhone && <p className="text-sm text-gray-500">{guestPhone}</p>}
                       </div>
 
                       <div className="flex flex-col">
-                        <p className="text-sm text-gray-600 font-medium">Booking Period:</p>
+                        <p className="text-sm text-gray-600 font-medium">{t('bookingPeriod')}:</p>
                         <p className="text-base text-gray-800"><Calendar size={16} className="inline mr-1 text-purple-500" /> {format(parseISO(booking.checkIn), 'MMM dd, yyyy')} - {format(parseISO(booking.checkOut), 'MMM dd, yyyy')}</p>
-                        <p className="text-base text-gray-800"><Users size={16} className="inline mr-1 text-green-500" /> {booking.guests} Guests</p>
+                        <p className="text-base text-gray-800"><Users size={16} className="inline mr-1 text-green-500" /> {booking.guests} {t('guestsLabel')}</p>
                       </div>
 
                       <div className="flex flex-col">
-                        <p className="text-sm text-gray-600 font-medium">Total Price:</p>
+                        <p className="text-sm text-gray-600 font-medium">{t('totalPrice')}:</p>
                         <p className="text-2xl font-extrabold text-amber-600"><DollarSign size={20} className="inline mr-1" /> ETB {booking.totalPrice.toLocaleString()}</p>
                       </div>
 
                       <div className="flex flex-col">
-                        <p className="text-sm text-gray-600 font-medium">Booking Status:</p>
+                        <p className="text-sm text-gray-600 font-medium">{t('bookingStatus')}:</p>
                         <span className={`px-3 py-1 text-sm rounded-full font-semibold inline-flex items-center gap-1 min-w-[100px] justify-center
                           ${booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
                             booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
@@ -441,19 +434,25 @@ export default function ReceptionistViewReservations() {
                           {booking.status === 'confirmed' && <CheckSquare size={16} />}
                           {booking.status === 'cancelled' && <XCircle size={16} />}
                           {booking.status === 'completed' && <CheckCircle size={16} />}
-                          {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                          {booking.status === 'confirmed' ? t('confirmed') :
+                           booking.status === 'pending' ? t('pending') :
+                           booking.status === 'cancelled' ? t('cancelled') :
+                           booking.status === 'completed' ? t('completed') : booking.status}
                         </span>
                       </div>
 
                       <div className="flex flex-col">
-                        <p className="text-sm text-gray-600 font-medium">Payment Status:</p>
+                        <p className="text-sm text-gray-600 font-medium">{t('paymentStatus')}:</p>
                         <span className={`px-3 py-1 text-sm rounded-full font-semibold inline-flex items-center gap-1 min-w-[100px] justify-center
                           ${booking.paymentStatus === 'completed' ? 'bg-green-100 text-green-800' :
                             booking.paymentStatus === 'pending' ? 'bg-orange-100 text-orange-800' :
                             booking.paymentStatus === 'refunded' ? 'bg-blue-100 text-blue-800' :
                             'bg-red-100 text-red-800'
                           }`}>
-                          <CreditCard size={16} /> {booking.paymentStatus.charAt(0).toUpperCase() + booking.paymentStatus.slice(1)}
+                          <CreditCard size={16} /> 
+                          {booking.paymentStatus === 'completed' ? t('completed') :
+                           booking.paymentStatus === 'pending' ? t('pending') :
+                           booking.paymentStatus === 'refunded' ? t('refunded') : t('failed')}
                         </span>
                       </div>
                     </div>
@@ -469,7 +468,7 @@ export default function ReceptionistViewReservations() {
                           onClick={() => handleMarkAsCompleted(booking._id)}
                           className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2 px-5 py-2 rounded-lg text-base shadow-lg hover:shadow-xl transition-all duration-200"
                         >
-                          <CheckCircle size={20} /> Mark as Completed
+                          <CheckCircle size={20} /> {t('markAsCompleted')}
                         </Button>
                       </motion.div>
                     )}
@@ -485,8 +484,8 @@ export default function ReceptionistViewReservations() {
               className="text-center py-16 bg-white rounded-xl shadow-md border border-gray-100"
             >
               <Hotel size={60} className="mx-auto mb-4 text-gray-300" />
-              <p className="text-xl text-gray-500 font-medium">No {activeCategoryTab} reservations found matching your criteria.</p>
-              <p className="text-md text-gray-400 mt-2">Try adjusting your search or filters.</p>
+              <p className="text-xl text-gray-500 font-medium">{t('noReservationsFound')}</p>
+              <p className="text-md text-gray-400 mt-2">{t('adjustSearchFilters')}</p>
             </motion.div>
           )}
         </div>
@@ -505,7 +504,7 @@ export default function ReceptionistViewReservations() {
               <ArrowLeft size={22} />
             </motion.button>
             <span className="text-lg font-medium text-gray-700">
-              Page {currentPage} of {totalPages}
+              {t('page')} {currentPage} {t('of')} {totalPages}
             </span>
             <motion.button
               whileHover={{ scale: 1.1 }}

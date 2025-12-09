@@ -1,16 +1,18 @@
 'use client';
+import { Button, Modal, View } from 'react-native';
 
 import { useState } from 'react';
-import { Menu, X, LogIn, UserPlus, LogOut, Globe } from 'lucide-react';
+
+import { Menu, X, LogIn, UserPlus, LogOut, Globe, User } from 'lucide-react';
 import Link from 'next/link';
 import LoginForm from './forms/LoginForm';
 import RegisterForm from './forms/RegisterForm';
 import { useAuth } from '../context/AuthContext';
-import { useLanguage } from '../context/LanguageContext'; // Import Hook
+import { useLanguage } from '../context/LanguageContext';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
-  const { language, setLanguage, t } = useLanguage(); // Use Hook
+  const { language, setLanguage, t } = useLanguage();
   
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
@@ -22,17 +24,25 @@ export default function Navbar() {
     am: { name: 'አማርኛ', flag: 'ET' }
   };
 
+  const handleMobileLinkClick = (action: () => void) => {
+    action();
+    setMobileOpen(false); // Close menu after clicking
+  };
+
   return (
     <>
       <nav className="sticky top-0 z-50 bg-black/90 backdrop-blur-xl text-white border-b border-amber-600/20">
         <div className="container mx-auto flex items-center justify-between px-6 py-4">
+          
+          {/* LOGO */}
           <Link href="/" className="text-3xl font-black tracking-wider">
             <span className="text-amber-400">Meseret</span> Hotel
           </Link>
 
           <div className="flex items-center gap-6">
-            {/* Language Selector */}
-            <div className="relative">
+            
+            {/* --- DESKTOP: Language Selector --- */}
+            <div className="relative hidden md:block">
               <button
                 onClick={() => setLangOpen(!langOpen)}
                 className="flex items-center gap-3 px-5 py-3 bg-gradient-to-r from-amber-600/20 to-orange-600/20 hover:from-amber-600/40 hover:to-orange-600/40 rounded-full border border-amber-500/50 transition-all"
@@ -63,7 +73,7 @@ export default function Navbar() {
               )}
             </div>
 
-            {/* Auth Buttons */}
+            {/* --- DESKTOP: Auth Buttons (Hidden on Mobile) --- */}
             {user ? (
               <div className="hidden md:flex items-center gap-4">
                 <span className="font-medium text-amber-300">{user.firstName}</span>
@@ -82,23 +92,77 @@ export default function Navbar() {
               </div>
             )}
             
-            {/* Mobile Toggle */}
-            <button onClick={() => setMobileOpen(!mobileOpen)} className="md:hidden">
-              {mobileOpen ? <X size={28} /> : <Menu size={28} />}
-            </button>
+            {/* --- MOBILE TOGGLE BUTTON --- */}
+            <div className="flex items-center gap-4 md:hidden">
+                {/* Small Lang Indicator for Mobile */}
+                <button 
+                  onClick={() => setLanguage(language === 'en' ? 'am' : 'en')}
+                  className="px-3 py-1 border border-amber-600/50 rounded-full text-xs text-amber-400 font-bold"
+                >
+                  {language === 'en' ? 'EN' : 'AM'}
+                </button>
+
+                <button onClick={() => setMobileOpen(!mobileOpen)} className="text-white hover:text-amber-400 transition">
+                  {mobileOpen ? <X size={32} /> : <Menu size={32} />}
+                </button>
+            </div>
           </div>
         </div>
+
+        {/* ========================================= */}
+        {/* === MOBILE MENU DROPDOWN (Added This) === */}
+        {/* ========================================= */}
+        {mobileOpen && (
+          <div className="md:hidden absolute top-full left-0 w-full bg-black/95 border-b border-amber-600/30 backdrop-blur-xl shadow-2xl flex flex-col p-6 animate-in slide-in-from-top-5 duration-300">
+            {user ? (
+              // Mobile View: Logged In
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center gap-3 pb-4 border-b border-gray-800">
+                   <div className="w-10 h-10 bg-amber-600 rounded-full flex items-center justify-center font-bold text-xl">
+                      {user.firstName.charAt(0)}
+                   </div>
+                   <div>
+                      <p className="font-bold text-lg text-white">{user.firstName}</p>
+                      <p className="text-xs text-gray-400">Logged In</p>
+                   </div>
+                </div>
+                <button 
+                  onClick={() => handleMobileLinkClick(logout)} 
+                  className="flex items-center justify-center gap-2 px-5 py-4 bg-red-600/20 text-red-400 border border-red-600/50 rounded-xl hover:bg-red-600/30 transition w-full font-bold"
+                >
+                  <LogOut size={20} /> {t('logout')}
+                </button>
+              </div>
+            ) : (
+              // Mobile View: Logged Out
+              <div className="flex flex-col gap-4">
+                <button 
+                  onClick={() => handleMobileLinkClick(() => setShowLogin(true))} 
+                  className="flex items-center justify-center gap-2 px-6 py-4 border-2 border-amber-500 rounded-xl hover:bg-amber-500/10 transition w-full font-bold text-lg"
+                >
+                  <LogIn size={20} /> {t('login')}
+                </button>
+                <button 
+                  onClick={() => handleMobileLinkClick(() => setShowRegister(true))} 
+                  className="flex items-center justify-center gap-2 px-6 py-4 bg-amber-600 text-white rounded-xl hover:bg-amber-700 transition w-full font-bold text-lg"
+                >
+                  <UserPlus size={22} /> {t('register')}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
       </nav>
-      {/* ... rest of modals ... */}
+
+      {/* Modals */}
       {showLogin && <LoginForm onClose={() => setShowLogin(false)} onSwitchToRegister={() => { setShowLogin(false); setShowRegister(true); }} />}
       {showRegister && <RegisterForm onClose={() => setShowRegister(false)} onSwitchToLogin={() => { setShowRegister(false); setShowLogin(true); }} />}
     </>
   );
 }
 /*'use client';
-import { Button, Modal } from 'react-native';
 
-import { useState } from 'react';
 import { Menu, X, LogIn, UserPlus, LogOut, Globe } from 'lucide-react';
 import Link from 'next/link';
 import LoginForm from './forms/LoginForm';

@@ -17,7 +17,7 @@ import {
   PieChart, Pie, Cell, Legend 
 } from 'recharts';
 import NewsFeed from '../../../components/NewsFeed';
-
+import { useLanguage } from '../../../context/LanguageContext';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
 const COLORS = ['#F59E0B', '#E5E7EB']; 
 
@@ -36,7 +36,7 @@ export default function AdminDashboard() {
   
   // FIX: Generate random positions only on client mount to avoid hydration mismatch
   const [particles, setParticles] = useState<{x: number, size: number, delay: number}[]>([]);
-
+const {t,language}=useLanguage();
   useEffect(() => {
     // Generate random values once on mount
     setParticles([
@@ -67,9 +67,9 @@ export default function AdminDashboard() {
   }, []);
 
   const occupancyData = useMemo(() => [
-    { name: 'Occupied', value: stats.occupiedRooms },
-    { name: 'Available', value: Math.max(0, stats.totalRooms - stats.occupiedRooms) },
-  ], [stats]);
+    { name: t('occupied'), value: stats.occupiedRooms },
+    { name:  t('available'), value: Math.max(0, stats.totalRooms - stats.occupiedRooms) },
+  ], [stats,t]);
 
   const revenueData = useMemo(() => {
     const base = stats.totalRevenue || 1000;
@@ -159,7 +159,7 @@ export default function AdminDashboard() {
             transition={{ delay: 0.5 }}
             className="text-4xl md:text-6xl font-black text-white tracking-tight mb-2"
           >
-            ADMIN <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-500">PORTAL</span>
+           {language === 'am' ? 'አስተዳዳሪ' : 'ADMIN'} <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-500">{language === 'am' ? 'ፖርታል' : 'PORTAL'}</span>
           </motion.h2>
 
           <motion.div 
@@ -174,7 +174,7 @@ export default function AdminDashboard() {
             transition={{ duration: 2, repeat: Infinity }}
             className="text-gray-400 font-mono text-sm tracking-widest uppercase"
           >
-            Initializing Command Systems...
+             {language === 'am' ? 'ሲስተም በመጫን ላይ...' : 'Initializing Command Systems...'}
           </motion.p>
 
         </motion.div>
@@ -192,48 +192,48 @@ export default function AdminDashboard() {
       >
         <div>
           <h1 className="text-4xl font-black text-gray-900 tracking-tight">
-            Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-orange-600">{user?.firstName || 'Admin'}!</span>
+          {t('welcome')}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-orange-600">{user?.firstName || 'Admin'}!</span>
           </h1>
-          <p className="text-gray-600 mt-2 font-medium">Here is your daily hotel performance overview.</p>
+        <p className="text-gray-600 mt-2 font-medium">{language === 'am' ? 'የሆቴልዎ አፈጻጸም አጠቃላይ እይታ እዚህ አለ።' : 'Here is your daily hotel performance overview.'}</p>
         </div>
         <div className="text-right hidden md:block bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-100">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Today's Date</p>
-          <p className="text-lg font-bold text-gray-800">
-            {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('todaysDate')}</p>
+            <p className="text-lg font-bold text-gray-800">
+            {new Date().toLocaleDateString(language === 'en' ? 'en-US' : 'am-ET', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
           </p>
         </div>
       </motion.div>
 
       {/* --- Stat Cards Grid --- */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard 
-          title="Occupied Rooms" 
+       <StatCard 
+          title={t('occupiedRooms')} 
           value={`${stats.occupiedRooms}/${stats.totalRooms}`} 
-          subValue={`${occupancyRate}% Rate`}
+          subValue={`${occupancyRate}% ${t('rate')}`}
           icon={<Home size={24} className="text-white" />} 
           bgIcon="bg-blue-500"
           trend="+12%"
         />
-        <StatCard 
-          title="Today's Check-ins" 
+         <StatCard 
+          title={t('todaysCheckins')} 
           value={stats.todaysCheckIns} 
-          subValue="Guests Arrived"
+          subValue={t('guestsArrived')}
           icon={<CalendarCheck size={24} className="text-white" />} 
           bgIcon="bg-green-500"
           trend="+5%"
         />
         <StatCard 
-          title="Pending Feedback" 
+          title={t('pendingFeedback')} 
           value={stats.pendingFeedback} 
-          subValue="Action Required"
+          subValue={t('actionRequired')}
           icon={<FileText size={24} className="text-white" />} 
           bgIcon="bg-purple-500"
           trend="+3" 
         />
         <StatCard 
-          title="Revenue Today" 
+          title={t('revenueToday')} 
           value={`ETB ${stats.totalRevenue.toLocaleString()}`} 
-          subValue="Cash & Chapa"
+          subValue={t('cashChapa')}
           icon={<DollarSign size={24} className="text-white" />} 
           bgIcon="bg-amber-500"
           trend="+8.5%"
@@ -253,12 +253,12 @@ export default function AdminDashboard() {
           <div className="flex justify-between items-center mb-6">
             <div>
               <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                <TrendingUp className="text-amber-500" /> Revenue Analytics
+                <TrendingUp className="text-amber-500" /> {t('revenueAnalytics')}
               </h3>
-              <p className="text-sm text-gray-500">Income trend over the last 7 days</p>
+              <p className="text-sm text-gray-500">{t('incomeTrend')}</p>
             </div>
             <button className="text-sm bg-gray-50 hover:bg-gray-100 px-3 py-1 rounded-lg text-gray-600 font-medium transition">
-              Weekly Report
+                {t('weeklyReport')}
             </button>
           </div>
           <div className="h-[300px] w-full">
@@ -275,7 +275,7 @@ export default function AdminDashboard() {
                 <YAxis axisLine={false} tickLine={false} tick={{fill: '#6B7280', fontSize: 12}} />
                 <Tooltip 
                   contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
-                  formatter={(value: number) => [`ETB ${value.toLocaleString()}`, 'Revenue']}
+                  formatter={(value: number) => [`ETB ${value.toLocaleString()}`, t('revenueToday')]}
                 />
                 <Area type="monotone" dataKey="amount" stroke="#F59E0B" strokeWidth={3} fillOpacity={1} fill="url(#colorAmt)" />
               </AreaChart>
@@ -292,9 +292,9 @@ export default function AdminDashboard() {
         >
           <div className="mb-4">
             <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-              <PieIcon className="text-blue-500" /> Room Status
+              <PieIcon className="text-blue-500" /> {t('roomStatus')}
             </h3>
-            <p className="text-sm text-gray-500">Live occupancy distribution</p>
+            <p className="text-sm text-gray-500">{t('liveOccupancy')}</p>
           </div>
           
           <div className="flex-1 min-h-[250px] relative">
@@ -321,7 +321,7 @@ export default function AdminDashboard() {
             {/* Center Text */}
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-8">
               <span className="text-3xl font-black text-gray-800">{occupancyRate}%</span>
-              <span className="text-xs text-gray-500 font-medium uppercase">Occupied</span>
+              <span className="text-xs text-gray-500 font-medium uppercase">{t('occupied')}</span>
             </div>
           </div>
         </motion.div>
@@ -330,22 +330,22 @@ export default function AdminDashboard() {
       {/* --- Quick Actions --- */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <QuickActionCard 
-          title="Manage Staff" 
-          desc="Access staff portal"
+          title={t('manageStaff')}
+          desc={t('accessStaffPortal')}
           icon={<Users size={28} />}
           gradient="bg-gradient-to-br from-blue-500 to-blue-700"
           href="/admin/staff"
         />
         <QuickActionCard 
-          title="Room Control" 
-          desc="Update room status"
+        title={t('roomControl')} 
+          desc={t('updateRoomStatus')}
           icon={<BedDouble size={28} />}
           gradient="bg-gradient-to-br from-green-500 to-green-700"
           href="/admin/rooms"
         />
         <QuickActionCard 
-          title="Full Reports" 
-          desc="Download analytics"
+          title={t('fullReports')} 
+          desc={t('downloadAnalytics')}
           icon={<TrendingUp size={28} />}
           gradient="bg-gradient-to-br from-purple-500 to-purple-700"
           href="/admin/reports"
@@ -362,8 +362,8 @@ export default function AdminDashboard() {
         >
           <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
             <div>
-              <h3 className="text-lg font-bold text-gray-900">Recent Bookings</h3>
-              <p className="text-sm text-gray-500">Latest transactions from guests</p>
+              <h3 className="text-lg font-bold text-gray-900">{t('recentBookings')}</h3>
+              <p className="text-sm text-gray-500">{t('latestTransactions')}</p>
             </div>
             <Link href="/admin/reports" className="p-2 hover:bg-white rounded-full transition shadow-sm border border-transparent hover:border-gray-200">
               <MoreHorizontal size={20} className="text-gray-600" />
@@ -373,11 +373,11 @@ export default function AdminDashboard() {
             <table className="w-full">
               <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold tracking-wider">
                 <tr>
-                  <th className="px-6 py-4 text-left">Guest</th>
-                  <th className="px-6 py-4 text-left">Room</th>
-                  <th className="px-6 py-4 text-left">Amount</th>
-                  <th className="px-6 py-4 text-left">Status</th>
-                  <th className="px-6 py-4 text-left">Date</th>
+                  <th className="px-6 py-4 text-left">{t('guest')}</th>
+                    <th className="px-6 py-4 text-left">{t('room')}</th>
+                  <th className="px-6 py-4 text-left">{t('amount')}</th>
+                  <th className="px-6 py-4 text-left">{t('status')}</th>
+                  <th className="px-6 py-4 text-left">{t('date')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -426,7 +426,7 @@ export default function AdminDashboard() {
                       <div className="bg-gray-50 p-4 rounded-full mb-3">
                         <FileText size={24} className="text-gray-300" />
                       </div>
-                      No recent bookings found.
+                     {t('noRecentBookings')}
                     </td>
                   </tr>
                 )}
@@ -493,7 +493,9 @@ const QuickActionCard = ({ title, desc, icon, gradient, href }: any) => (
       </div>
     </motion.div>
   </Link>
-);/*'use client';
+);
+
+/*'use client';
 
 import { motion } from 'framer-motion';
 import { Home, Calendar, FileText, BarChart3, Users } from 'lucide-react';

@@ -20,15 +20,15 @@ export default function Sidebar({ isOpen, onClose, isMobile }: SidebarProps) {
   const { t } = useLanguage();
 
   const navItems = [
-    { href: '/cashier', label: t("Dashboard"), icon: <DashboardIcon /> },
-    { href: '/cashier/billing', label: t('Billing Management'), icon: <BillingIcon /> },
-    { href: '/cashier/payroll', label: t('Payroll'), icon: <PayrollIcon /> },
-    { href: '/cashier/reports', label: t('Generate Report'), icon: <ReportIcon /> },
-    { href: '/cashier/feedback', label: t('View Feedback'), icon: <FeedbackIcon /> },
-    { href: '/cashier/attendance', label: t('My Attendance'), icon: <AttendanceIcon /> },
-    { href: '/cashier/chat', label: t('Chat Online'), icon: <ChatIcon />},
-    { href: '/cashier/settings', label: t('Settings'), icon: <SettingsIcon /> },
-    { href: '/cashier/ownSalary', label: 'Salary Management', icon: <CircleDollarSign size={20} /> }
+    { href: '/cashier', label: t("dashboard"), icon: <DashboardIcon /> },
+    { href: '/cashier/billing', label: t('billing'), icon: <BillingIcon /> },
+    { href: '/cashier/payroll', label: t('pyroll'), icon: <PayrollIcon /> },
+    { href: '/cashier/reports', label: t('generateReport'), icon: <ReportIcon /> },
+    { href: '/cashier/feedback', label: t('feedback'), icon: <FeedbackIcon /> },
+    { href: '/cashier/attendance', label: t('attendance'), icon: <AttendanceIcon /> },
+    { href: '/cashier/chat', label: t('chat'), icon: <ChatIcon />},
+    { href: '/cashier/settings', label: t('settings'), icon: <SettingsIcon /> },
+    { href: '/cashier/ownSalary', label: t("salarymanagement"), icon: <CircleDollarSign size={20} /> }
   ];
 
   return (

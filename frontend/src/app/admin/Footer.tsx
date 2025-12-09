@@ -102,7 +102,8 @@ export default function Footer() {
       </div>
     </footer>
   );
-}*/'use client';
+}*/
+'use client';
 
 import { motion } from 'framer-motion';
 import { Phone, Mail, MapPin, Clock, Facebook, Twitter, Instagram, Linkedin, ChevronUp } from 'lucide-react';

@@ -1,16 +1,19 @@
 'use client';
+import { Image } from 'react-native';
 
 import { useState } from 'react';
-import { useAuth } from '../../../../../context/AuthContext';
+
+import { useAuth } from '../../../../../context/AuthContext'; // Adjust path based on file location
 import api from '@/lib/api';
 import { motion } from 'framer-motion';
-import { User, Phone, Home, Save, Camera, Upload } from 'lucide-react';
+import { User, Phone, Home, Save, Camera } from 'lucide-react';
 import Link from 'next/link';
+import { useLanguage } from '../../../../../context/LanguageContext'; // Import Hook
 
 export default function CustomerSettings() {
+  const { t } = useLanguage(); // Use Translation Hook
   const { user, updateUser } = useAuth();
   
-  // 1. Define API Base for images
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
 
   const [form, setForm] = useState({
@@ -18,7 +21,7 @@ export default function CustomerSettings() {
     lastName: user?.lastName || '',
     phone: user?.phone || '',
     roomNumber: user?.roomNumber || '',
-    profileImage: null as File | null, // 2. Add profileImage to state
+    profileImage: null as File | null,
   });
 
   const [saving, setSaving] = useState(false);
@@ -27,7 +30,6 @@ export default function CustomerSettings() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      // 3. Use FormData for file uploads
       const formData = new FormData();
       formData.append('firstName', form.firstName);
       formData.append('lastName', form.lastName);
@@ -38,7 +40,6 @@ export default function CustomerSettings() {
         formData.append('profileImage', form.profileImage);
       }
 
-      // Send formData with correct headers
       const res = await api.put('/api/users/me', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
@@ -48,20 +49,17 @@ export default function CustomerSettings() {
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: any) {
       console.error(err);
-      alert(err.response?.data?.message || 'Failed to update');
+      alert(err.response?.data?.message || t('failedUpdate'));
     } finally {
       setSaving(false);
     }
   };
 
-  // Helper to determine which image source to show
   const getImageSrc = () => {
     if (form.profileImage) {
-      // Show preview of new file
       return URL.createObjectURL(form.profileImage);
     }
     if (user?.profileImage) {
-      // Check if it's an absolute URL (Google/Cloudinary) or relative (Local Server)
       return user.profileImage.startsWith('http') 
         ? user.profileImage 
         : `${API_BASE}${user.profileImage}`;
@@ -76,11 +74,11 @@ export default function CustomerSettings() {
         animate={{ opacity: 1, y: 0 }}
         className="max-w-2xl mx-auto"
       >
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Room Set for Menu Order</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">{t('roomSetTitle')}</h1>
 
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 space-y-6">
           
-          {/* 4. Updated Image Section */}
+          {/* Image Section */}
           <div className="flex items-center gap-6 mb-6">
             <label className="relative group cursor-pointer">
               <div className="w-24 h-24 rounded-full overflow-hidden ring-4 ring-amber-500 bg-gray-200">
@@ -90,11 +88,9 @@ export default function CustomerSettings() {
                   className="w-full h-full object-cover"
                 />
               </div>
-              {/* Overlay for upload icon */}
               <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
                 <Camera size={20} className="text-white" />
               </div>
-              {/* Hidden File Input */}
               <input
                 type="file"
                 accept="image/*"
@@ -105,15 +101,15 @@ export default function CustomerSettings() {
 
             <div>
               <h2 className="text-xl font-semibold dark:text-white">{user?.firstName} {user?.lastName}</h2>
-              <p className="text-gray-600 dark:text-gray-400">Room: {user?.roomNumber || 'Not set'}</p>
-              <p className="text-xs text-amber-600 mt-1">Click image to update</p>
+              <p className="text-gray-600 dark:text-gray-400">{t('room')}: {user?.roomNumber || t('notSet')}</p>
+              <p className="text-xs text-amber-600 mt-1">{t('clickToUpdate')}</p>
             </div>
           </div>
 
           <div className="grid md:grid-cols-2 gap-6">
             <div>
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                <User size={16} /> First Name
+                <User size={16} /> {t('firstName')}
               </label>
               <input
                 value={form.firstName}
@@ -124,7 +120,7 @@ export default function CustomerSettings() {
 
             <div>
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                <User size={16} /> Last Name
+                <User size={16} /> {t('lastName')}
               </label>
               <input
                 value={form.lastName}
@@ -135,7 +131,7 @@ export default function CustomerSettings() {
 
             <div>
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                <Phone size={16} /> Phone
+                <Phone size={16} /> {t('phoneNumber')}
               </label>
               <input
                 value={form.phone}
@@ -147,32 +143,30 @@ export default function CustomerSettings() {
 
             <div>
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                <Home size={16} /> Room Number
+                <Home size={16} /> {t('roomNumberLabel')}
               </label>
               <input
                 value={form.roomNumber}
                 onChange={(e) => setForm({ ...form, roomNumber: e.target.value })}
-                placeholder="e.g., 304"
+                placeholder={t('roomNumberPlaceholder')}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white font-medium"
               />
-              <p className="text-xs text-amber-600 mt-1">Optional for room service</p>
+              <p className="text-xs text-amber-600 mt-1">{t('optionalRoomService')}</p>
             </div>
           </div>
 
           <div className="flex items-center gap-4">
-            {/* Save Button */}
             <button
               onClick={handleSave}
               disabled={saving}
               className="flex items-center gap-2 px-6 py-3 bg-amber-600 text-white rounded-xl hover:bg-amber-700 disabled:opacity-50 font-medium transition"
             >
               <Save size={18} />
-              {saving ? 'Saving...' : 'Save Changes'}
+              {saving ? t('saving') : t('saveChanges')}
             </button>
             
-            {/* Back Link - Separated from button for valid HTML */}
             <Link href="/customer/menu" className="px-4 py-3 text-gray-600 dark:text-gray-300 hover:underline">
-              Back to Menu
+              {t('backToMenu')}
             </Link>
           </div>
 
@@ -182,7 +176,7 @@ export default function CustomerSettings() {
               animate={{ opacity: 1 }}
               className="text-green-600 font-medium flex items-center gap-2"
             >
-              Profile updated successfully!
+              {t('profileUpdated')}
             </motion.p>
           )}
         </div>
@@ -191,7 +185,6 @@ export default function CustomerSettings() {
   );
 }/*'use client';
 
-import { useState } from 'react';
 import { useAuth } from '../../../../context/AuthContext';
 import api from '@/lib/api';
 import { motion } from 'framer-motion';

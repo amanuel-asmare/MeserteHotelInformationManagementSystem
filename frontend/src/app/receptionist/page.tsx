@@ -1,33 +1,20 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Users, Bed, Clock, CheckCircle, AlertCircle, Search, DollarSign,
-  TrendingUp, BarChart3, DoorOpen, DoorClosed, Hotel
-,Crown} from 'lucide-react';
+  Users, Bed, Clock, AlertCircle, Search, DollarSign,
+  Hotel, Crown
+} from 'lucide-react';
 import axios from 'axios';
 import { format } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import NewsFeed from '../../../components/NewsFeed';
+import { useLanguage } from '../../../context/LanguageContext';
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
 
-interface Guest {
-  _id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone?: string;
-}
-
-interface Room {
-  _id: string;
-  roomNumber: string;
-  type: string;
-  availability: boolean;
-  status: string;
-}
-
+interface Guest { _id: string; firstName: string; lastName: string; email: string; phone?: string; }
+interface Room { _id: string; roomNumber: string; type: string; availability: boolean; status: string; }
 interface Booking {
   _id: string;
   user: Guest;
@@ -37,7 +24,6 @@ interface Booking {
   totalPrice: number;
   status: string;
 }
-
 interface DashboardData {
   checkedInToday: Booking[];
   todayRevenue: number;
@@ -45,45 +31,39 @@ interface DashboardData {
   availableRooms: number;
   occupiedRooms: number;
   maintenanceRooms: number;
-  recentCustomers: Guest[];
-  rooms: Room[];
   bookings: Booking[];
 }
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
-
 export default function ReceptionDashboard() {
+  const { t } = useLanguage();
   const [data, setData] = useState<DashboardData | null>(null);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'checked-in' | 'departing'>('all');
   const [loading, setLoading] = useState(true);
   const [minTimePassed, setMinTimePassed] = useState(false);
-  // Minimum 4.5 seconds of luxury loading
+
+  // Royal entrance timer
   useEffect(() => {
-    const timer = setTimeout(() => setMinTimePassed(true), 4500);
+    const timer = setTimeout(() => setMinTimePassed(true), 5200);
     return () => clearTimeout(timer);
   }, []);
 
+  // Fetch data
   useEffect(() => {
+    const fetchDashboard = async () => {
+      try {
+        const res = await axios.get(`${API_BASE}/api/dashboard/receptionist`, { withCredentials: true });
+        setData(res.data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchDashboard();
   }, []);
 
-  const fetchDashboard = async () => {
-    setLoading(true);
-    try {
-      const res = await axios.get(`${API_BASE}/api/dashboard/receptionist`, {
-        withCredentials: true
-      });
-      setData(res.data);
-    } catch (err: any) {
-      console.error(err);
-      // alert('Failed to load dashboard'); // Use a more user-friendly notification
-    } finally {
-      setLoading(false);
-    }
-  };
-
- // ROYAL LOADING SCREEN
+  // === ROYAL LOADING SCREEN ===
   if (loading || !minTimePassed) {
     return (
       <div className="fixed inset-0 bg-gradient-to-br from-amber-950 via-black to-amber-900 flex items-center justify-center overflow-hidden">
@@ -100,8 +80,8 @@ export default function ReceptionDashboard() {
             />
           ))}
         </div>
+
         <motion.div initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 1.5 }} className="relative z-10 text-center px-8">
-          {/* 3D Golden Logo */}
           <motion.div
             animate={{ rotateY: [0, 360], scale: [1, 1.15, 1] }}
             transition={{ rotateY: { duration: 20, repeat: Infinity, ease: "linear" }, scale: { duration: 8, repeat: Infinity } }}
@@ -146,7 +126,7 @@ export default function ReceptionDashboard() {
             className="text-5xl md:text-7xl font-bold text-amber-300 tracking-wider mb-4"
             style={{ fontFamily: "'Playfair Display', serif" }}
           >
-          RECEPTIONIST PANEL
+            {t('receptionPortal')}
           </motion.h2>
 
           <motion.p
@@ -155,7 +135,7 @@ export default function ReceptionDashboard() {
             transition={{ delay: 3.2, duration: 1.5 }}
             className="text-2xl text-amber-100 font-light tracking-widest"
           >
-            Managing CUSTOMER ....
+            {t('loadingReports')}
           </motion.p>
 
           <div className="mt-20 w-96 mx-auto">
@@ -178,20 +158,18 @@ export default function ReceptionDashboard() {
               transition={{ duration: 3, repeat: Infinity }}
               className="text-center mt-8 text-2xl font-medium text-amber-200 tracking-wider"
             >
-              Loading Financial Overview...
+              {t('processing')}
             </motion.div>
           </div>
         </motion.div>
       </div>
     );
   }
-  const { checkedInToday, todayRevenue, totalRooms, availableRooms, occupiedRooms,
-    maintenanceRooms, bookings } = data;
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // === DATA PROCESSING ===
+  const { checkedInToday, todayRevenue, totalRooms, availableRooms, occupiedRooms, maintenanceRooms, bookings } = data!;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
 
-  // Filter for guests actually checked in for today
   const actualCheckedInGuests = bookings.filter(b =>
     b.status === 'confirmed' &&
     new Date(b.checkIn) <= today &&
@@ -200,7 +178,7 @@ export default function ReceptionDashboard() {
 
   const upcomingArrivals = bookings
     .filter(b => b.status === 'confirmed' && new Date(b.checkIn) > today)
-    .sort((a,b) => new Date(a.checkIn).getTime() - new Date(b.checkIn).getTime()) // Sort by earliest arrival
+    .sort((a, b) => new Date(a.checkIn).getTime() - new Date(b.checkIn).getTime())
     .slice(0, 5);
 
   const todayDepartures = bookings.filter(b =>
@@ -209,55 +187,116 @@ export default function ReceptionDashboard() {
   );
 
   const stats = [
-    { icon: Users, label: 'Checked-in Today', value: checkedInToday.length, color: 'blue', trend: '+12%' },
-    { icon: Bed, label: 'Available Rooms', value: availableRooms, color: 'green', trend: '-2%' },
-    { icon: DollarSign, label: "Today's Revenue", value: `ETB ${todayRevenue.toLocaleString()}`, color: 'amber', trend: '+8%' },
-    { icon: Clock, label: 'Upcoming Arrivals', value: upcomingArrivals.length, color: 'purple', trend: '+3%' },
+    { icon: Users, label: t('todaysCheckins'), value: checkedInToday.length, color: 'blue', trend: '+12%' },
+    { icon: Bed, label: t('availableRooms'), value: availableRooms, color: 'green', trend: '-2%' },
+    { icon: DollarSign, label: t('revenueToday'), value: `ETB ${todayRevenue.toLocaleString()}`, color: 'amber', trend: '+8%' },
+    { icon: Clock, label: t('guestsArrived'), value: upcomingArrivals.length, color: 'purple', trend: '+3%' },
   ];
 
-  // Modified filteredGuests to include actualCheckedInGuests for 'all' and 'checked-in' filters
   const filteredGuests = actualCheckedInGuests.filter(b => {
     const name = `${b.user.firstName} ${b.user.lastName}`.toLowerCase();
-    const matches = name.includes(search.toLowerCase()) || (b.user.email && b.user.email.toLowerCase().includes(search.toLowerCase()));
-    
-    if (filter === 'all' || filter === 'checked-in') {
-      return matches;
-    }
-    if (filter === 'departing') {
-      return todayDepartures.some(d => d._id === b._id) && matches;
-    }
+    const matches = name.includes(search.toLowerCase()) || (b.user.email?.toLowerCase().includes(search.toLowerCase()));
+    if (filter === 'all' || filter === 'checked-in') return matches;
+    if (filter === 'departing') return todayDepartures.some(d => d._id === b._id) && matches;
     return matches;
   });
 
   const roomStatusData = [
-    { name: 'Available', value: availableRooms, color: '#10B981' }, // Green-500
-    { name: 'Occupied', value: occupiedRooms, color: '#F59E0B' },  // Amber-500
-    { name: 'Maintenance', value: maintenanceRooms, color: '#EF4444' }, // Red-500
+    { name: t('available'), value: availableRooms, color: '#10B981' },
+    { name: t('occupied'), value: occupiedRooms, color: '#F59E0B' },
+    { name: t('maintenance'), value: maintenanceRooms, color: '#EF4444' },
   ];
 
-  // Ensure this data matches the names shown in "Currently Checked-in Guests" if that's the intention
-  // For the chart, it's 'Today's Check-in Revenue', so it should be based on checkedInToday
   const recentCheckInsData = checkedInToday.map(booking => ({
     name: `${booking.user.firstName} ${booking.user.lastName}`,
     value: booking.totalPrice,
-  })).slice(0,5); // Limit to top 5 for the chart
+  })).slice(0, 5);
 
+  // === MAIN DASHBOARD WITH INSANE ANIMATED HEADER ===
   return (
     <div className="space-y-8 p-6 transition-all duration-300">
-      {/* Header */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Reception Dashboard</h1>
-          <p className="text-gray-600 dark:text-gray-400">Welcome back! Here's what's happening today.</p>
-        </div>
-        <motion.button
-          whileHover={{ scale: 1.05, backgroundColor: '#d97706' }} // Hover animation
-          whileTap={{ scale: 0.95 }} // Click animation
-          onClick={fetchDashboard}
-          className="px-4 py-2 bg-amber-600 text-white rounded-xl hover:bg-amber-700 transition"
+      {/* EPIC ANIMATED HEADER */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="text-center py-16 relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-50 via-orange-50 to-pink-50 dark:from-gray-900 dark:via-amber-950 dark:to-gray-900 border border-amber-200 dark:border-amber-800 shadow-2xl"
+      >
+        {/* Floating Particles */}
+        {[...Array(12)].map((_, i) => (
+          <motion.div
+            key={i}
+            animate={{
+              y: [0, -30, 0],
+              x: [0, i % 2 === 0 ? -20 : 20, 0],
+              opacity: [0.3, 0.8, 0.3],
+            }}
+            transition={{ duration: 4 + i * 0.5, repeat: Infinity, delay: i * 0.3 }}
+            className="absolute w-2 h-2 bg-yellow-400 rounded-full blur-md"
+            style={{ top: `${20 + i * 6}%`, left: `${10 + i * 7}%` }}
+          />
+        ))}
+
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 1.5, type: "spring" }}
+          className="relative z-10"
         >
-          Refresh
-        </motion.button>
+          {/* Title with letter-by-letter entrance + glow */}
+          <h1 className="text-5xl md:text-7xl font-black tracking-wider mb-6">
+            {t('receptionPortal').split(' ').map((word, i) => (
+              <span key={i} className="inline-block">
+                {word.split('').map((letter, j) => (
+                  <motion.span
+                    key={j}
+                    initial={{ opacity: 0, y: 100, rotateX: -90 }}
+                    animate={{ opacity: 1, y: 0, rotateX: 0 }}
+                    transition={{ delay: 0.1 * j + i * 0.4, duration: 0.8, type: "spring", stiffness: 100 }}
+                    className="inline-block text-transparent bg-clip-text bg-gradient-to-r from-amber-600 via-yellow-500 to-orange-600"
+                    style={{
+                      textShadow: "0 0 40px rgba(251,191,36,0.8)",
+                      fontFamily: "'Playfair Display', serif"
+                    }}
+                  >
+                    {letter === ' ' ? '\u00A0' : letter}
+                  </motion.span>
+                ))}
+                <span className="mx-4" />
+              </span>
+            ))}
+          </h1>
+
+          {/* Welcome Message with floating effect */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.5, duration: 1.2 }}
+            className="space-y-4"
+          >
+            <motion.p
+              animate={{ y: [0, -10, 0] }}
+              transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+              className="text-3xl md:text-5xl font-bold text-gray-800 dark:text-amber-100"
+            >
+              {t('welcome')}! {t('delightedHaveYou')}
+            </motion.p>
+            <motion.div
+              animate={{ opacity: [0.7, 1, 0.7] }}
+              transition={{ duration: 4, repeat: Infinity }}
+              className="text-xl text-amber-600 dark:text-amber-400 font-medium tracking-wider"
+            >
+              {t('receptionReady')} • {new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </motion.div>
+          </motion.div>
+
+          {/* Golden underline */}
+          <motion.div
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: 1 }}
+            transition={{ delay: 2, duration: 1.5 }}
+            className="mt-8 h-2 bg-gradient-to-r from-transparent via-amber-500 to-transparent rounded-full"
+          />
+        </motion.div>
       </motion.div>
 
       {/* Stats */}
@@ -268,7 +307,7 @@ export default function ReceptionDashboard() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 + 0.2 }}
-            whileHover={{ y: -5, boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)" }} // Hover animation
+            whileHover={{ y: -5 }}
             className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col justify-between cursor-pointer"
           >
             <div className="flex items-center justify-between mb-3">
@@ -276,7 +315,7 @@ export default function ReceptionDashboard() {
                 <s.icon className={`w-6 h-6 text-${s.color}-600 dark:text-${s.color}-400`} />
               </div>
               {s.trend && (
-                <span className={`text-xs font-medium ${s.trend.startsWith('+') ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                <span className={`text-xs font-medium ${s.trend.startsWith('+') ? 'text-green-600' : 'text-red-600'}`}>
                   {s.trend}
                 </span>
               )}
@@ -287,22 +326,18 @@ export default function ReceptionDashboard() {
         ))}
       </div>
 
+      {/* Checked-in Guests + Upcoming/Departures */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Checked-in Guests */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 flex flex-col"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 flex flex-col">
           <div className="flex justify-between items-center mb-4 flex-wrap gap-3">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Currently Checked-in Guests</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t('guestsArrived')}</h3>
             <div className="flex gap-2 flex-wrap sm:flex-nowrap">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input
                   type="text"
-                  placeholder="Search..."
+                  placeholder={t('search')}
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm w-full sm:w-48 bg-gray-50 dark:bg-gray-700 dark:text-white focus:ring-amber-500 focus:border-amber-500 transition"
@@ -313,16 +348,15 @@ export default function ReceptionDashboard() {
                 onChange={e => setFilter(e.target.value as any)}
                 className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 dark:text-white focus:ring-amber-500 focus:border-amber-500 transition"
               >
-                <option value="all">All</option>
-                <option value="checked-in">Checked-in</option>
-                <option value="departing">Departing Today</option>
+                <option value="all">{t('all')}</option>
+                <option value="checked-in">{t('confirmed')}</option>
+                <option value="departing">{t('checkOutLabel')}</option>
               </select>
             </div>
           </div>
-
           <div className="flex-1 space-y-3 max-h-96 overflow-y-auto custom-scrollbar">
             {filteredGuests.length === 0 ? (
-              <p className="text-center text-gray-500 dark:text-gray-400 py-8">No guests found</p>
+              <p className="text-center text-gray-500 dark:text-gray-400 py-8">{t('noRecentBookings')}</p>
             ) : (
               <AnimatePresence>
                 {filteredGuests.map(b => (
@@ -332,7 +366,7 @@ export default function ReceptionDashboard() {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 20 }}
                     transition={{ duration: 0.3 }}
-                    whileHover={{ scale: 1.01, backgroundColor: 'rgba(251, 191, 36, 0.05)' }} // Subtle hover animation
+                    whileHover={{ scale: 1.01, backgroundColor: 'rgba(251, 191, 36, 0.05)' }}
                     className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-xl hover:shadow-md transition-shadow cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
@@ -343,7 +377,7 @@ export default function ReceptionDashboard() {
                       </div>
                       <div>
                         <p className="font-medium text-gray-900 dark:text-white">{b.user.firstName} {b.user.lastName}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">Room {b.room.roomNumber}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{t('room')} {b.room.roomNumber}</p>
                       </div>
                     </div>
                     <div className="text-right text-sm">
@@ -361,19 +395,13 @@ export default function ReceptionDashboard() {
 
         {/* Upcoming & Departures */}
         <div className="space-y-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            whileHover={{ y: -5, boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)" }}
-            className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/40 rounded-2xl p-6 shadow-sm border border-blue-200 dark:border-blue-700 cursor-pointer"
-          >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/40 rounded-2xl p-6 shadow-sm border border-blue-200 dark:border-blue-700 cursor-pointer">
             <h3 className="font-semibold mb-3 flex items-center gap-2 text-blue-800 dark:text-blue-300">
-              <Clock size={18} /> Upcoming Arrivals
+              <Clock size={18} /> {t('guestsArrived')}
             </h3>
             <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
               {upcomingArrivals.length === 0 ? (
-                <p className="text-sm text-gray-600 dark:text-gray-400">No upcoming arrivals</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('noBookingsFound')}</p>
               ) : (
                 <AnimatePresence>
                   {upcomingArrivals.map(b => (
@@ -383,12 +411,12 @@ export default function ReceptionDashboard() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
                       transition={{ duration: 0.2 }}
-                      whileHover={{ scale: 1.01, backgroundColor: 'rgba(255,255,255,0.9)' }} // Subtle hover
+                      whileHover={{ scale: 1.01, backgroundColor: 'rgba(255,255,255,0.9)' }}
                       className="bg-white dark:bg-gray-700 p-3 rounded-lg text-sm shadow-xs transition"
                     >
                       <p className="font-medium text-gray-900 dark:text-white">{b.user.firstName} {b.user.lastName}</p>
                       <p className="text-gray-600 dark:text-gray-400">
-                        Room {b.room.roomNumber} • {format(new Date(b.checkIn), 'MMM dd, h:mm a')}
+                        {t('room')} {b.room.roomNumber} • {format(new Date(b.checkIn), 'MMM dd, h:mm a')}
                       </p>
                     </motion.div>
                   ))}
@@ -397,19 +425,13 @@ export default function ReceptionDashboard() {
             </div>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-            whileHover={{ y: -5, boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)" }}
-            className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-900/40 rounded-2xl p-6 shadow-sm border border-red-200 dark:border-red-700 cursor-pointer"
-          >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-900/40 rounded-2xl p-6 shadow-sm border border-red-200 dark:border-red-700 cursor-pointer">
             <h3 className="font-semibold mb-3 flex items-center gap-2 text-red-800 dark:text-red-300">
-              <AlertCircle size={18} /> Departing Today
+              <AlertCircle size={18} /> {t('checkOutLabel')}
             </h3>
             <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
               {todayDepartures.length === 0 ? (
-                <p className="text-sm text-gray-600 dark:text-gray-400">No departures today</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('noRecentBookings')}</p>
               ) : (
                 <AnimatePresence>
                   {todayDepartures.map(b => (
@@ -419,11 +441,11 @@ export default function ReceptionDashboard() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
                       transition={{ duration: 0.2 }}
-                      whileHover={{ scale: 1.01, backgroundColor: 'rgba(255,255,255,0.9)' }} // Subtle hover
+                      whileHover={{ scale: 1.01, backgroundColor: 'rgba(255,255,255,0.9)' }}
                       className="bg-white dark:bg-gray-700 p-3 rounded-lg text-sm shadow-xs transition"
                     >
                       <p className="font-medium text-gray-900 dark:text-white">{b.user.firstName} {b.user.lastName}</p>
-                      <p className="text-gray-600 dark:text-gray-400">Room {b.room.roomNumber} • Checkout by 12 PM</p>
+                      <p className="text-gray-600 dark:text-gray-400">{t('room')} {b.room.roomNumber}</p>
                     </motion.div>
                   ))}
                 </AnimatePresence>
@@ -433,111 +455,68 @@ export default function ReceptionDashboard() {
         </div>
       </div>
 
-      {/* Charts Section */}
+      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7 }}
-          whileHover={{ y: -5, boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)" }}
-          className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 cursor-pointer"
-        >
-          <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Room Occupancy Overview</h3>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }} className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">{t('liveOccupancy')}</h3>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
-              <Pie
-                data={roomStatusData}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                outerRadius={100}
-                fill="#8884d8"
-                dataKey="value"
-                animationDuration={800}
-                animationEasing="ease-out"
-              >
+              <Pie data={roomStatusData} cx="50%" cy="50%" labelLine={false} outerRadius={100} fill="#8884d8" dataKey="value" animationDuration={800} animationEasing="ease-out">
                 {roomStatusData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip
-                contentStyle={{ backgroundColor: 'white', borderColor: '#ccc', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
-                itemStyle={{ color: '#333' }}
-                labelStyle={{ color: '#555', fontWeight: 'bold' }}
-              />
+              <Tooltip contentStyle={{ backgroundColor: 'white', borderColor: '#ccc', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
               <Legend />
             </PieChart>
           </ResponsiveContainer>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
-          whileHover={{ y: -5, boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)" }}
-          className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 cursor-pointer"
-        >
-          <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Today's Check-in Revenue (Top 5)</h3>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }} className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">{t('revenue')} ({t('todaysCheckins')})</h3>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart
-              data={recentCheckInsData}
-              margin={{
-                top: 5, right: 30, left: 20, bottom: 5,
-              }}
-            >
+            <BarChart data={recentCheckInsData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
               <XAxis dataKey="name" stroke="#6B7280" className="text-xs" />
               <YAxis stroke="#6B7280" className="text-xs" />
-              <Tooltip
-                formatter={(value: number) => `ETB ${value.toLocaleString()}`}
-                contentStyle={{ backgroundColor: 'white', borderColor: '#ccc', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
-                itemStyle={{ color: '#333' }}
-                labelStyle={{ color: '#555', fontWeight: 'bold' }}
-              />
+              <Tooltip formatter={(value: number) => `ETB ${value.toLocaleString()}`} contentStyle={{ backgroundColor: 'white', borderColor: '#ccc', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
               <Bar dataKey="value" fill="#F59E0B" radius={[10, 10, 0, 0]} animationDuration={800} />
             </BarChart>
           </ResponsiveContainer>
         </motion.div>
       </div>
 
-
       {/* Room Summary */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.9 }}
-        whileHover={{ y: -5, boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)" }}
-        className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 cursor-pointer"
-      >
-        <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Room Status Overview</h3>
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.9 }} className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">{t('roomStatus')} {t('summary')}</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-xl">
             <Bed className="w-8 h-8 text-green-600 dark:text-green-400 mx-auto mb-2" />
             <p className="text-2xl font-bold text-green-600 dark:text-green-400">{availableRooms}</p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Available</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">{t('available')}</p>
           </div>
           <div className="text-center p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl">
             <Users className="w-8 h-8 text-amber-600 dark:text-amber-400 mx-auto mb-2" />
             <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{occupiedRooms}</p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Occupied</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">{t('occupied')}</p>
           </div>
           <div className="text-center p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl">
             <AlertCircle className="w-8 h-8 text-yellow-600 dark:text-yellow-400 mx-auto mb-2" />
             <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{maintenanceRooms}</p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Maintenance</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">{t('maintenance')}</p>
           </div>
           <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-xl">
             <Hotel className="w-8 h-8 text-gray-600 dark:text-gray-300 mx-auto mb-2" />
             <p className="text-2xl font-bold text-gray-600 dark:text-gray-300">{totalRooms}</p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Total Rooms</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">{t('totalRooms')}</p>
           </div>
         </div>
       </motion.div>
-      <div><NewsFeed/></div>
+
+      <div><NewsFeed /></div>
     </div>
   );
 }/*'use client';
 
-import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Users, Bed, CreditCard, MessageCircle, Star, Clock, CheckCircle, AlertCircle,

@@ -70,14 +70,15 @@ export default function RecentTransactionsTable({ transactions }) {
     </div>
   );
 }*/
-// frontend/src/app/cashier/components/RecentTransactionsTable.tsx
 'use client';
+import { useLanguage } from '../../../../context/LanguageContext'; // Import Language Hook
 
 // A helper component for styling the status badges
 const StatusBadge = ({ status }) => {
   const baseClasses = "px-2 py-1 text-xs font-semibold rounded-full";
   let specificClasses = "";
 
+  // Keeping status checks in English as they likely come from DB
   switch (status.toLowerCase()) {
     case 'completed':
     case 'confirmed':
@@ -97,8 +98,11 @@ const StatusBadge = ({ status }) => {
 
   return <span className={`${baseClasses} ${specificClasses}`}>{status}</span>;
 };
+
 // --- The main table component with Loading State ---
 export default function RecentTransactionsTable({ transactions, loading }) {
+  const { t } = useLanguage(); // Initialize hook
+
   if (loading) {
     return (
       <div className="space-y-4 animate-pulse p-4">
@@ -112,8 +116,8 @@ export default function RecentTransactionsTable({ transactions, loading }) {
   if (!transactions || transactions.length === 0) {
     return (
       <div className="text-center py-12 text-gray-500">
-        <h3 className="text-lg font-medium">No Recent Transactions</h3>
-        <p className="mt-1 text-sm">When new bookings or orders are paid for, they will appear here.</p>
+        <h3 className="text-lg font-medium">{t('noRecentTransactions')}</h3>
+        <p className="mt-1 text-sm">{t('transactionsEmptyState')}</p>
       </div>
     );
   }
@@ -123,11 +127,11 @@ export default function RecentTransactionsTable({ transactions, loading }) {
       <table className="min-w-full bg-white">
         <thead className="bg-gray-50">
           <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('type')}</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('customer')}</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('date')}</th>
+            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{t('amount')}</th>
+            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{t('status')}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200">

@@ -1,7 +1,8 @@
 'use client';
-import { Modal } from 'react-native';
 
+import { Modal } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
+
 
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -15,7 +16,7 @@ import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import ReactCanvasConfetti from 'react-canvas-confetti';
 
-// UI Components (Ensure paths are correct for your project)
+// UI Components
 import { Button } from '../../../../../components/ui/receptionistUI/button';
 import { Input } from '../../../../../components/ui/receptionistUI/input';
 import {
@@ -31,6 +32,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../../../../../components/ui/receptionistUI/dialog';
+import { useLanguage } from '../../../../../context/LanguageContext'; // Import Language Hook
 
 const assignSchema = z.object({
   customerId: z.string().min(1, 'Select a guest'),
@@ -65,6 +67,7 @@ interface Props {
 
 // --- SUCCESS MODAL COMPONENT ---
 const SuccessModal = ({ message, onClose }: { message: string, onClose: () => void }) => {
+  const { t } = useLanguage();
   const refAnimationInstance = useRef<any>(null);
 
   const getInstance = (instance: any) => {
@@ -107,7 +110,7 @@ const SuccessModal = ({ message, onClose }: { message: string, onClose: () => vo
         refConfetti={getInstance}
         style={{
           position: 'fixed',
-          pointerEvents: 'none', // Crucial: lets clicks pass through to the modal
+          pointerEvents: 'none',
           width: '100%',
           height: '100%',
           top: 0,
@@ -128,7 +131,7 @@ const SuccessModal = ({ message, onClose }: { message: string, onClose: () => vo
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            onClose(); // Execute the close logic passed from parent
+            onClose(); 
           }}
           className="absolute top-4 right-4 p-2 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-500 transition-colors"
         >
@@ -144,18 +147,18 @@ const SuccessModal = ({ message, onClose }: { message: string, onClose: () => vo
           <CheckCircle className="text-green-600 w-12 h-12" />
         </motion.div>
         
-        <h2 className="text-3xl font-black text-gray-800 mb-2">Success!</h2>
+        <h2 className="text-3xl font-black text-gray-800 mb-2">{t('success')}</h2>
         <p className="text-gray-600 mb-8 text-lg">{message}</p>
         
         <button 
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            onClose(); // Execute the close logic passed from parent
+            onClose(); 
           }}
           className="w-full py-4 bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold rounded-xl text-lg shadow-xl hover:shadow-2xl hover:scale-105 transition transform"
         >
-          Done
+          {t('done')}
         </button>
       </motion.div>
     </motion.div>
@@ -163,6 +166,7 @@ const SuccessModal = ({ message, onClose }: { message: string, onClose: () => vo
 };
 
 export default function AssignRoomModal({ room, onClose, onSuccess }: Props) {
+  const { t } = useLanguage();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -248,7 +252,7 @@ export default function AssignRoomModal({ room, onClose, onSuccess }: Props) {
         window.location.href = res.data.checkoutUrl;
       } else {
         // Show Success Modal for Cash Payments
-        setSuccessMessage(`Room ${room.roomNumber} assigned successfully!`);
+        setSuccessMessage(`${t('room')} ${room.roomNumber} ${t('updateSuccessfully').replace('Updated', 'Assigned')}!`);
       }
     } catch (err: any) {
       alert(err.response?.data?.message || 'Assignment failed');
@@ -274,7 +278,7 @@ export default function AssignRoomModal({ room, onClose, onSuccess }: Props) {
         <DialogContent className="sm:max-w-md bg-white rounded-xl overflow-hidden">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold flex items-center gap-2">
-              Assign Room <span className="text-amber-600">#{room.roomNumber}</span>
+              {t('assignRoom')} <span className="text-amber-600">#{room.roomNumber}</span>
             </DialogTitle>
             <button
               onClick={onClose}
@@ -300,7 +304,7 @@ export default function AssignRoomModal({ room, onClose, onSuccess }: Props) {
                   >
                      <div className="w-32 h-20 bg-gradient-to-r from-amber-500 to-orange-600 rounded-xl flex items-center justify-center text-white shadow-inner relative overflow-hidden">
                         <KeyRound size={32} />
-                        <div className="absolute bottom-2 left-3 text-[10px] font-mono opacity-80">VIP ACCESS</div>
+                        <div className="absolute bottom-2 left-3 text-[10px] font-mono opacity-80">{t('vipAccess')}</div>
                         <motion.div 
                           animate={{ x: ['-100%', '200%'] }}
                           transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
@@ -312,18 +316,18 @@ export default function AssignRoomModal({ room, onClose, onSuccess }: Props) {
                   <motion.div animate={{ y: [5, -5, 5] }} transition={{ duration: 2.5, repeat: Infinity }} className="absolute -bottom-2 -left-4 bg-green-100 p-2 rounded-full text-green-600 shadow-sm"><Luggage size={20} /></motion.div>
                </div>
                <div className="relative z-10">
-                  <h3 className="text-lg font-bold text-gray-800">Retrieving Guest List</h3>
-                  <p className="text-sm text-gray-500 flex items-center justify-center gap-2 mt-1"><ScanLine size={14} className="animate-pulse text-amber-600"/> Syncing with central database...</p>
+                  <h3 className="text-lg font-bold text-gray-800">{t('retrievingGuestList')}</h3>
+                  <p className="text-sm text-gray-500 flex items-center justify-center gap-2 mt-1"><ScanLine size={14} className="animate-pulse text-amber-600"/> {t('syncingDatabase')}</p>
                </div>
             </div>
           ) : (
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 px-2">
               {/* Guest */}
               <div>
-                <label className="text-sm font-medium text-gray-700">Guest</label>
+                <label className="text-sm font-medium text-gray-700">{t('guest')}</label>
                 <Select onValueChange={(v) => setValue('customerId', v)}>
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select guest..." />
+                    <SelectValue placeholder={t('choose')} />
                   </SelectTrigger>
                   <SelectContent>
                     {customers.map((c) => (
@@ -342,7 +346,7 @@ export default function AssignRoomModal({ room, onClose, onSuccess }: Props) {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm font-medium flex items-center gap-1 text-gray-700">
-                    <Calendar className="h-4 w-4 text-gray-500" /> Check-in
+                    <Calendar className="h-4 w-4 text-gray-500" /> {t('checkInLabel')}
                   </label>
                   <Input type="date" {...register('checkIn')} className="w-full" />
                   {errors.checkIn && (
@@ -351,7 +355,7 @@ export default function AssignRoomModal({ room, onClose, onSuccess }: Props) {
                 </div>
                 <div>
                   <label className="text-sm font-medium flex items-center gap-1 text-gray-700">
-                    <Calendar className="h-4 w-4 text-gray-500" /> Check-out
+                    <Calendar className="h-4 w-4 text-gray-500" /> {t('checkOutLabel')}
                   </label>
                   <Input type="date" {...register('checkOut')} className="w-full" />
                   {errors.checkOut && (
@@ -363,14 +367,14 @@ export default function AssignRoomModal({ room, onClose, onSuccess }: Props) {
               {/* Guests */}
               <div>
                 <label className="text-sm font-medium flex items-center gap-1 text-gray-700">
-                  <Users className="h-4 w-4 text-gray-500" /> Guests
+                  <Users className="h-4 w-4 text-gray-500" /> {t('guestsLabel')}
                 </label>
                 <Input
                   type="number"
                   min="1"
                   max={room.capacity}
                   {...register('guests')}
-                  placeholder={`Max ${room.capacity}`}
+                  placeholder={`${t('max')} ${room.capacity}`}
                   className="w-full"
                 />
                 {errors.guests && (
@@ -380,24 +384,24 @@ export default function AssignRoomModal({ room, onClose, onSuccess }: Props) {
 
               {/* Payment */}
               <div>
-                <label className="text-sm font-medium text-gray-700">Payment Method</label>
+                <label className="text-sm font-medium text-gray-700">{t('paymentMethod')}</label>
                 <Select
                   onValueChange={(v) =>
                     setValue('paymentType', v as 'cash' | 'chapa')
                   }
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Choose..." />
+                    <SelectValue placeholder={t('choose')} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="cash">
                       <div className="flex items-center gap-2">
-                        <DollarSign className="h-4 w-4 text-green-600" /> Cash Payment
+                        <DollarSign className="h-4 w-4 text-green-600" /> {t('cashPayment')}
                       </div>
                     </SelectItem>
                     <SelectItem value="chapa">
                       <div className="flex items-center gap-2">
-                        <CreditCard className="h-4 w-4 text-blue-600" /> Chapa Online
+                        <CreditCard className="h-4 w-4 text-blue-600" /> {t('chapaOnline')}
                       </div>
                     </SelectItem>
                   </SelectContent>
@@ -413,7 +417,7 @@ export default function AssignRoomModal({ room, onClose, onSuccess }: Props) {
                 >
                   <div className="flex justify-between font-bold text-lg text-amber-900">
                     <span className="flex items-center gap-1 text-sm font-normal">
-                      Total Price
+                      {t('totalPrice')}
                     </span>
                     <span>ETB {totalPrice.toLocaleString()}</span>
                   </div>
@@ -426,7 +430,7 @@ export default function AssignRoomModal({ room, onClose, onSuccess }: Props) {
                           (1000 * 60 * 60 * 24)
                       )
                     )}{' '}
-                    night
+                    {t('night')}
                     {totalPrice / room.price > 1 ? 's' : ''} × ETB {room.price}
                   </p>
                 </motion.div>
@@ -437,7 +441,7 @@ export default function AssignRoomModal({ room, onClose, onSuccess }: Props) {
                 disabled={submitting}
                 className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-6 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5"
               >
-                {submitting ? 'Processing...' : 'Confirm Assignment'}
+                {submitting ? t('processing') : t('confirmAssignment')}
               </Button>
             </form>
           )}

@@ -16,7 +16,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {/* 2. Wrap your application content with HotelConfigProvider */}
             <HotelConfigProvider>
               <ConditionalNavbar />
+             
               <main>{children}</main>
+             
             </HotelConfigProvider>
           </LanguageProvider>
         </AuthProvider>

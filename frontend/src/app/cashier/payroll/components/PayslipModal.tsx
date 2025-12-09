@@ -1,24 +1,23 @@
 'use client';
-import { Button } from 'react-native';
-
 import { useState } from 'react';
-
 import { motion } from 'framer-motion';
 import { X, Printer, Edit, Save, XCircle } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
+import { useLanguage } from '../../../../../context/LanguageContext';
 
 export default function PayslipModal({
   payslip,
   onClose,
-  onUpdate, 
+  onUpdate,
 }: {
   payslip: any;
   onClose: () => void;
-  onUpdate?: (id: string, updates: any) => Promise<boolean>; 
+  onUpdate?: (id: string, updates: any) => Promise<boolean>;
 }) {
-  const [isEditing, setIsEditing] = useState(false);
+  const { t, language } = useLanguage();
 
+  const [isEditing, setIsEditing] = useState(false);
   const { register, handleSubmit, watch, reset } = useForm({
     defaultValues: {
       bonus: payslip.bonus || 0,
@@ -29,7 +28,7 @@ export default function PayslipModal({
   const bonus = parseFloat(watch('bonus')) || 0;
   const deductions = parseFloat(watch('deductions')) || 0;
 
-  // Tax Calculation
+  // Ethiopian Tax Calculation (unchanged)
   const calculateEthiopianTax = (gross: number) => {
     let tax = 0;
     const pension = gross * 0.07;
@@ -50,25 +49,21 @@ export default function PayslipModal({
 
   const handleSave = async (data: any) => {
     if (!onUpdate || !payslip?._id) {
-      toast.error('Cannot save: no update handler available');
+      toast.error(t('cannotSave') || 'Cannot save: no update handler available');
       return;
     }
-
     const updates = {
       bonus: parseFloat(data.bonus) || 0,
       deductions: parseFloat(data.deductions) || 0,
     };
-
     const success = await onUpdate(payslip._id, updates);
-
     if (success) {
-      toast.success('Payslip updated successfully!');
+      toast.success(t('payslipUpdated') || 'Payslip updated successfully!');
       setIsEditing(false);
       reset(data);
     }
   };
 
-  // Explicit check: Button shows if onUpdate function exists AND payslip has an ID
   const showEditButton = onUpdate && payslip._id;
 
   return (
@@ -82,59 +77,70 @@ export default function PayslipModal({
       <motion.div
         initial={{ scale: 0.9, y: 20 }}
         animate={{ scale: 1, y: 0 }}
-        className="bg-white rounded-3xl shadow-2xl max-w-md w-full border border-gray-100 flex flex-col max-h-[90vh]"
+        className="bg-white rounded-3xl shadow-2xl w-[95%] sm:w-full max-w-md border border-gray-100 flex flex-col max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex-none bg-gradient-to-r from-amber-500 to-orange-600 text-white p-5 flex justify-between items-center shadow-md rounded-t-3xl">
+        <div className="flex-none bg-gradient-to-r from-amber-500 to-orange-600 text-white p-4 sm:p-5 flex justify-between items-center shadow-md rounded-t-3xl">
           <div>
-             <h2 className="text-xl font-bold tracking-wide">Payslip Details</h2>
-             <p className="text-amber-100 text-sm font-medium">{payslip.user.firstName} {payslip.user.lastName}</p>
+            <h2 className="text-lg sm:text-xl font-bold tracking-wide">{t('payslipDetails')}</h2>
+            <p className="text-amber-100 text-xs sm:text-sm font-medium">
+              {payslip.user.firstName} {payslip.user.lastName}
+            </p>
           </div>
-          <button onClick={onClose} className="text-white/80 hover:text-white hover:bg-white/20 rounded-full p-2 transition">
+          <button
+            onClick={onClose}
+            className="text-white/80 hover:text-white hover:bg-white/20 rounded-full p-2 transition"
+          >
             <X size={24} />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6 overflow-y-auto">
+        <div className="p-4 sm:p-6 space-y-5 sm:space-y-6 overflow-y-auto">
           {/* Period */}
           <div className="text-center border-b border-gray-100 pb-4">
-            <p className="text-lg font-bold text-gray-800 uppercase tracking-wider">
-              {new Date(payslip.year, payslip.month - 1).toLocaleString('default', {
-                month: 'long',
-                year: 'numeric',
-              })}
+            <p className="text-base sm:text-lg font-bold text-gray-800 uppercase tracking-wider">
+              {new Date(payslip.year, payslip.month - 1).toLocaleString(
+                language === 'am' ? 'am-ET' : 'en-US',
+                { month: 'long', year: 'numeric' }
+              )}
             </p>
             <span className={`inline-block mt-2 px-3 py-1 rounded-full text-xs font-bold uppercase ${
-                payslip.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+              payslip.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
             }`}>
-                {payslip.status}
+              {payslip.status === 'paid' ? t('paid') : t('pending')}
             </span>
           </div>
 
           {/* Earnings */}
           <div>
-            <h3 className="font-bold text-green-600 mb-3 text-sm uppercase tracking-wider">Earnings</h3>
+            <h3 className="font-bold text-green-600 mb-3 text-xs sm:text-sm uppercase tracking-wider">
+              {t('earnings')}
+            </h3>
             <div className="space-y-3 text-sm">
               <div className="flex justify-between text-gray-700">
-                <span>Base Salary</span>
-                <span className="font-mono font-medium">ETB {payslip.baseSalary.toLocaleString()}</span>
+                <span>{t('baseSalary')}</span>
+                <span className="font-mono font-medium">
+                  ETB {payslip.baseSalary.toLocaleString()}
+                </span>
               </div>
               <div className="flex justify-between items-center text-gray-700">
-                <span>Bonus</span>
+                <span>{t('bonus')}</span>
                 {isEditing ? (
                   <input
                     {...register('bonus')}
                     type="number"
-                    className="w-32 px-3 py-1 border border-amber-300 rounded-lg text-right focus:ring-2 focus:ring-amber-500 outline-none"
+                    className="w-24 sm:w-32 px-2 sm:px-3 py-1 border border-amber-300 rounded-lg text-right focus:ring-2 focus:ring-amber-500 outline-none text-sm"
                   />
                 ) : (
-                  <span className="font-mono font-medium">ETB {bonus.toLocaleString()}</span>
+                  <span className="font-mono font-medium">
+                    ETB {bonus.toLocaleString()}
+                  </span>
                 )}
               </div>
               <div className="flex justify-between font-bold text-gray-900 border-t border-dashed border-gray-300 pt-2 mt-2">
-                <span>Gross Pay</span>
+                <span>{t('grossPay')}</span>
                 <span>ETB {grossPay.toLocaleString()}</span>
               </div>
             </div>
@@ -142,47 +148,55 @@ export default function PayslipModal({
 
           {/* Deductions */}
           <div>
-            <h3 className="font-bold text-red-600 mb-3 text-sm uppercase tracking-wider">Deductions</h3>
+            <h3 className="font-bold text-red-600 mb-3 text-xs sm:text-sm uppercase tracking-wider">
+              {t('deductionsSection')}
+            </h3>
             <div className="space-y-3 text-sm">
               <div className="flex justify-between text-gray-700">
-                <span>Income Tax</span>
+                <span>{t('incomeTax')}</span>
                 <span className={`font-mono font-medium ${isEditing && recalculatedTax !== payslip.tax ? 'text-blue-600' : ''}`}>
                   ETB {recalculatedTax.toLocaleString()}
                 </span>
               </div>
               <div className="flex justify-between text-gray-700">
-                <span>Pension (7%)</span>
-                <span className="font-mono font-medium">ETB {pension.toLocaleString()}</span>
+                <span>{t('pension')} (7%)</span>
+                <span className="font-mono font-medium">
+                  ETB {pension.toLocaleString()}
+                </span>
               </div>
               <div className="flex justify-between items-center text-gray-700">
-                <span>Other Deductions</span>
+                <span>{t('deductions')}</span>
                 {isEditing ? (
                   <input
                     {...register('deductions')}
                     type="number"
-                    className="w-32 px-3 py-1 border border-amber-300 rounded-lg text-right focus:ring-2 focus:ring-amber-500 outline-none"
+                    className="w-24 sm:w-32 px-2 sm:px-3 py-1 border border-amber-300 rounded-lg text-right focus:ring-2 focus:ring-amber-500 outline-none text-sm"
                   />
                 ) : (
-                  <span className="font-mono font-medium">ETB {deductions.toLocaleString()}</span>
+                  <span className="font-mono font-medium">
+                    ETB {deductions.toLocaleString()}
+                  </span>
                 )}
               </div>
               <div className="flex justify-between font-bold text-gray-900 border-t border-dashed border-gray-300 pt-2 mt-2">
-                <span>Total Deductions</span>
+                <span>{t('totalDeductions')}</span>
                 <span>ETB {totalDeductions.toLocaleString()}</span>
               </div>
             </div>
           </div>
 
           {/* Net Pay */}
-          <div className="bg-amber-50 p-5 rounded-2xl text-center border border-amber-100">
-            <p className="text-xs text-amber-600 uppercase font-bold tracking-widest mb-1">Net Pay</p>
-            <p className="text-4xl font-black text-gray-900 tracking-tight">
+          <div className="bg-amber-50 p-4 sm:p-5 rounded-2xl text-center border border-amber-100">
+            <p className="text-xs text-amber-600 uppercase font-bold tracking-widest mb-1">
+              {t('netPay')}
+            </p>
+            <p className="text-3xl sm:text-4xl font-black text-gray-900 tracking-tight">
               ETB {netPay.toLocaleString()}
             </p>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-3 pt-2 pb-2">
+          <div className="flex flex-col sm:flex-row gap-3 pt-2 pb-2">
             {isEditing ? (
               <>
                 <button
@@ -190,35 +204,32 @@ export default function PayslipModal({
                     setIsEditing(false);
                     reset();
                   }}
-                  className="flex-1 py-3 border border-gray-300 text-gray-600 rounded-xl font-bold hover:bg-gray-50 transition flex items-center justify-center gap-2"
+                  className="w-full sm:flex-1 py-3 border border-gray-300 text-gray-600 rounded-xl font-bold hover:bg-gray-50 transition flex items-center justify-center gap-2"
                 >
-                  <XCircle size={18} /> Cancel
+                  <XCircle size={18} /> {t('cancel')}
                 </button>
                 <button
                   onClick={handleSubmit(handleSave)}
-                  className="flex-1 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 shadow-lg shadow-green-200 transition flex items-center justify-center gap-2"
+                  className="w-full sm:flex-1 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 shadow-lg shadow-green-200 transition flex items-center justify-center gap-2"
                 >
-                  <Save size={18} /> Save
+                  <Save size={18} /> {t('saveChanges')}
                 </button>
               </>
             ) : (
               <>
-                {/* Edit Button (Left) - Conditionally rendered */}
                 {showEditButton && (
                   <button
                     onClick={() => setIsEditing(true)}
-                    className="flex-1 py-3 bg-amber-600 text-white rounded-xl font-bold hover:bg-amber-700 shadow-lg shadow-amber-200 transition flex items-center justify-center gap-2"
+                    className="w-full sm:flex-1 py-3 bg-amber-600 text-white rounded-xl font-bold hover:bg-amber-700 shadow-lg shadow-amber-200 transition flex items-center justify-center gap-2"
                   >
-                    <Edit size={18} /> Edit
+                    <Edit size={18} /> {t('editPayslip')}
                   </button>
                 )}
-
-                {/* Print Button (Right) */}
                 <button
                   onClick={() => window.print()}
-                  className={`flex-1 py-3 border-2 border-gray-200 text-gray-700 rounded-xl font-bold hover:border-gray-300 hover:bg-gray-50 transition flex items-center justify-center gap-2 ${!showEditButton ? 'w-full' : ''}`}
+                  className={`w-full sm:flex-1 py-3 border-2 border-gray-200 text-gray-700 rounded-xl font-bold hover:border-gray-300 hover:bg-gray-50 transition flex items-center justify-center gap-2 ${!showEditButton ? 'w-full' : ''}`}
                 >
-                  <Printer size={18} /> Print
+                  <Printer size={18} /> {t('printPayslip')}
                 </button>
               </>
             )}

@@ -1,15 +1,14 @@
 'use client';
-import React from 'react'
-import StaffAttendancePage from '../../(staff-roles)/attendance/attendanceManagement'
-
-
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Crown, Clock, CalendarCheck } from 'lucide-react';
-
+import StaffAttendancePage from '../../(staff-roles)/attendance/attendanceManagement';
+import { useLanguage } from '../../../../context/LanguageContext'; // Import translation
 
 export default function CashierAttendanceManagement() {
+  const { t, language } = useLanguage(); // Use translation hook
+
   const [minTimePassed, setMinTimePassed] = useState(false);
 
   // ROYAL LOADING — 4.5 seconds of pure luxury
@@ -37,7 +36,12 @@ export default function CashierAttendanceManagement() {
           ))}
         </div>
 
-        <motion.div initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 1.5 }} className="relative z-10 text-center px-8">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.85 }} 
+          animate={{ opacity: 1, scale: 1 }} 
+          transition={{ duration: 1.5 }} 
+          className="relative z-10 text-center px-8"
+        >
           {/* 3D Golden Logo */}
           <motion.div
             animate={{ rotateY: [0, 360], scale: [1, 1.15, 1] }}
@@ -61,6 +65,7 @@ export default function CashierAttendanceManagement() {
             </motion.div>
           </motion.div>
 
+          {/* MESERET Letters */}
           <div className="flex justify-center gap-3 mb-6">
             {["M","E","S","E","R","E","T"].map((letter, i) => (
               <motion.span
@@ -76,16 +81,31 @@ export default function CashierAttendanceManagement() {
             ))}
           </div>
 
-          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2.5, duration: 1.2 }} className="flex items-center justify-center gap-6 mb-6">
+          {/* Translated Title */}
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            transition={{ delay: 2.5, duration: 1.2 }} 
+            className="flex items-center justify-center gap-6 mb-6"
+          >
             <CalendarCheck className="w-16 h-16 text-amber-300" />
-            <h2 className="text-5xl md:text-7xl font-bold text-amber-300 tracking-wider" style={{ fontFamily: "'Playfair Display', serif" }}>
-              ATTENDANCE SYSTEM
+            <h2 
+              className="text-5xl md:text-7xl font-bold text-amber-300 tracking-wider"
+              style={{ fontFamily: language === 'am' ? "'Noto Sans Ethiopic', serif" : "'Playfair Display', serif" }}
+            >
+              {t('attendanceSystem') || "ATTENDANCE SYSTEM"}
             </h2>
             <Clock className="w-16 h-16 text-amber-300" />
           </motion.div>
 
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 3.2, duration: 1.5 }} className="text-2xl text-amber-100 font-light tracking-widest">
-            Honoring Commitment with Royal Precision
+          <motion.p 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            transition={{ delay: 3.2, duration: 1.5 }} 
+            className="text-2xl text-amber-100 font-light tracking-widest"
+            style={{ fontFamily: language === 'am' ? "'Noto Sans Ethiopic', serif" : "inherit" }}
+          >
+            {t('honoringCommitment') || "Honoring Commitment with Royal Precision"}
           </motion.p>
 
           <div className="mt-20 w-96 mx-auto">
@@ -96,15 +116,21 @@ export default function CashierAttendanceManagement() {
                 transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
                 className="h-full bg-gradient-to-r from-yellow-400 via-amber-500 to-orange-600 shadow-2xl relative overflow-hidden"
               >
-                <motion.div 
-                  animate={{ x: ["-100%", "100%"] }} 
-                  transition={{ duration: 2, repeat: Infinity }} 
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent" 
+                <motion.div
+                  animate={{ x: ["-100%", "100%"] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
                 />
               </motion.div>
             </div>
-            <motion.div animate={{ opacity: [0.6, 1, 0.6] }} transition={{ duration: 3, repeat: Infinity }} className="text-center mt-8 text-2xl font-medium text-amber-200 tracking-wider">
-              Recording Your Royal Presence...
+
+            <motion.div 
+              animate={{ opacity: [0.6, 1, 0.6] }} 
+              transition={{ duration: 3, repeat: Infinity }} 
+              className="text-center mt-8 text-2xl font-medium text-amber-200 tracking-wider"
+              style={{ fontFamily: language === 'am' ? "'Noto Sans Ethiopic', serif" : "inherit" }}
+            >
+              {t('recordingPresence') || "Recording Your Royal Presence..."}
             </motion.div>
           </div>
         </motion.div>
@@ -128,17 +154,20 @@ export default function CashierAttendanceManagement() {
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
             className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-orange-600 mb-6 leading-tight"
-            style={{ fontFamily: "'Playfair Display', serif" }}
+            style={{ 
+              fontFamily: language === 'am' ? "'Noto Sans Ethiopic', serif" : "'Playfair Display', serif",
+              fontSize: language === 'am' ? '3.5rem' : 'inherit'
+            }}
           >
-            ATTENDANCE MANAGEMENT
+            {t('attendanceManagement') || "ATTENDANCE MANAGEMENT"}
           </motion.h1>
-          <motion.p 
+          <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
             className="text-2xl text-amber-700 dark:text-amber-300 font-medium tracking-wider"
           >
-            Every Check-in is a Crown • Meseret Hotel
+            {t('everyCheckInIsCrown') || "Every Check-in is a Crown • Meseret Hotel"}
           </motion.p>
         </div>
 

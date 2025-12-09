@@ -1,4 +1,3 @@
-// src/app/customer/layout/CustomerSidebar.tsx
 'use client';
 
 import Link from 'next/link';
@@ -6,32 +5,32 @@ import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Home, Calendar, Coffee, MessageSquare, Settings, Star, X, ChevronDown } from 'lucide-react';
 import { useState, useEffect } from 'react';
-
-// The menuItems array is updated to include subItems for Settings
-const menuItems = [
-  { icon: Home, label: 'Dashboard', href: '/customer' },
-  { icon: Calendar, label: 'My Bookings', href: '/customer/bookings' },
-  { icon: Coffee, label: 'Order Food', href: '/customer/menu' },
-  { icon: Star, label: 'Give Feedback', href: '/customer/feedback' },
-  { icon: MessageSquare, label: 'Chat', href: '/customer/chat' },
-  {
-    icon: Settings,
-    label: 'Settings',
-    href: '/customer/settings', // Base href for parent active state
-    subItems: [
-      { label: 'Room Set', href: '/customer/settings/roomSet' },
-      { label: 'Profile', href: '/customer/settings/profile' }
-    ]
-  },
-];
+import { useLanguage } from '../../../../context/LanguageContext';
 
 export default function CustomerSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const pathname = usePathname();
   const [isDesktop, setIsDesktop] = useState(false);
+  const { t } = useLanguage();
   
-  // ✅ NEW STATE: Manages the open/closed state of the Settings dropdown.
-  // It defaults to open if the current page is one of the settings sub-pages.
   const [isSettingsOpen, setIsSettingsOpen] = useState(pathname.startsWith('/customer/settings'));
+
+  // Translate Menu Items
+  const menuItems = [
+    { icon: Home, label: t('dashboard'), href: '/customer' },
+    { icon: Calendar, label: t('myBookings'), href: '/customer/bookings' },
+    { icon: Coffee, label: t('orderFood'), href: '/customer/menu' },
+    { icon: Star, label: t('giveFeedback'), href: '/customer/feedback' },
+    { icon: MessageSquare, label: t('chat'), href: '/customer/chat' },
+    {
+      icon: Settings,
+      label: t('settings'),
+      href: '/customer/settings', 
+      subItems: [
+        { label: t('roomSet'), href: '/customer/settings/roomSet' },
+        { label: t('profile'), href: '/customer/settings/profile' }
+      ]
+    },
+  ];
 
   useEffect(() => {
     const check = () => setIsDesktop(window.innerWidth >= 1024);
@@ -40,6 +39,7 @@ export default function CustomerSidebar({ isOpen, onClose }: { isOpen: boolean; 
     return () => window.removeEventListener('resize', check);
   }, []);
 
+  // ... (Rest of JSX structure remains identical)
   return (
     <>
       <motion.aside
@@ -61,7 +61,6 @@ export default function CustomerSidebar({ isOpen, onClose }: { isOpen: boolean; 
             {menuItems.map(item => {
               const Icon = item.icon;
               
-              // ✅ If the item has sub-items, render it as a dropdown button
               if (item.subItems) {
                 const isSettingsActive = pathname.startsWith(item.href);
                 return (
@@ -84,7 +83,6 @@ export default function CustomerSidebar({ isOpen, onClose }: { isOpen: boolean; 
                       />
                     </button>
                     
-                    {/* Animate the presence of the sub-menu */}
                     <AnimatePresence>
                       {isSettingsOpen && (
                         <motion.div
@@ -119,7 +117,6 @@ export default function CustomerSidebar({ isOpen, onClose }: { isOpen: boolean; 
                 );
               }
 
-              // ✅ Otherwise, render a normal link
               const active = pathname === item.href;
               return (
                 <Link
@@ -141,7 +138,6 @@ export default function CustomerSidebar({ isOpen, onClose }: { isOpen: boolean; 
         </div>
       </motion.aside>
 
-      {/* Mobile overlay */}
       {isOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"

@@ -16,18 +16,19 @@ export default function Sidebar({ activePath }: SidebarProps) {
     { icon: Home, label: t('dashboard'), href: '/manager', key: 'dashboard' },
     { icon: Users, label: t('manageStaff'), href: '/manager/staff', key: 'staff' },
     { icon: FileText, label: t('feedback'), href: '/manager/feedback', key: 'feedback' },
-    { icon: Coffee, label: t('menuOrders'), href: '/manager/menu', key: 'menu' },
+    { icon: Coffee, label: t('foodOrders'), href: '/manager/menu', key: 'menu' },
     { icon: Bed, label: t('roomStatus'), href: '/manager/rooms', key: 'rooms' },
-    { icon: Book, label: t('viewReport'), href: '/manager/reports', key: 'report' },
+    { icon: Book, label: t('generateReport'), href: '/manager/reports', key: 'report' },
     { icon: UserCheck, label: t('attendance'), href: '/manager/attendance', key: 'attendance' },
-    { icon: Settings, label: t('settings'), href: '/manager/settings', key: 'settings' },
+   
     { icon: MessageCircle, label: t('chat'), href: '/manager/chat', key: 'chat' },
     {
       icon: CircleDollarSign, 
-      label: t('salaryManagement') || 'Salary Management', // Fallback if key missing
+      label: t('salarymanagement') || 'Salary Management', // Fallback if key missing
       href: '/manager/ownSalary',
       key: 'salary'
     },
+     { icon: Settings, label: t('settings'), href: '/manager/settings', key: 'settings' },
   ];
 
   return (

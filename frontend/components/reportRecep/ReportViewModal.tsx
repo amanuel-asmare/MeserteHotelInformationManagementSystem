@@ -3,10 +3,10 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, UserPlus, Users, CalendarCheck2 } from 'lucide-react';
+import { useLanguage } from '../../context/LanguageContext'; // Import Hook
 
 interface ReportHistoryItem {
   _id: string;
-  // ✅ FIX #1: Add 'Comprehensive Cashier' to the list of accepted report types.
   reportType: 'Daily' | 'Occupancy' | 'Revenue' | 'Guest' | 'Comprehensive Cashier';
   reportData: any;
   generatedBy: { _id: string; firstName: string; lastName: string; role: string; };
@@ -21,6 +21,8 @@ interface ReportViewModalProps {
 }
 
 const ReportViewModal: React.FC<ReportViewModalProps> = ({ isOpen, onClose, report }) => {
+  const { t } = useLanguage(); // Use Translation Hook
+
   if (!isOpen) return null;
 
   const renderReportData = (data: any, type: string) => {
@@ -28,48 +30,48 @@ const ReportViewModal: React.FC<ReportViewModalProps> = ({ isOpen, onClose, repo
       case 'Daily':
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <p><strong>Report Date:</strong> {data.reportDate}</p>
-            <p><strong>Total Revenue Today:</strong> ETB {data.totalRevenueToday?.toLocaleString()}</p>
-            <p><strong>Occupancy Rate:</strong> {data.occupancyRate}</p>
-            <p><strong>New Check-ins:</strong> {data.newCheckIns}</p>
-            <p><strong>New Check-outs:</strong> {data.newCheckOuts}</p>
-            <p><strong>New Bookings Today:</strong> {data.newBookingsToday}</p>
-            <p><strong>Available Rooms:</strong> {data.availableRooms}</p>
-            <p><strong>Occupied Rooms:</strong> {data.occupiedRooms}</p>
-            <p><strong>Total Rooms:</strong> {data.totalRooms}</p>
+            <p><strong>{t('reportDate')}:</strong> {data.reportDate}</p>
+            <p><strong>{t('totalRevenueToday')}:</strong> ETB {data.totalRevenueToday?.toLocaleString()}</p>
+            <p><strong>{t('occupancyRate')}:</strong> {data.occupancyRate}</p>
+            <p><strong>{t('newCheckIns')}:</strong> {data.newCheckIns}</p>
+            <p><strong>{t('newCheckOuts')}:</strong> {data.newCheckOuts}</p>
+            <p><strong>{t('newBookingsToday')}:</strong> {data.newBookingsToday}</p>
+            <p><strong>{t('availableRooms')}:</strong> {data.availableRooms}</p>
+            <p><strong>{t('occupiedRooms')}:</strong> {data.occupiedRooms}</p>
+            <p><strong>{t('totalRooms')}:</strong> {data.totalRooms}</p>
           </div>
         );
       case 'Occupancy':
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <p><strong>Date Range:</strong> {data.startDate} to {data.endDate}</p>
-            <p><strong>Occupancy Rate:</strong> {data.occupancyRate}</p>
-            <p><strong>Total Rooms:</strong> {data.totalRooms}</p>
-            <p><strong>Occupied Rooms:</strong> {data.occupiedRooms}</p>
-            <p><strong>Available Rooms:</strong> {data.availableRooms}</p>
+            <p><strong>{t('dateRange')}:</strong> {data.startDate} to {data.endDate}</p>
+            <p><strong>{t('occupancyRate')}:</strong> {data.occupancyRate}</p>
+            <p><strong>{t('totalRooms')}:</strong> {data.totalRooms}</p>
+            <p><strong>{t('occupiedRooms')}:</strong> {data.occupiedRooms}</p>
+            <p><strong>{t('availableRooms')}:</strong> {data.availableRooms}</p>
           </div>
         );
       case 'Revenue':
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <p><strong>Date Range:</strong> {data.startDate} to {data.endDate}</p>
-            <p><strong>Total Overall Revenue:</strong> ETB {data.totalOverallRevenue?.toLocaleString()}</p>
-            <p><strong>Food & Beverage Revenue:</strong> ETB {data.foodBeverageRevenue?.toLocaleString()}</p>
-            <p><strong>Room Booking Revenue:</strong> ETB {data.roomBookingRevenue?.toLocaleString()}</p>
-            <p><strong>Average Order Value:</strong> ETB {data.averageOrderValue?.toLocaleString()}</p>
-            <p><strong>Number of Orders:</strong> {data.numberOfOrders}</p>
+            <p><strong>{t('dateRange')}:</strong> {data.startDate} to {data.endDate}</p>
+            <p><strong>{t('totalOverallRevenue')}:</strong> ETB {data.totalOverallRevenue?.toLocaleString()}</p>
+            <p><strong>{t('foodBeverageRevenue')}:</strong> ETB {data.foodBeverageRevenue?.toLocaleString()}</p>
+            <p><strong>{t('roomBookingRevenue')}:</strong> ETB {data.roomBookingRevenue?.toLocaleString()}</p>
+            <p><strong>{t('avgOrderValue')}:</strong> ETB {data.averageOrderValue?.toLocaleString()}</p>
+            <p><strong>{t('numberOfOrders')}:</strong> {data.numberOfOrders}</p>
           </div>
         );
       case 'Guest':
         return (
           <div className="space-y-6">
             <div className="p-4 bg-gray-100 dark:bg-gray-700/50 rounded-lg text-center">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Historical Report Range</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('historicalRange')}</p>
               <div className="flex items-center justify-center space-x-4">
                 <p className="text-md font-semibold text-gray-800 dark:text-white">{data.startDate} to {data.endDate}</p>
                 <div className="flex items-center text-sm text-gray-700 dark:text-gray-200 border-l pl-4">
                   <CalendarCheck2 size={18} className="mr-2 text-indigo-500"/>
-                  <span className="font-bold mr-1">{data.newGuestsInDateRange}</span> guests in this period
+                  <span className="font-bold mr-1">{data.newGuestsInDateRange}</span> {t('guestsInPeriod')}
                 </div>
               </div>
             </div>
@@ -79,7 +81,7 @@ const ReportViewModal: React.FC<ReportViewModalProps> = ({ isOpen, onClose, repo
                   <UserPlus className="h-6 w-6 text-blue-600 dark:text-blue-300" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">New Guests (Last 7 Days)</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{t('newGuests7Days')}</p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">{data.newGuestsInLast7Days}</p>
                 </div>
               </div>
@@ -88,22 +90,22 @@ const ReportViewModal: React.FC<ReportViewModalProps> = ({ isOpen, onClose, repo
                   <Users className="h-6 w-6 text-green-600 dark:text-green-300" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Total Registered Guests</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{t('totalRegisteredGuests')}</p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">{data.totalRegisteredGuests}</p>
                 </div>
               </div>
             </div>
             {data.recentGuestSignups && data.recentGuestSignups.length > 0 && (
               <div>
-                <h4 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">Most Recent Guest Signups</h4>
+                <h4 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">{t('recentSignups')}</h4>
                 <div className="overflow-hidden border border-gray-200 dark:border-gray-700 rounded-lg">
                   <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead className="bg-gray-50 dark:bg-gray-700/50">
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Name</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Email</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Phone</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Registered On</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t('firstName')}</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t('email')}</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t('phone')}</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t('registeredOn')}</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -123,28 +125,27 @@ const ReportViewModal: React.FC<ReportViewModalProps> = ({ isOpen, onClose, repo
           </div>
         );
       
-      // ✅ FIX #2: Add a new case to handle the 'Comprehensive Cashier' report type.
       case 'Comprehensive Cashier':
         return (
           <div className="space-y-6">
             {/* Summary Section */}
             <div>
-              <h4 className="text-lg font-semibold mb-3 text-gray-800 dark:text-gray-100">Summary</h4>
+              <h4 className="text-lg font-semibold mb-3 text-gray-800 dark:text-gray-100">{t('summary')}</h4>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                 <div className="bg-gray-100 dark:bg-gray-700/50 p-4 rounded-lg">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Total Revenue</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{t('totalRevenueToday')}</p>
                   <p className="text-xl font-bold text-gray-900 dark:text-white">ETB {data.summary?.totalRevenue}</p>
                 </div>
                 <div className="bg-gray-100 dark:bg-gray-700/50 p-4 rounded-lg">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Avg. Occupancy</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{t('avgOccupancy')}</p>
                   <p className="text-xl font-bold text-gray-900 dark:text-white">{data.summary?.avgOccupancy}%</p>
                 </div>
                 <div className="bg-gray-100 dark:bg-gray-700/50 p-4 rounded-lg">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">New Bookings</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{t('newBookings')}</p>
                   <p className="text-xl font-bold text-gray-900 dark:text-white">{data.summary?.newBookings}</p>
                 </div>
                  <div className="bg-gray-100 dark:bg-gray-700/50 p-4 rounded-lg">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Total Guests</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{t('totalGuests')}</p>
                   <p className="text-xl font-bold text-gray-900 dark:text-white">{data.summary?.totalGuests}</p>
                 </div>
               </div>
@@ -152,14 +153,14 @@ const ReportViewModal: React.FC<ReportViewModalProps> = ({ isOpen, onClose, repo
 
             {/* Revenue Breakdown Section */}
             <div>
-               <h4 className="text-lg font-semibold mb-3 text-gray-800 dark:text-gray-100">Revenue Breakdown</h4>
+               <h4 className="text-lg font-semibold mb-3 text-gray-800 dark:text-gray-100">{t('revenueBreakdown')}</h4>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="bg-gray-100 dark:bg-gray-700/50 p-4 rounded-lg">
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Room Revenue</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{t('roomRevenue')}</p>
                       <p className="text-xl font-bold text-gray-900 dark:text-white">ETB {data.revenueBreakdown?.roomRevenue}</p>
                   </div>
                   <div className="bg-gray-100 dark:bg-gray-700/50 p-4 rounded-lg">
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Food & Order Revenue</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{t('foodOrderRevenue')}</p>
                       <p className="text-xl font-bold text-gray-900 dark:text-white">ETB {data.revenueBreakdown?.orderRevenue}</p>
                   </div>
                </div>
@@ -168,13 +169,13 @@ const ReportViewModal: React.FC<ReportViewModalProps> = ({ isOpen, onClose, repo
             {/* Top Menu Items Section */}
             {data.topMenuItems && data.topMenuItems.length > 0 && (
               <div>
-                <h4 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">Top Menu Items Sold</h4>
+                <h4 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">{t('topMenuItems')}</h4>
                 <div className="overflow-hidden border border-gray-200 dark:border-gray-700 rounded-lg">
                   <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead className="bg-gray-50 dark:bg-gray-700/50">
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Item Name</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Quantity Sold</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t('itemName')}</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t('quantitySold')}</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -222,15 +223,15 @@ const ReportViewModal: React.FC<ReportViewModalProps> = ({ isOpen, onClose, repo
               <X size={24} />
             </button>
             <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
-              {report.reportType} Report Details
+              {t('reportDetails')}
             </h2>
             <div className="mb-4 space-y-2 text-gray-700 dark:text-gray-300">
-              <p><strong>Generated By:</strong> {report.generatedBy.firstName} {report.generatedBy.lastName} ({report.generatedBy.role})</p>
-              <p><strong>Generated On:</strong> {new Date(report.createdAt).toLocaleString()}</p>
-              {report.note && <p className="p-2 bg-yellow-50 dark:bg-yellow-800/20 rounded-md"><strong>Note:</strong> {report.note}</p>}
+              <p><strong>{t('generatedBy')}:</strong> {report.generatedBy.firstName} {report.generatedBy.lastName} ({report.generatedBy.role})</p>
+              <p><strong>{t('generatedOn')}:</strong> {new Date(report.createdAt).toLocaleString()}</p>
+              {report.note && <p className="p-2 bg-yellow-50 dark:bg-yellow-800/20 rounded-md"><strong>{t('note')}:</strong> {report.note}</p>}
             </div>
             <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
-              <h3 className="text-xl font-semibold mb-3 text-gray-900 dark:text-white">Report Data:</h3>
+              <h3 className="text-xl font-semibold mb-3 text-gray-900 dark:text-white">{t('reportData')}</h3>
               {renderReportData(report.reportData, report.reportType)}
             </div>
           </motion.div>

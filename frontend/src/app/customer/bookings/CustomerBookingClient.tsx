@@ -1,6 +1,8 @@
 'use client';
+import { Image } from 'react-native';
 
 import { useState, useEffect, useMemo } from 'react';
+
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Bed, Search, Filter, ChevronDown, CheckCircle, Calendar, Users, DollarSign,
@@ -11,6 +13,7 @@ import ImageCarousel from '../../../../components/ui/ImageCarousel';
 import { useAuth } from '../../../../context/AuthContext';
 import { format, isPast, parseISO } from 'date-fns';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { useLanguage } from '../../../../context/LanguageContext'; // Import Hook
 
 interface Room {
   _id: string;
@@ -30,7 +33,7 @@ interface Room {
 
 interface Booking {
   _id: string;
-  room: Room | null; // Room might be null if deleted
+  room: Room | null;
   user: {
     _id: string;
     firstName: string;
@@ -50,7 +53,9 @@ interface Booking {
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
 
 export default function CustomerBookingClient() {
+  const { t, language } = useLanguage(); // Use Translation Hook
   const { user } = useAuth();
+  
   const [rooms, setRooms] = useState<Room[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -109,8 +114,8 @@ export default function CustomerBookingClient() {
             { tx_ref },
             { withCredentials: true }
           );
-          setSuccess(res.data.message || 'Payment confirmed!');
-          fetchBookings(); // Refresh list
+          setSuccess(res.data.message || t('paymentConfirmed')); // Translated
+          fetchBookings(); 
         } catch (error) {
           console.error("Failed to verify payment:", error);
           alert('There was an issue confirming your payment. Please contact support.');
@@ -121,7 +126,7 @@ export default function CustomerBookingClient() {
       verify();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [searchParams, t]);
 
   // Initial Load
   useEffect(() => {
@@ -143,7 +148,7 @@ export default function CustomerBookingClient() {
   // --- HANDLERS ---
   const handleBooking = async (roomId: string) => {
     if (!checkIn || !checkOut || !guests) {
-      alert('Please select check-in date, check-out date and number of guests');
+      alert(t('selectDatesGuests'));
       return;
     }
     try {
@@ -167,7 +172,7 @@ export default function CustomerBookingClient() {
   const handleCancelBooking = async (bookingId: string) => {
     try {
       await axios.put(`${API_BASE}/api/bookings/${bookingId}/cancel`, {}, { withCredentials: true });
-      setSuccess('Booking cancelled – 95% refund initiated');
+      setSuccess(t('bookingCancelled'));
       fetchBookings();
       fetchRooms();
       setTimeout(() => setSuccess(''), 5000);
@@ -202,6 +207,7 @@ export default function CustomerBookingClient() {
   if (loading || !minTimePassed) {
     return (
       <div className="fixed inset-0 bg-gradient-to-br from-amber-950 via-black to-amber-900 flex items-center justify-center overflow-hidden">
+        {/* ... (Animation Code Unchanged) ... */}
         <div className="absolute inset-0">
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-amber-950/50 to-transparent" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(251,191,36,0.15),transparent_70%)]" />
@@ -217,16 +223,15 @@ export default function CustomerBookingClient() {
         </div>
         <motion.div initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 1.5 }} className="relative z-10 text-center px-8">
           <div className="flex justify-center mb-6">
-            {/* Crown Icon Animation */}
             <motion.div animate={{ y: [0, -20, 0] }} transition={{ duration: 4, repeat: Infinity }}>
                <Crown size={80} className="text-yellow-400 drop-shadow-2xl" />
             </motion.div>
           </div>
           <h2 className="text-5xl md:text-7xl font-black text-amber-300 tracking-widest mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>
-            LUXURY HOTEL
+            {t('luxuryHotel')}
           </h2>
           <p className="text-2xl text-amber-100 font-light tracking-widest">
-            Preparing Your Royal Suite...
+            {t('preparingSuite')}
           </p>
         </motion.div>
       </div>
@@ -274,13 +279,13 @@ export default function CustomerBookingClient() {
             <Bed size={24} />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Book a Room</h1>
-            <p className="text-gray-600">Find and book your perfect stay</p>
+            <h1 className="text-3xl font-bold text-gray-900">{t('bookRoomTitle')}</h1>
+            <p className="text-gray-600">{t('bookRoomDesc')}</p>
           </div>
         </div>
         <div className="flex gap-2 relative">
-          <button onClick={() => setTab('rooms')} className={`px-4 py-2 rounded-xl ${tab === 'rooms' ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-700'}`}>Browse Rooms</button>
-          <button onClick={() => setTab('bookings')} className={`px-4 py-2 rounded-xl ${tab === 'bookings' ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-700'}`}>My Bookings</button>
+          <button onClick={() => setTab('rooms')} className={`px-4 py-2 rounded-xl ${tab === 'rooms' ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{t('browseRooms')}</button>
+          <button onClick={() => setTab('bookings')} className={`px-4 py-2 rounded-xl ${tab === 'bookings' ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{t('myBookings')}</button>
           {notificationCount > 0 && (
             <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full h-6 w-6 flex items-center justify-center text-xs font-bold">
               {notificationCount}
@@ -294,21 +299,21 @@ export default function CustomerBookingClient() {
           <div className="mb-6 flex flex-col sm:flex-row gap-3 items-center">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-              <input type="text" placeholder="Search rooms..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500" />
+              <input type="text" placeholder={t('searchRooms')} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500" />
             </div>
             <div className="relative">
               <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
               <select value={typeFilter} onChange={e => setTypeFilter(e.target.value as any)} className="pl-10 pr-8 py-3 border border-gray-300 rounded-xl appearance-none bg-white">
-                <option value="all">All Types</option>
-                <option value="single">Single</option>
-                <option value="double">Double</option>
-                <option value="triple">Triple</option>
+                <option value="all">{t('allTypes')}</option>
+                <option value="single">{t('single')}</option>
+                <option value="double">{t('double')}</option>
+                <option value="triple">{t('triple')}</option>
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             </div>
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={showAvailableOnly} onChange={e => setShowAvailableOnly(e.target.checked)} className="w-4 h-4 text-amber-600 rounded" />
-              <span className="text-sm font-medium text-gray-700">Show Available Only</span>
+              <span className="text-sm font-medium text-gray-700">{t('showAvailableOnly')}</span>
             </label>
           </div>
 
@@ -324,27 +329,27 @@ export default function CustomerBookingClient() {
                     )}
                     <div className="absolute top-2 left-2">
                       <span className={`px-2 py-1 text-xs rounded-full font-medium shadow-sm ${room.availability ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                        {room.availability ? 'Available' : 'Occupied'}
+                        {room.availability ? t('available') : t('occupied')}
                       </span>
                     </div>
                   </div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Room {room.roomNumber}</h3>
+                  <h3 className="font-semibold text-gray-900 mb-2">{t('room')} {room.roomNumber}</h3>
                   <p className="text-sm text-gray-600 mb-3 line-clamp-2">{room.description}</p>
                   <div className="flex items-center justify-between mb-4">
-                    <span className="text-2xl font-bold text-amber-600">ETB {room.price}/night</span>
+                    <span className="text-2xl font-bold text-amber-600">ETB {room.price}/{language === 'am' ? '' : 'night'}</span>
                     <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Users size={16} /> {room.capacity} guests
-                      <Bed size={16} /> {room.numberOfBeds} bed{room.numberOfBeds > 1 ? 's' : ''}
-                      <Bath size={16} /> {room.bathrooms} bath{room.bathrooms > 1 ? 's' : ''}
+                      <Users size={16} /> {room.capacity} {t('guests').toLowerCase()}
+                      <Bed size={16} /> {room.numberOfBeds} {t('beds').toLowerCase()}
+                      <Bath size={16} /> {room.bathrooms} {t('baths').toLowerCase()}
                     </div>
                   </div>
-                  <button onClick={() => { if (!room.availability) { alert('Room is already reserved'); return; } setShowBookingModal(room); }} className="w-full py-3 bg-amber-600 text-white rounded-xl hover:bg-amber-700 transition font-medium" disabled={!room.availability || room.status !== 'clean'}>
-                    {room.availability && room.status === 'clean' ? 'Book Now' : 'Not Available'}
+                  <button onClick={() => { if (!room.availability) { alert(t('alreadyReserved')); return; } setShowBookingModal(room); }} className="w-full py-3 bg-amber-600 text-white rounded-xl hover:bg-amber-700 transition font-medium" disabled={!room.availability || room.status !== 'clean'}>
+                    {room.availability && room.status === 'clean' ? t('bookNow') : t('notAvailable')}
                   </button>
                 </motion.div>
               ))
             ) : (
-              <div className="col-span-full text-center py-12 text-gray-500"><Bed size={48} className="mx-auto mb-3 text-gray-300" /><p>No rooms available matching your criteria.</p></div>
+              <div className="col-span-full text-center py-12 text-gray-500"><Bed size={48} className="mx-auto mb-3 text-gray-300" /><p>{t('noRoomsFound')}</p></div>
             )}
           </div>
         </>
@@ -356,7 +361,7 @@ export default function CustomerBookingClient() {
             {['all', 'pending', 'confirmed', 'completed', 'cancelled'].map(s => (
               <button key={s} className={`pb-3 px-4 flex items-center gap-2 font-medium text-lg whitespace-nowrap ${bookingStatusTab === s ? 'border-b-2 border-amber-600 text-amber-600' : 'text-gray-500'}`} onClick={() => setBookingStatusTab(s as any)}>
                 {s === 'all' ? <ListChecks size={20} /> : s === 'pending' ? <Clock size={20} /> : s === 'confirmed' ? <CheckCircle size={20} /> : s === 'completed' ? <History size={20} /> : <X size={20} />} 
-                {s.charAt(0).toUpperCase() + s.slice(1)}
+                {t(s as any)}
               </button>
             ))}
           </div>
@@ -364,8 +369,6 @@ export default function CustomerBookingClient() {
           <div className="space-y-4">
             {filteredBookings.length > 0 ? (
               filteredBookings.map(booking => {
-                // --- FIX: SAFETY CHECK FOR DELETED ROOMS ---
-                // If booking.room is null (deleted from DB), use fallback values to prevent crash
                 const roomNumber = booking.room?.roomNumber || 'Deleted Room';
                 const roomType = booking.room?.type || 'Unknown';
                 const roomImage = booking.room?.images?.[0] ? getImageUrl(booking.room.images[0]) : null;
@@ -376,7 +379,7 @@ export default function CustomerBookingClient() {
                 return (
                   <motion.div key={booking._id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col sm:flex-row gap-4 relative">
                     {shouldShowCheckoutWarning && (
-                      <div className="absolute top-3 right-3 bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1"><Clock size={16} /> Checkout Passed!</div>
+                      <div className="absolute top-3 right-3 bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1"><Clock size={16} /> {t('checkoutPassed')}</div>
                     )}
                     <div className="w-full sm:w-48">
                       {roomImage ? (
@@ -386,25 +389,25 @@ export default function CustomerBookingClient() {
                       )}
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900">Room {roomNumber}</h3>
-                      <p className="text-sm text-gray-600 capitalize">{roomType} Room</p>
+                      <h3 className="font-semibold text-gray-900">{t('room')} {roomNumber}</h3>
+                      <p className="text-sm text-gray-600 capitalize">{t(roomType as any)} {t('room')}</p>
                       <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 mt-2">
-                        <p><Calendar size={16} className="inline mr-1" /> Check-in: {format(new Date(booking.checkIn), 'MMM dd, yyyy')}</p>
-                        <p><Calendar size={16} className="inline mr-1" /> Check-out: {format(new Date(booking.checkOut), 'MMM dd, yyyy')}</p>
-                        <p><Users size={16} className="inline mr-1" /> Guests: {booking.guests}</p>
-                        <p><DollarSign size={16} className="inline mr-1" /> Total: ETB {booking.totalPrice}</p>
-                        <p><CheckCircle size={16} className="inline mr-1" /> Status: <span className={`font-medium ${booking.status === 'confirmed' ? 'text-green-600' : booking.status === 'pending' ? 'text-yellow-600' : booking.status === 'cancelled' ? 'text-red-600' : 'text-gray-600'}`}>{booking.status}</span></p>
-                        <p><CreditCard size={16} className="inline mr-1" /> Payment: <span className={`font-medium ${booking.paymentStatus === 'completed' ? 'text-green-600' : 'text-orange-600'}`}>{booking.paymentStatus}</span></p>
+                        <p><Calendar size={16} className="inline mr-1" /> {t('checkInLabel')}: {format(new Date(booking.checkIn), 'MMM dd, yyyy')}</p>
+                        <p><Calendar size={16} className="inline mr-1" /> {t('checkOutLabel')}: {format(new Date(booking.checkOut), 'MMM dd, yyyy')}</p>
+                        <p><Users size={16} className="inline mr-1" /> {t('guestsLabel')}: {booking.guests}</p>
+                        <p><DollarSign size={16} className="inline mr-1" /> {t('total')}: ETB {booking.totalPrice}</p>
+                        <p><CheckCircle size={16} className="inline mr-1" /> {t('status')}: <span className={`font-medium ${booking.status === 'confirmed' ? 'text-green-600' : booking.status === 'pending' ? 'text-yellow-600' : booking.status === 'cancelled' ? 'text-red-600' : 'text-gray-600'}`}>{t(booking.status as any)}</span></p>
+                        <p><CreditCard size={16} className="inline mr-1" /> {t('payment')}: <span className={`font-medium ${booking.paymentStatus === 'completed' ? 'text-green-600' : 'text-orange-600'}`}>{t(booking.paymentStatus as any)}</span></p>
                       </div>
                     </div>
                     {(booking.status === 'pending' || booking.status === 'confirmed') && (
-                      <button onClick={() => setCancelConfirmation(booking._id)} className="py-2 px-4 bg-red-600 text-white rounded-xl hover:bg-red-700 transition self-center sm:self-auto">Cancel Booking</button>
+                      <button onClick={() => setCancelConfirmation(booking._id)} className="py-2 px-4 bg-red-600 text-white rounded-xl hover:bg-red-700 transition self-center sm:self-auto">{t('cancelBooking')}</button>
                     )}
                   </motion.div>
                 );
               })
             ) : (
-              <div className="text-center py-12 text-gray-500"><Bed size={48} className="mx-auto mb-3 text-gray-300" /><p>No {bookingStatusTab === 'all' ? '' : bookingStatusTab} bookings found.</p></div>
+              <div className="text-center py-12 text-gray-500"><Bed size={48} className="mx-auto mb-3 text-gray-300" /><p>{t('noBookingsFound')}</p></div>
             )}
           </div>
         </>
@@ -414,11 +417,11 @@ export default function CustomerBookingClient() {
         {cancelConfirmation && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setCancelConfirmation(null)}>
             <motion.div initial={{ scale: 0.9, y: 50 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 50 }} className="bg-white rounded-2xl p-8 shadow-2xl max-w-md w-full" onClick={e => e.stopPropagation()}>
-              <h3 className="text-xl font-bold text-red-600 mb-4">Confirm Cancellation</h3>
-              <p className="text-gray-600 mb-6">Are you sure? You’ll be refunded 95% of the amount.</p>
+              <h3 className="text-xl font-bold text-red-600 mb-4">{t('confirmCancellation')}</h3>
+              <p className="text-gray-600 mb-6">{t('refundNotice')}</p>
               <div className="flex gap-3">
-                <button onClick={() => setCancelConfirmation(null)} className="flex-1 py-3 border border-gray-300 rounded-xl font-medium">No, Keep Booking</button>
-                <button onClick={() => { handleCancelBooking(cancelConfirmation); setCancelConfirmation(null); }} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-medium">Yes, Cancel</button>
+                <button onClick={() => setCancelConfirmation(null)} className="flex-1 py-3 border border-gray-300 rounded-xl font-medium">{t('keepBooking')}</button>
+                <button onClick={() => { handleCancelBooking(cancelConfirmation); setCancelConfirmation(null); }} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-medium">{t('yesCancel')}</button>
               </div>
             </motion.div>
           </motion.div>
@@ -428,15 +431,15 @@ export default function CustomerBookingClient() {
       {showBookingModal && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowBookingModal(null)}>
           <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-8" onClick={e => e.stopPropagation()}>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Book Room {showBookingModal.roomNumber}</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">{t('bookRoomTitle')} {showBookingModal.roomNumber}</h2>
             <div className="grid grid-cols-2 gap-3 mb-6">
               <div className="relative"><Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} /><input type="date" value={checkIn} onChange={e => setCheckIn(e.target.value)} className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500" required /></div>
               <div className="relative"><Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} /><input type="date" value={checkOut} onChange={e => setCheckOut(e.target.value)} className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500" required /></div>
               <div className="relative col-span-2"><Users className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} /><input type="number" min="1" max={showBookingModal.capacity} value={guests} onChange={e => setGuests(e.target.value)} className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500" required /></div>
             </div>
             <div className="flex gap-3 mt-6">
-              <button onClick={() => setShowBookingModal(null)} className="flex-1 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 font-medium">Cancel</button>
-              <button onClick={() => handleBooking(showBookingModal._id)} className="flex-1 py-3 bg-amber-600 text-white rounded-xl hover:bg-amber-700 font-medium">Proceed to Payment</button>
+              <button onClick={() => setShowBookingModal(null)} className="flex-1 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 font-medium">{t('cancel')}</button>
+              <button onClick={() => handleBooking(showBookingModal._id)} className="flex-1 py-3 bg-amber-600 text-white rounded-xl hover:bg-amber-700 font-medium">{t('proceedPayment')}</button>
             </div>
           </motion.div>
         </motion.div>

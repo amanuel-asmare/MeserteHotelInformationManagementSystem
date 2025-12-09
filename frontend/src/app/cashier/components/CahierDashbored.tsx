@@ -4,9 +4,10 @@ import { motion } from 'framer-motion';
 import api from '../../../lib/api';
 import RecentTransactionsTable from './RecentTransactionsTable';
 import { BanknotesIcon, ClockIcon, CheckCircleIcon, ArrowUturnLeftIcon} from '@heroicons/react/24/outline';
-import {   Crown} from 'lucide-react';
+import { Crown } from 'lucide-react';
 import NewsFeed from '../../../../components/NewsFeed';
- 
+import { useLanguage } from '../../../../context/LanguageContext'; // Import Language Hook
+
 const StatCard = ({ title, value, icon, color, loading }) => {
   if (loading) {
     return (
@@ -35,7 +36,7 @@ const StatCard = ({ title, value, icon, color, loading }) => {
           {icon}
         </div>
       </div>
-      {title.includes("Revenue") && value !== "ETB 0.00" && (
+      {(title.includes("Revenue") || title.includes("ገቢ")) && value !== "ETB 0.00" && (
         <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute -top-4 -right-4">
           <Crown className="w-16 h-16 text-amber-500 drop-shadow-xl" />
         </motion.div>
@@ -45,6 +46,7 @@ const StatCard = ({ title, value, icon, color, loading }) => {
 };
 
 export default function CashierDashboard() {
+  const { t } = useLanguage(); // Initialize hook
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [minTimePassed, setMinTimePassed] = useState(false);
@@ -136,7 +138,7 @@ export default function CashierDashboard() {
             className="text-5xl md:text-7xl font-bold text-amber-300 tracking-wider mb-4"
             style={{ fontFamily: "'Playfair Display', serif" }}
           >
-            CASHIER PANEL
+            {t('cashierPortal').toUpperCase()} {/* "CASHIER PANEL" equivalent */}
           </motion.h2>
 
           <motion.p
@@ -145,7 +147,7 @@ export default function CashierDashboard() {
             transition={{ delay: 3.2, duration: 1.5 }}
             className="text-2xl text-amber-100 font-light tracking-widest"
           >
-            Managing Finances with Royal Precision
+            {t('managingFinances')} {/* "Managing Finances with Royal Precision" */}
           </motion.p>
 
           <div className="mt-20 w-96 mx-auto">
@@ -168,7 +170,7 @@ export default function CashierDashboard() {
               transition={{ duration: 3, repeat: Infinity }}
               className="text-center mt-8 text-2xl font-medium text-amber-200 tracking-wider"
             >
-              Loading Financial Overview...
+              {t('loadingFinancialOverview')}...
             </motion.div>
           </div>
         </motion.div>
@@ -187,37 +189,37 @@ export default function CashierDashboard() {
             className="text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-orange-600 mb-4"
             style={{ fontFamily: "'Playfair Display', serif" }}
           >
-            CASHIER DASHBOARD
+            {t('cashierDashboard').toUpperCase()}
           </motion.h1>
           <p className="text-xl text-amber-700 dark:text-amber-300 font-medium">
-            Financial Control Center • Meseret Hotel
+            {t('financialControlCenter')} • {t('meseretHotel')}
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
           <StatCard
-            title="Today's Revenue"
+            title={t('todaysRevenue')}
             value={formatCurrency(dashboardData?.stats.revenue)}
             icon={<BanknotesIcon className="h-12 w-12 text-green-600" />}
             color="border-green-500"
             loading={loading}
           />
           <StatCard
-            title="Pending Payments"
+            title={t('pendingPayments')}
             value={dashboardData?.stats.pending || 0}
             icon={<ClockIcon className="h-12 w-12 text-yellow-600" />}
             color="border-yellow-500"
             loading={loading}
           />
           <StatCard
-            title="Completed Today"
+            title={t('completedToday')}
             value={dashboardData?.stats.completed || 0}
             icon={<CheckCircleIcon className="h-12 w-12 text-blue-600" />}
             color="border-blue-500"
             loading={loading}
           />
           <StatCard
-            title="Refunds Today"
+            title={t('refundsToday')}
             value={dashboardData?.stats.refunds || 0}
             icon={<ArrowUturnLeftIcon className="h-12 w-12 text-red-600" />}
             color="border-red-500"
@@ -233,15 +235,15 @@ export default function CashierDashboard() {
         >
           <h2 className="text-3xl font-bold text-gray-800 mb-6 flex items-center gap-3">
             <BanknotesIcon className="w-10 h-10 text-amber-600" />
-            Recent Transactions
+            {t('recentTransactions')}
           </h2>
           <RecentTransactionsTable transactions={dashboardData?.transactions || []} loading={loading} />
           
           
           </motion.div>
-<div><NewsFeed/></div>
+        <div><NewsFeed/></div>
         <div className="text-center mt-12 text-amber-700 dark:text-amber-400 font-medium text-lg italic">
-          "Every transaction tells a story of excellence"
+          "{t('transactionQuote')}"
         </div>
       </motion.div>
     </div>

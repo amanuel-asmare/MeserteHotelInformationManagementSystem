@@ -161,7 +161,7 @@ const ChatLayout = () => {
     };
 
     return (
-        <div className="flex h-screen font-sans bg-gray-50 dark:bg-gray-950 text-gray-800 dark:text-gray-200">
+        <div className="flex h-screen font-sans bg-gray-50 dark:bg-gray-950 text-gray-800 dark:text-gray-200 overflow-x-auto">
             <AnimatePresence>
                 {viewedProfile && (
                     <UserProfileModal user={viewedProfile} onClose={() => setViewedProfile(null)} />
@@ -177,7 +177,7 @@ const ChatLayout = () => {
                 unreadCounts={unreadCounts}
             />
 
-            <main className="w-full lg:w-3/4 flex flex-col bg-white dark:bg-gray-900 shadow-inner">
+            <main className="w-full lg:w-3/4 flex flex-col bg-white dark:bg-gray-900 shadow-inner min-w-[320px]">
                 {selectedUser ? (
                     <>
                         <ChatHeader user={selectedUser} online={onlineUsers.includes(selectedUser._id)} onViewProfile={() => setViewedProfile(selectedUser)}/>

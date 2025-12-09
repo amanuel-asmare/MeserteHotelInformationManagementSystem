@@ -8,7 +8,8 @@ import Navbar from './layout/Navbar';
 import Sidebar from './layout/Sidebar';
 import Footer from './layout/Footer';
 import { Home } from 'lucide-react';
-import axios from 'axios'; // Import axios
+import axios from 'axios';
+import { useLanguage } from '../../../context/LanguageContext'; // ← ADD THIS
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -22,6 +23,7 @@ interface Notification {
 }
 
 export default function ManagerLayout({ children }: { children: ReactNode }) {
+  const { t } = useLanguage(); // ← ADD THIS
   const { user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -29,59 +31,65 @@ export default function ManagerLayout({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  
-  // Dynamic Notifications State
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  // --- FETCH NOTIFICATIONS ---
+  // FETCH NOTIFICATIONS
   useEffect(() => {
     const fetchNotifs = async () => {
       try {
         const res = await axios.get(`${API_URL}/api/dashboard/notifications`, { withCredentials: true });
         setNotifications(res.data);
       } catch (err) {
-        console.error("Failed to load notifications");
+        console.error(t('failedLoadNotifications') || "Failed to load notifications");
       }
     };
-
     if (user) {
-        fetchNotifs();
-        // Optional: Poll every minute
-        const interval = setInterval(fetchNotifs, 60000);
-        return () => clearInterval(interval);
+      fetchNotifs();
+      const interval = setInterval(fetchNotifs, 60000);
+      return () => clearInterval(interval);
     }
-  }, [user]);
+  }, [user, t]);
 
-  // ... (Keep Redirect and Dark Mode effects same as before) ...
-
+  // Role redirect
   useEffect(() => {
     if (user && user.role !== 'manager') router.push('/');
   }, [user, router]);
 
+  // Dark mode handling
   useEffect(() => {
     const root = window.document.documentElement;
-    if (darkMode) { root.classList.add('dark'); localStorage.setItem('theme', 'dark'); }
-    else { root.classList.remove('dark'); localStorage.setItem('theme', 'light'); }
+    if (darkMode) {
+      root.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      root.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
   }, [darkMode]);
 
   useEffect(() => {
     if (localStorage.getItem('theme') === 'dark') setDarkMode(true);
   }, []);
-  
+
   if (!user) {
-     // ... (Keep Loading Screen same as before) ...
-     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 to-orange-50">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-amber-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-xl font-medium text-amber-800">{t('loading') || 'Loading...'}</p>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className={`min-h-screen flex flex-col transition-colors duration-300 ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
-      
       <Navbar
         onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
         isSidebarOpen={sidebarOpen}
         darkMode={darkMode}
         toggleDarkMode={() => setDarkMode(!darkMode)}
-        notifications={notifications} // Pass dynamic data
+        notifications={notifications}
         showNotifications={showNotifications}
         setShowNotifications={setShowNotifications}
       />
@@ -100,7 +108,7 @@ export default function ManagerLayout({ children }: { children: ReactNode }) {
             </motion.aside>
           )}
         </AnimatePresence>
-        
+
         <main className="flex-1 p-4 lg:p-8 overflow-x-hidden">
           {children}
         </main>
@@ -109,7 +117,10 @@ export default function ManagerLayout({ children }: { children: ReactNode }) {
       <Footer />
 
       {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/50 z-30 lg:hidden backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
+        <div
+          className="fixed inset-0 bg-black/50 z-30 lg:hidden backdrop-blur-sm"
+          onClick={() => setSidebarOpen(false)}
+        />
       )}
     </div>
   );

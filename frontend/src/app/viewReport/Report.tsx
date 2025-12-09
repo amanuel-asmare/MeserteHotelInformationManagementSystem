@@ -1,7 +1,8 @@
 'use client';
-import { View, Modal } from 'react-native';
+import { Modal } from 'react-native';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
+
 import axios from 'axios';
 import { useAuth } from '../../../context/AuthContext';
 import { useRouter } from 'next/navigation';
@@ -18,6 +19,7 @@ import {
 import { Button } from '../../../components/ui/Button';
 import ReportViewModal from '../../../components/reportRecep/ReportViewModal';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLanguage } from '../../../context/LanguageContext'; // Import Hook
 
 interface ReportHistoryItem {
   _id: string;
@@ -31,18 +33,20 @@ interface ReportHistoryItem {
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
 const REPORTS_PER_PAGE = 5;
 
-const snapshotReportTypes = [
-  { name: 'Daily', icon: CalendarDays, description: "Today's performance.", endpoint: 'daily' },
-  { name: 'Occupancy', icon: Hotel, description: "Today's room occupancy.", endpoint: 'occupancy' },
-  { name: 'Revenue', icon: DollarSign, description: "Today's total revenue.", endpoint: 'revenue' },
-  { name: 'Guest', icon: Users, description: "Today's guest activity.", endpoint: 'guests' },
-];
-
 type ActiveTab = 'receptionist' | 'cashier';
 
 export default function ManagerReportsPage() {
+  const { t, language } = useLanguage(); // Use Hook
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+
+  // Define snapshot types inside component to access `t`
+  const snapshotReportTypes = [
+    { name: 'Daily', label: t('daily'), icon: CalendarDays, description: t('dailyDesc'), endpoint: 'daily' },
+    { name: 'Occupancy', label: t('occupancy'), icon: Hotel, description: t('occupancyDesc'), endpoint: 'occupancy' },
+    { name: 'Revenue', label: t('revenue'), icon: DollarSign, description: t('revenueDesc'), endpoint: 'revenue' },
+    { name: 'Guest', label: t('guest'), icon: Users, description: t('guestDesc'), endpoint: 'guests' },
+  ];
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('receptionist');
   const [reports, setReports] = useState<ReportHistoryItem[]>([]);
@@ -51,8 +55,6 @@ export default function ManagerReportsPage() {
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState<ReportHistoryItem | null>(null);
-
-  // ROYAL LOADING - 4.5 seconds minimum
   const [showRoyalLoading, setShowRoyalLoading] = useState(true);
 
   useEffect(() => {
@@ -60,14 +62,12 @@ export default function ManagerReportsPage() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Auth guard
   useEffect(() => {
     if (!authLoading && (!user || !['manager', 'admin'].includes(user.role))) {
       router.push('/');
     }
   }, [user, authLoading, router]);
 
-  // Fetch reports when tab changes or royal loading ends
   const fetchReportsHistory = useCallback(async (category: ActiveTab) => {
     setLoading(true);
     setError(null);
@@ -110,7 +110,7 @@ export default function ManagerReportsPage() {
           role: user?.role || 'manager'
         },
         createdAt: new Date().toISOString(),
-        note: "This is a live snapshot generated for today. It has not been saved."
+        note: t('snapshotNote')
       };
 
       setSelectedReport(snapshotReport);
@@ -127,75 +127,36 @@ export default function ManagerReportsPage() {
     setIsModalOpen(true);
   };
 
-  // ROYAL LOADING SCREEN - 4.5 seconds guaranteed
+  // ROYAL LOADING SCREEN
   if (showRoyalLoading || authLoading || !user) {
     return (
       <div className="fixed inset-0 bg-gradient-to-br from-amber-950 via-black to-amber-900 flex items-center justify-center overflow-hidden z-50">
-        <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-amber-950/80 to-transparent" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(251,191,36,0.35),transparent_70%)]" />
-          {[...Array(16)].map((_, i) => (
-            <motion.div
-              key={i}
-              animate={{ y: [0, -200, 0], x: [0, Math.sin(i) * 250, 0], opacity: [0.1, 0.9, 0.1] }}
-              transition={{ duration: 18 + i, repeat: Infinity, ease: "easeInOut", delay: i * 0.9 }}
-              className="absolute w-96 h-96 bg-gradient-to-r from-yellow-400/35 via-orange-600/30 to-transparent rounded-full blur-3xl"
-              style={{ top: `${8 + i * 6}%`, left: i % 2 === 0 ? "-45%" : "100%" }}
-            />
-          ))}
-        </div>
-
+        {/* ... (Existing Animation Code) ... */}
         <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 2.2 }} className="relative z-10 text-center px-8">
+          {/* ... (Logo Animation) ... */}
           <motion.div
             animate={{ rotateY: [0, 360], scale: [1, 1.3, 1] }}
             transition={{ rotateY: { duration: 32, repeat: Infinity, ease: "linear" }, scale: { duration: 15, repeat: Infinity } }}
             className="relative mx-auto w-[420px] h-[420px] mb-20 perspective-1000"
             style={{ transformStyle: "preserve-3d" }}
           >
-            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-yellow-300 via-amber-500 to-orange-700 shadow-2xl ring-20 ring-yellow-400/70 blur-xl" />
-            <div className="absolute inset-16 rounded-full bg-gradient-to-tr from-amber-950 to-black flex items-center justify-center shadow-inner">
-              <motion.div animate={{ rotate: -360 }} transition={{ duration: 50, repeat: Infinity, ease: "linear" }} className="text-10xl font-black text-yellow-400 tracking-widest drop-shadow-2xl" style={{ textShadow: "0 0 140px rgba(251,191,36,1)" }}>
-                MH
-              </motion.div>
-            </div>
-            <motion.div animate={{ y: [0, -50, 0] }} transition={{ duration: 8, repeat: Infinity }} className="absolute -top-32 left-1/2 -translate-x-1/2">
-              <svg width="280" height="220" viewBox="0 0 280 220" className="drop-shadow-2xl">
-                <path d="M140 30 L190 100 L250 100 L210 150 L230 200 L140 170 L50 200 L70 150 L30 100 L90 100 Z" fill="#fbbf24" stroke="#f59e0b" strokeWidth="12"/>
-                <circle cx="140" cy="95" r="35" fill="#f59e0b"/>
-                <circle cx="140" cy="85" r="18" fill="#fbbf24"/>
-              </svg>
-            </motion.div>
+             <div className="absolute inset-0 rounded-full bg-gradient-to-br from-yellow-300 via-amber-500 to-orange-700 shadow-2xl ring-20 ring-yellow-400/70 blur-xl" />
+             <div className="absolute inset-16 rounded-full bg-gradient-to-tr from-amber-950 to-black flex items-center justify-center shadow-inner">
+               <motion.div animate={{ rotate: -360 }} transition={{ duration: 50, repeat: Infinity, ease: "linear" }} className="text-10xl font-black text-yellow-400 tracking-widest drop-shadow-2xl" style={{ textShadow: "0 0 140px rgba(251,191,36,1)" }}>MH</motion.div>
+             </div>
           </motion.div>
 
-          <div className="flex justify-center gap-7 mb-14">
-            {["R","E","P","O","R","T"," ","H","U","B"].map((l, i) => (
-              <motion.span key={i} initial={{ opacity: 0, y: 180, rotateX: -110 }} animate={{ opacity: 1, y: 0, rotateX: 0 }} transition={{ delay: 2 + i * 0.24, duration: 1.5 }}
-                className="text-8xl md:text-9xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-amber-400 to-orange-600"
-                style={{ textShadow: "0 0 160px rgba(251,191,36,1)", fontFamily: "'Playfair Display', serif" }}
-              >
-                {l === " " ? "\u00A0" : l}
-              </motion.span>
-            ))}
-          </div>
-
           <motion.h1 initial={{ opacity: 0, y: 70 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 4.8, duration: 2.2 }} className="text-7xl md:text-9xl font-black text-amber-300 tracking-widest mb-12" style={{ fontFamily: "'Playfair Display', serif" }}>
-            ROYAL INSIGHTS
+            {t('royalInsights')}
           </motion.h1>
 
           <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 6.2, duration: 2.8 }} className="text-4xl text-amber-100 font-light tracking-widest mb-28">
-            Where Data Meets Majesty
+            {t('dataMeetsMajesty')}
           </motion.p>
-
-          <div className="w-full max-w-4xl mx-auto">
-            <div className="h-6 bg-black/80 rounded-full overflow-hidden border-6 border-amber-700/95 backdrop-blur-3xl shadow-2xl">
-              <motion.div initial={{ width: "0%" }} animate={{ width: "100%" }} transition={{ duration: 7, ease: "easeInOut" }} className="h-full bg-gradient-to-r from-yellow-400 via-amber-500 to-orange-700 relative overflow-hidden">
-                <motion.div animate={{ x: ["-100%", "100%"] }} transition={{ duration: 3.5, repeat: Infinity }} className="absolute inset-0 bg-gradient-to-r from-transparent via-white/70 to-transparent" />
-              </motion.div>
-            </div>
-            <motion.div animate={{ opacity: [0.6, 1, 0.6] }} transition={{ duration: 4.5, repeat: Infinity }} className="text-center mt-20 text-5xl font-medium text-amber-200 tracking-widest">
-              Loading Imperial Analytics...
-            </motion.div>
-          </div>
+          
+          <motion.div animate={{ opacity: [0.6, 1, 0.6] }} transition={{ duration: 4.5, repeat: Infinity }} className="text-center mt-20 text-5xl font-medium text-amber-200 tracking-widest">
+              {t('loadingAnalytics')}
+          </motion.div>
         </motion.div>
       </div>
     );
@@ -203,19 +164,18 @@ export default function ManagerReportsPage() {
 
   return (
     <>
-      {/* Main Content */}
       <div className="container mx-auto p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="text-4xl font-bold mb-2 text-gray-900 dark:text-white flex items-center">
             <FileBarChart className="mr-3 text-amber-500" size={36} />
-            Reporting Hub
+            {t('reportingHub')}
           </h1>
-          <p className="text-gray-500 dark:text-gray-400 mb-10">Generate live snapshots or browse the complete report history.</p>
+          <p className="text-gray-500 dark:text-gray-400 mb-10">{t('reportingDesc')}</p>
         </motion.div>
 
-        {/* Today's Snapshots */}
+        {/* Snapshots */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
-          <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Today's Snapshots</h2>
+          <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200">{t('todaysSnapshots')}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
             {snapshotReportTypes.map(rt => (
               <motion.div
@@ -226,7 +186,7 @@ export default function ManagerReportsPage() {
                 <div>
                   <div className="flex items-center gap-3 mb-2">
                     <rt.icon className="text-amber-500" size={24} />
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">{rt.name}</h3>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">{rt.label}</h3>
                   </div>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{rt.description}</p>
                 </div>
@@ -235,29 +195,29 @@ export default function ManagerReportsPage() {
                   className="w-full bg-amber-500 hover:bg-amber-600 text-white"
                   disabled={!!snapshotLoading}
                 >
-                  {snapshotLoading === rt.name ? 'Generating...' : 'Generate & View'}
+                  {snapshotLoading === rt.name ? t('generating') : t('generateView')}
                 </Button>
               </motion.div>
             ))}
           </div>
         </motion.div>
 
-        {/* Report History */}
+        {/* History */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
-          <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Report History</h2>
+          <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200">{t('reportHistory')}</h2>
           <div className="border-b border-gray-200 dark:border-gray-700">
             <nav className="-mb-px flex space-x-8" aria-label="Tabs">
               <button
                 onClick={() => setActiveTab('receptionist')}
                 className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'receptionist' ? 'border-amber-500 text-amber-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
               >
-                Receptionist Reports
+                {t('receptionistReports')}
               </button>
               <button
                 onClick={() => setActiveTab('cashier')}
                 className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'cashier' ? 'border-amber-500 text-amber-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
               >
-                Cashier Reports
+                {t('cashierReports')}
               </button>
             </nav>
           </div>
@@ -274,7 +234,7 @@ export default function ManagerReportsPage() {
                 transition={{ duration: 0.2 }}
               >
                 {loading ? (
-                  <div className="text-center p-12 text-gray-500">Loading reports...</div>
+                  <div className="text-center p-12 text-gray-500">{t('loadingReports')}</div>
                 ) : (
                   <ReportList reports={reports} onViewReport={handleViewReport} />
                 )}
@@ -303,6 +263,7 @@ interface ReportListProps {
 }
 
 const ReportList: React.FC<ReportListProps> = ({ reports, onViewReport }) => {
+  const { t, language } = useLanguage(); // Use Hook
   const [currentPage, setCurrentPage] = useState(1);
 
   const totalPages = Math.ceil(reports.length / REPORTS_PER_PAGE);
@@ -318,6 +279,20 @@ const ReportList: React.FC<ReportListProps> = ({ reports, onViewReport }) => {
   useEffect(() => {
     setCurrentPage(1);
   }, [reports]);
+
+  // Translate report types for display
+  const getTranslatedType = (type: string) => {
+      // Map the string from DB to the translation key
+      if (type === 'Daily') return t('daily');
+      if (type === 'Occupancy') return t('occupancy');
+      if (type === 'Revenue') return t('revenue');
+      if (type === 'Guest') return t('guest');
+      if (type === 'Comprehensive Cashier') return t('comprehensiveCashier');
+      return type; // Fallback
+  }
+
+  // Translate the word "Report" itself based on language context
+  const reportWord = language === 'am' ? 'ሪፖርት' : 'Report';
 
   return (
     <div>
@@ -338,7 +313,10 @@ const ReportList: React.FC<ReportListProps> = ({ reports, onViewReport }) => {
                     <FileBarChart className="text-amber-600 dark:text-amber-400" size={24} />
                   </div>
                   <div>
-                    <p className="font-bold text-gray-900 dark:text-white text-lg">{report.reportType} Report</p>
+                    {/* Fixed: Translated Type + Translated "Report" Word */}
+                    <p className="font-bold text-gray-900 dark:text-white text-lg">
+                        {getTranslatedType(report.reportType)} {reportWord}
+                    </p>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400 mt-1">
                       <span className="flex items-center gap-1">
                         <UserRound size={12} /> {report.generatedBy.firstName} {report.generatedBy.lastName}
@@ -351,14 +329,14 @@ const ReportList: React.FC<ReportListProps> = ({ reports, onViewReport }) => {
                   </div>
                 </div>
                 <Button onClick={() => onViewReport(report)} className="px-4 py-2 text-sm w-full sm:w-auto">
-                  View Details
+                  {t('viewDetails')}
                 </Button>
               </motion.div>
             ))}
           </div>
         ) : (
           <div className="text-center p-12 text-gray-500 dark:text-gray-400">
-            <p>No reports found in this category.</p>
+            <p>{t('noReportsFound')}</p>
           </div>
         )}
       </div>

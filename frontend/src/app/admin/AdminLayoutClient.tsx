@@ -5,10 +5,10 @@ import { Menu, X, Globe, LogOut, Sun, Moon, Bell } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '../../../context/AuthContext';
 import { usePathname } from 'next/navigation';
-import Footer from './Footer';
+import Footer from '../../app/admin/Footer'; // Make sure path is correct based on your folder structure
 import { useLanguage } from '../../../context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import HotelLogo from '../../../components/HotelLogo'; // IMPORT THIS
+import HotelLogo from '../../../components/HotelLogo'; 
 
 const getImageUrl = (path: string | undefined) => {
   if (!path) return '/default-avatar.png';
@@ -61,6 +61,7 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
     { code: 'am', name: 'Amharic (አማርኛ)' },
   ];
 
+  // Translating Sidebar Items
   const menuItems = [
     { icon: 'LayoutDashboard', label: t('dashboard'), href: '/admin' },
     { icon: 'BedDouble', label: t('roomManagement'), href: '/admin/rooms' },
@@ -74,9 +75,9 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
     { icon: 'Banknote', label: t('pyroll'), href: '/admin/payroll' },
     { icon: 'Settings', label: t('settings'), href: '/admin/settings' },
     { icon: 'Settings', label: t('HotelLego'), href: '/admin/settings/settingConfigration' },
-   { icon: 'ShoppingBag', label: 'Purchases', href: '/admin/purchases' },
-   { icon: 'Receipt', label: 'Expenses', href: '/admin/expenses' },
-  { icon: 'PieChart', label: 'Financial Reports', href: '/admin/analytics' },
+    { icon: 'ShoppingBag', label: t('purchases'), href: '/admin/purchases' },
+    { icon: 'Receipt', label: t('expenses'), href: '/admin/expenses' },
+    { icon: 'PieChart', label: t('financialReports'), href: '/admin/analytics' },
   ];
 
   return (
@@ -92,7 +93,6 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
               {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
             
-            {/* ✅ REPLACED WITH DYNAMIC LOGO COMPONENT */}
             <HotelLogo className="scale-90 origin-left" />
           </div>
 
@@ -157,7 +157,7 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
                   {user?.firstName}
                 </p>
                 <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider mt-1">
-                  Admin
+                  {t('admin')}
                 </p>
               </div>
               <img
@@ -173,7 +173,7 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
               className="flex items-center gap-2 px-3 py-2 text-sm bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:text-red-400 rounded-lg transition-all font-bold"
             >
               <LogOut size={18} />
-              <span className="hidden md:inline">Logout</span>
+              <span className="hidden md:inline">{t('logout')}</span>
             </button>
 
           </div>

@@ -3,6 +3,7 @@
 
 import { Modal } from '../../../../../components/ui/Modal';
 import RegisterForm from '../../../../../components/forms/RegisterForm';
+import { useLanguage } from '../../../../../context/LanguageContext'; // Import Language Hook
 
 interface Props {
   open: boolean;
@@ -10,10 +11,10 @@ interface Props {
 }
 
 export default function AddGuestModal({ open, onClose }: Props) {
-
+  const { t } = useLanguage();
 
   return (
-    <Modal title="Add New Guest" onClose={onClose} className="p-0">
+    <Modal title={`${t('add')} ${t('guest')}`} onClose={onClose} className="p-0">
       <RegisterForm onClose={onClose} forceRole="customer" />
     </Modal>
   );

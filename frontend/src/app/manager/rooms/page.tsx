@@ -1,10 +1,13 @@
 'use client';
-import { Keyboard } from 'react-native';
 import React from 'react';
+import { Keyboard } from 'react-native';
+
 import { useState, useEffect, useCallback, useMemo } from 'react';
+
 import { Bed, Search, Filter, ChevronDown, CheckCircle, RefreshCw, Loader2, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import { useLanguage } from '../../../../context/LanguageContext';
 
 interface Room {
   _id: string;
@@ -18,10 +21,8 @@ interface Room {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
 
-// Professional Pagination Component
 const Pagination = ({ currentPage, totalPages, onPageChange }: { currentPage: number; totalPages: number; onPageChange: (page: number) => void }) => {
   if (totalPages <= 1) return null;
-
   const pageNumbers: (number | string)[] = [];
   const createPageNumbers = () => {
     if (totalPages <= 7) {
@@ -67,6 +68,8 @@ const Pagination = ({ currentPage, totalPages, onPageChange }: { currentPage: nu
 };
 
 export default function ManagerRoomStatusClient() {
+  const { t, language } = useLanguage();
+
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -76,13 +79,10 @@ export default function ManagerRoomStatusClient() {
   const [success, setSuccess] = useState(false);
   const [carouselImages, setCarouselImages] = useState<string[] | null>(null);
   const [carouselIndex, setCarouselIndex] = useState(0);
-
-  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [animationDirection, setAnimationDirection] = useState(1);
   const roomsPerPage = 8;
 
-  // Royal Loading Control — 4.5 seconds minimum
   const [showRoyalLoading, setShowRoyalLoading] = useState(true);
 
   useEffect(() => {
@@ -97,14 +97,13 @@ export default function ManagerRoomStatusClient() {
       setRooms(res.data);
       setCurrentPage(1);
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to load rooms');
+      alert(err.response?.data?.message || t('failedLoadRooms') || 'Failed to load rooms');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [t]);
 
-  // Initial load after royal splash
   useEffect(() => {
     if (!showRoyalLoading) {
       fetchRooms();
@@ -119,13 +118,12 @@ export default function ManagerRoomStatusClient() {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to update status');
+      alert(err.response?.data?.message || t('failedUpdateStatus') || 'Failed to update status');
     } finally {
       setUpdating(null);
     }
   };
 
-  // Filters & Pagination Logic
   const filteredRooms = useMemo(() => {
     return rooms.filter(room => {
       const matchesSearch = room.roomNumber.toLowerCase().includes(searchTerm.toLowerCase());
@@ -179,8 +177,7 @@ export default function ManagerRoomStatusClient() {
   };
 
   const nextImage = () => setCarouselIndex(prev => (prev + 1) % (carouselImages?.length || 1));
-  const prevImage = () => setCarouselIndex(prev => (prev - 1 + (carouselImages?.length || 1)) % 
-  (carouselImages?.length || 1));
+  const prevImage = () => setCarouselIndex(prev => (prev - 1 + (carouselImages?.length || 1)) % (carouselImages?.length || 1));
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -210,7 +207,6 @@ export default function ManagerRoomStatusClient() {
             />
           ))}
         </div>
-
         <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 2.2 }} className="relative z-10 text-center px-8">
           <motion.div
             animate={{ rotateY: [0, 360], scale: [1, 1.3, 1] }}
@@ -218,7 +214,7 @@ export default function ManagerRoomStatusClient() {
             className="relative mx-auto w-[420px] h-[420px] mb-20 perspective-1000"
             style={{ transformStyle: "preserve-3d" }}
           >
-            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-yellow-300 via-amber-amber-500 to-orange-700 shadow-2xl ring-20 ring-yellow-400/70 blur-xl" />
+            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-yellow-300 via-amber-500 to-orange-700 shadow-2xl ring-20 ring-yellow-400/70 blur-xl" />
             <div className="absolute inset-16 rounded-full bg-gradient-to-tr from-amber-950 to-black flex items-center justify-center shadow-inner">
               <motion.div animate={{ rotate: -360 }} transition={{ duration: 50, repeat: Infinity, ease: "linear" }} className="text-10xl font-black text-yellow-400 tracking-widest drop-shadow-2xl" style={{ textShadow: "0 0 140px rgba(251,191,36,1)" }}>
                 MH
@@ -232,7 +228,6 @@ export default function ManagerRoomStatusClient() {
               </svg>
             </motion.div>
           </motion.div>
-
           <div className="flex justify-center gap-7 mb-14">
             {["R","O","O","M"," ","S","T","A","T","U","S"].map((l, i) => (
               <motion.span
@@ -247,15 +242,12 @@ export default function ManagerRoomStatusClient() {
               </motion.span>
             ))}
           </div>
-
           <motion.h1 initial={{ opacity: 0, y: 70 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 4.8, duration: 2.2 }} className="text-7xl md:text-9xl font-black text-amber-300 tracking-widest mb-12" style={{ fontFamily: "'Playfair Display', serif" }}>
-            MANAGER PALACE
+            {t('managerPalace') || "MANAGER PALACE"}
           </motion.h1>
-
           <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 6.2, duration: 2.8 }} className="text-4xl text-amber-100 font-light tracking-widest mb-28">
-            Every Room Deserves Royal Perfection
+            {t('everyRoomRoyal') || "Every Room Deserves Royal Perfection"}
           </motion.p>
-
           <div className="w-full max-w-4xl mx-auto">
             <div className="h-6 bg-black/80 rounded-full overflow-hidden border-6 border-amber-700/95 backdrop-blur-3xl shadow-2xl">
               <motion.div initial={{ width: "0%" }} animate={{ width: "100%" }} transition={{ duration: 7, ease: "easeInOut" }} className="h-full bg-gradient-to-r from-yellow-400 via-amber-500 to-orange-700 relative overflow-hidden">
@@ -263,7 +255,7 @@ export default function ManagerRoomStatusClient() {
               </motion.div>
             </div>
             <motion.div animate={{ opacity: [0.6, 1, 0.6] }} transition={{ duration: 4.5, repeat: Infinity }} className="text-center mt-20 text-5xl font-medium text-amber-200 tracking-widest">
-              Preparing Your Royal Chamber Overview...
+              {t('preparingOverview') || "Preparing Your Royal Chamber Overview..."}
             </motion.div>
           </div>
         </motion.div>
@@ -271,10 +263,9 @@ export default function ManagerRoomStatusClient() {
     );
   }
 
-  // MAIN UI AFTER LOADING
+  // MAIN UI
   return (
     <>
-      {/* Success Toast */}
       <AnimatePresence>
         {success && (
           <motion.div
@@ -284,12 +275,11 @@ export default function ManagerRoomStatusClient() {
             className="fixed top-24 right-6 z-50 bg-green-600 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-2"
           >
             <CheckCircle size={20} />
-            Status updated successfully!
+            {t('statusUpdated') || "Status updated successfully!"}
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Fullscreen Carousel */}
       <AnimatePresence>
         {carouselImages && (
           <motion.div
@@ -328,30 +318,28 @@ export default function ManagerRoomStatusClient() {
         )}
       </AnimatePresence>
 
-      {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg">
             <Bed size={28} />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Room Status</h1>
-            <p className="text-gray-600 dark:text-gray-400">Monitor and update room cleaning status in real-time.</p>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{t('roomStatus') || "Room Status"}</h1>
+            <p className="text-gray-600 dark:text-gray-400">{t('monitorRoomStatus') || "Monitor and update room cleaning status in real-time."}</p>
           </div>
         </div>
         <button onClick={fetchRooms} disabled={refreshing} className="flex items-center gap-2 px-5 py-3 bg-amber-600 text-white rounded-xl hover:bg-amber-700 transition-all shadow-md hover:shadow-lg disabled:opacity-70">
           {refreshing ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
-          {refreshing ? 'Refreshing...' : 'Refresh'}
+          {refreshing ? t('refreshing') || 'Refreshing...' : t('refresh') || 'Refresh'}
         </button>
       </div>
 
-      {/* Search & Filter */}
       <div className="mb-6 flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
           <input
             type="text"
-            placeholder="Search by room number..."
+            placeholder={t('searchRoomNumber') || "Search by room number..."}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-amber-500 bg-white dark:bg-gray-800"
@@ -364,23 +352,21 @@ export default function ManagerRoomStatusClient() {
             onChange={(e) => setStatusFilter(e.target.value as any)}
             className="pl-12 pr-10 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-amber-500 appearance-none bg-white dark:bg-gray-800"
           >
-            <option value="all">All Statuses</option>
-            <option value="clean">Clean</option>
-            <option value="dirty">Dirty</option>
-            <option value="maintenance">Maintenance</option>
+            <option value="all">{t('allStatuses') || "All Statuses"}</option>
+            <option value="clean">{t('clean') || "Clean"}</option>
+            <option value="dirty">{t('dirty') || "Dirty"}</option>
+            <option value="maintenance">{t('maintenance') || "Maintenance"}</option>
           </select>
           <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
         </div>
       </div>
 
-      {/* Info */}
       <div className="mb-4 text-sm text-gray-600 dark:text-gray-400">
-        Showing <span className="font-bold text-gray-800 dark:text-gray-200">{filteredRooms.length > 0 ? indexOfFirstRoom + 1 : 0}</span>
-        - <span className="font-bold text-gray-800 dark:text-gray-200">{Math.min(indexOfLastRoom, filteredRooms.length)}</span> of
-        <span className="font-bold text-gray-800 dark:text-gray-200"> {filteredRooms.length}</span> rooms.
+        {t('showing') || "Showing"} <span className="font-bold text-gray-800 dark:text-gray-200">{filteredRooms.length > 0 ? indexOfFirstRoom + 1 : 0}</span>
+        - <span className="font-bold text-gray-800 dark:text-gray-200">{Math.min(indexOfLastRoom, filteredRooms.length)}</span> {t('of') || "of"}
+        <span className="font-bold text-gray-800 dark:text-gray-200"> {filteredRooms.length}</span> {t('rooms') || "rooms"}.
       </div>
 
-      {/* Room Grid with Page Turn Animation */}
       <AnimatePresence mode="wait" custom={animationDirection}>
         <motion.div
           key={currentPage}
@@ -404,27 +390,28 @@ export default function ManagerRoomStatusClient() {
                 <img src={getImageUrl(room.images[0])} alt={room.roomNumber} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <p className="text-white text-sm font-medium bg-black/60 px-3 py-1 rounded-full">View Photos</p>
+                  <p className="text-white text-sm font-medium bg-black/60 px-3 py-1 rounded-full">{t('viewPhotos') || "View Photos"}</p>
                 </div>
                 {room.images.length > 1 && (
-                  <div className="absolute bottom-2 right-2 bg-black/70 text-white px- px-2 py-1 rounded-md text-xs font-bold">{room.images.length} photos</div>
+                  <div className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-1 rounded-md text-xs font-bold">
+                    {room.images.length} {t('photos') || "photos"}
+                  </div>
                 )}
               </div>
-
               <div className="p-4 flex flex-col flex-grow">
                 <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-bold text-lg text-gray-900 dark:text-white">Room {room.roomNumber}</h3>
+                  <h3 className="font-bold text-lg text-gray-900 dark:text-white">{t('room') || "Room"} {room.roomNumber}</h3>
                   <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${room.availability ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                    {room.availability ? 'Available' : 'Occupied'}
+                    {room.availability ? t('available') || 'Available' : t('occupied') || 'Occupied'}
                   </span>
                 </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400 capitalize mb-3">Floor {room.floorNumber} • {room.type} Room</p>
-
+                <p className="text-sm text-gray-500 dark:text-gray-400 capitalize mb-3">
+                  {t('floor') || "Floor"} {room.floorNumber} • {t(room.type) || room.type} {t('room') || "Room"}
+                </p>
                 <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-medium mb-4 self-start ${getStatusColor(room.status)}`}>
                   <div className="w-2 h-2 rounded-full bg-current"></div>
-                  {room.status.charAt(0).toUpperCase() + room.status.slice(1)}
+                  {t(room.status) || room.status.charAt(0).toUpperCase() + room.status.slice(1)}
                 </div>
-
                 <div className="grid grid-cols-3 gap-2 mt-auto pt-2 border-t border-gray-100 dark:border-gray-700">
                   {(['clean', 'dirty', 'maintenance'] as const).map((status) => (
                     <button
@@ -440,7 +427,7 @@ export default function ManagerRoomStatusClient() {
                       {updating === room._id && room.status !== status ? (
                         <Loader2 size={14} className="animate-spin mx-auto" />
                       ) : (
-                        status.charAt(0).toUpperCase() + status.slice(1)
+                        t(status) || status.charAt(0).toUpperCase() + status.slice(1)
                       )}
                     </button>
                   ))}
@@ -451,16 +438,14 @@ export default function ManagerRoomStatusClient() {
         </motion.div>
       </AnimatePresence>
 
-      {/* Empty State */}
       {filteredRooms.length === 0 && !loading && (
         <div className="text-center py-16 text-gray-500 dark:text-gray-400">
           <Bed size={48} className="mx-auto mb-4 text-gray-300 dark:text-gray-600" />
-          <h3 className="text-xl font-semibold mb-1">No Rooms Found</h3>
-          <p>Try adjusting your search or filter criteria.</p>
+          <h3 className="text-xl font-semibold mb-1">{t('noRoomsFound') || "No Rooms Found"}</h3>
+          <p>{t('adjustFilters') || "Try adjusting your search or filter criteria."}</p>
         </div>
       )}
 
-      {/* Pagination */}
       <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
     </>
   );

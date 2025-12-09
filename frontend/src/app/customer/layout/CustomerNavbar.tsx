@@ -56,12 +56,7 @@ export default function CustomerNavbar({
           
           {/* Left: Logo & Toggle */}
           <div className="flex items-center gap-4">
-            <button
-              onClick={onMenuToggle}
-              className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition text-gray-600 dark:text-gray-300"
-            >
-              {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
+          
             <div className="flex items-center gap-3">
              
           {/* Left: Logo & Toggle */}

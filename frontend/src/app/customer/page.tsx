@@ -1,10 +1,10 @@
-// src/app/customer/dashboard/page.tsx
 'use client';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bed, Coffee, Star, MessageCircle, Crown, Hotel } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import NewsFeed from '../../../components/NewsFeed';
+import { useLanguage } from '../../../context/LanguageContext'; // Import Hook
 
 interface Order {
   _id: string;
@@ -29,6 +29,8 @@ interface Feedback {
 
 export default function CustomerDashboardPage() {
   const { user, loading: authLoading } = useAuth();
+  const { t, language } = useLanguage(); // Use Translation Hook
+
   const [stats, setStats] = useState({
     roomNumber: 'N/A',
     ordersToday: 0,
@@ -52,7 +54,7 @@ export default function CustomerDashboardPage() {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
 
         const bookingsRes = await fetch(`${API_URL}/api/bookings/my-bookings`, { credentials: 'include' });
-        let currentRoomNumber = 'Not Assigned';
+        let currentRoomNumber = t('notAssigned'); // Use Translation Default
         if (bookingsRes.ok) {
           const bookings: Booking[] = await bookingsRes.json();
           const now = new Date();
@@ -65,7 +67,12 @@ export default function CustomerDashboardPage() {
           if (activeBooking) currentRoomNumber = activeBooking.room.roomNumber;
         }
 
-        setStats(prev => ({ ...prev, roomNumber: currentRoomNumber }));
+        // Only update if it's actually assigned, otherwise keep translated default
+        if (currentRoomNumber !== 'Not Assigned' && currentRoomNumber !== 'N/A') {
+             setStats(prev => ({ ...prev, roomNumber: currentRoomNumber }));
+        } else {
+             setStats(prev => ({ ...prev, roomNumber: t('notAssigned') }));
+        }
 
         const [ordersRes, messagesRes, feedbackRes] = await Promise.all([
           fetch(`${API_URL}/api/orders/my`, { credentials: 'include' }),
@@ -109,7 +116,7 @@ export default function CustomerDashboardPage() {
 
     if (!authLoading && user) fetchDashboardData();
     else if (!authLoading && !user) setStatsLoading(false);
-  }, [user, authLoading]);
+  }, [user, authLoading, t]); // Add t as dependency
 
   // ROYAL LOADING SCREEN — SAME AS BOOKING & MENU
   if (!minTimePassed || authLoading) {
@@ -171,11 +178,11 @@ export default function CustomerDashboardPage() {
           </div>
 
           <motion.h2 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2.5, duration: 1.2 }} className="text-5xl md:text-7xl font-bold text-amber-300 tracking-wider mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>
-            LUXURY HOTEL
+            {t('luxuryHotel')}
           </motion.h2>
 
           <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 3.2, duration: 1.5 }} className="text-2xl text-amber-100 font-light tracking-widest">
-            Welcome Home, {user?.firstName || 'Guest'}
+            {t('welcomeHome')}, {user?.firstName || t('guest')}
           </motion.p>
 
           <div className="mt-20 w-96 mx-auto">
@@ -190,7 +197,7 @@ export default function CustomerDashboardPage() {
               </motion.div>
             </div>
             <motion.div animate={{ opacity: [0.6, 1, 0.6] }} transition={{ duration: 3, repeat: Infinity }} className="text-center mt-8 text-2xl font-medium text-amber-200 tracking-wider">
-              Preparing Your Royal Welcome...
+              {t('preparingWelcome')}
             </motion.div>
           </div>
 
@@ -206,19 +213,19 @@ export default function CustomerDashboardPage() {
   }
 
   const dashboardStats = [
-    { icon: Bed, label: 'My Room', value: stats.roomNumber, color: 'blue' },
-    { icon: Coffee, label: 'Orders Today', value: stats.ordersToday, color: 'green' },
-    { icon: Star, label: 'Rating Given', value: stats.ratingGiven, color: 'amber' },
-    { icon: MessageCircle, label: 'Messages', value: stats.unreadMessages, color: 'purple' },
+    { icon: Bed, label: t('myRoom'), value: stats.roomNumber, color: 'blue' },
+    { icon: Coffee, label: t('ordersToday'), value: stats.ordersToday, color: 'green' },
+    { icon: Star, label: t('ratingGiven'), value: stats.ratingGiven, color: 'amber' },
+    { icon: MessageCircle, label: t('messages'), value: stats.unreadMessages, color: 'purple' },
   ];
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: "easeOut" }}>
       <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-3">
-        Welcome back, <span className="text-amber-600">{user?.firstName}!</span>
+        {t('welcomeBack')}, <span className="text-amber-600">{user?.firstName}!</span>
       </h1>
       <p className="text-lg text-gray-600 dark:text-gray-400 mb-10">
-        We are delighted to have you at <span className="font-semibold text-amber-600">Meseret Hotel</span>
+        {t('delightedHaveYou')} <span className="font-semibold text-amber-600">{t('meseretHotel')}</span>
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -242,7 +249,7 @@ export default function CustomerDashboardPage() {
               {statsLoading ? '...' : stat.value}
             </p>
 
-            {stat.label === 'My Room' && stat.value !== 'N/A' && stat.value !== 'Not Assigned' && (
+            {stat.label === t('myRoom') && stat.value !== 'N/A' && stat.value !== t('notAssigned') && (
               <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.5 }} className="absolute -top-3 -right-3">
                 <Crown className="text-amber-500" size={40} />
               </motion.div>
@@ -254,7 +261,7 @@ export default function CustomerDashboardPage() {
 
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }} className="mt-12 text-center">
         <p className="text-xl text-amber-600 dark:text-amber-400 font-medium italic">
-          "Experience luxury redefined at Meseret Hotel"
+          {t('luxuryRedefined')}
         </p>
       </motion.div>
     </motion.div>

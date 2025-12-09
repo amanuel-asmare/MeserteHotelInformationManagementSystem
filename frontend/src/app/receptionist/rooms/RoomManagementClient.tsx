@@ -1,16 +1,16 @@
 'use client';
-import { Image, Modal, Alert } from 'react-native';
+import { Image } from 'react-native';
 
 import { useState, useEffect } from 'react';
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Search, Filter, Bed, CheckCircle, AlertCircle, X, 
-  ChevronLeft, ChevronRight, KeyRound, Hotel, Bath, Users, DoorOpen, ImageIcon
+  Search, Bed, KeyRound, Hotel, Bath, Users, DoorOpen, ImageIcon, X, ChevronLeft, ChevronRight 
 } from 'lucide-react';
 import axios from 'axios';
 import ImageCarousel from '../../../../components/ui/ImageCarousel'; 
 import AssignRoomModal from '../guestManagement/modals/AssignRoomModal';
+import { useLanguage } from '../../../../context/LanguageContext'; // Import Hook
 
 interface Room {
   _id: string;
@@ -30,21 +30,18 @@ interface Room {
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
 
 export default function ReceptionistRoomManagement() {
+  const { t } = useLanguage(); // Init hook
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [minTimePassed, setMinTimePassed] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null); 
   const [imageCarousel, setImageCarousel] = useState<string[] | null>(null);
-  
-  // Fix Hydration: Store random values in state
   const [particles, setParticles] = useState<{x: number}[]>([]);
 
-  // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6; // Show 6 rooms per page as requested
+  const itemsPerPage = 6;
 
-  // Royal loading delay & particle gen
   useEffect(() => {
     setParticles([
       { x: Math.random() * 100 - 50 },
@@ -71,20 +68,17 @@ export default function ReceptionistRoomManagement() {
     }
   };
 
-  // Filtering
   const filteredRooms = rooms.filter(room => 
     room.roomNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
     room.type.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Pagination Logic
   const totalPages = Math.ceil(filteredRooms.length / itemsPerPage);
   const paginatedRooms = filteredRooms.slice(
     (currentPage - 1) * itemsPerPage, 
     currentPage * itemsPerPage
   );
 
-  // Reset to page 1 when search changes
   useEffect(() => { setCurrentPage(1) }, [searchTerm]);
 
   const getImageUrl = (path: string) => {
@@ -93,13 +87,11 @@ export default function ReceptionistRoomManagement() {
     return `${API_BASE}${path}`;
   };
 
-  // --- ROYAL LOADING SCREEN ---
   if (loading || !minTimePassed) {
     return (
       <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-blue-950 to-black flex items-center justify-center overflow-hidden z-50">
         <div className="absolute inset-0 opacity-10 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
 
-        {/* Use stable particle state */}
         {particles.length > 0 && [Bed, KeyRound, Bath].map((Icon, i) => (
            <motion.div
              key={i}
@@ -125,13 +117,13 @@ export default function ReceptionistRoomManagement() {
                 </div>
                 <div className="h-1 w-24 bg-white/50 rounded mb-2"></div>
                 <div className="h-1 w-16 bg-white/30 rounded"></div>
-                <div className="absolute bottom-4 text-white/80 text-xs font-mono tracking-widest">VIP ACCESS</div>
+                <div className="absolute bottom-4 text-white/80 text-xs font-mono tracking-widest">{t('vipAccess')}</div>
              </motion.div>
           </div>
           <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight mb-2">
-            ROOM <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-500">MANAGEMENT</span>
+            {t('room').toUpperCase()} <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-500">{t('management').toUpperCase()}</span>
           </h2>
-          <p className="text-gray-400 font-mono text-sm tracking-widest uppercase">Synchronizing Floor Plans...</p>
+          <p className="text-gray-400 font-mono text-sm tracking-widest uppercase">{t('syncingFloorPlans')}...</p>
         </motion.div>
       </div>
     );
@@ -139,7 +131,6 @@ export default function ReceptionistRoomManagement() {
 
   return (
     <>
-      {/* Image Carousel */}
       <AnimatePresence>
         {imageCarousel && (
           <motion.div
@@ -155,7 +146,6 @@ export default function ReceptionistRoomManagement() {
         )}
       </AnimatePresence>
 
-      {/* Assign Modal */}
       {selectedRoom && (
         <AssignRoomModal 
           room={selectedRoom} 
@@ -167,20 +157,18 @@ export default function ReceptionistRoomManagement() {
         />
       )}
 
-      {/* Main Content */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
         
-        {/* Header & Search */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Room Management</h1>
-            <p className="text-gray-500">View status and assign rooms to guests</p>
+            <h1 className="text-3xl font-bold text-gray-900">{t('roomManagement')}</h1>
+            <p className="text-gray-500">{t('manageRoomsDesc')}</p>
           </div>
           <div className="relative w-full md:w-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
             <input 
               type="text" 
-              placeholder="Search room number..." 
+              placeholder={t('searchRoomNumber')} 
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               className="pl-10 pr-4 py-2 border border-gray-300 rounded-xl w-full md:w-80 focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all shadow-sm"
@@ -188,7 +176,6 @@ export default function ReceptionistRoomManagement() {
           </div>
         </div>
 
-        {/* Room Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <AnimatePresence mode='popLayout'>
             {paginatedRooms.map(room => (
@@ -201,7 +188,6 @@ export default function ReceptionistRoomManagement() {
                 whileHover={{ y: -5 }}
                 className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-xl transition-all duration-300"
               >
-                {/* Image Area */}
                 <div className="h-48 bg-gray-100 relative group cursor-pointer" onClick={() => setImageCarousel(room.images)}>
                   {room.images?.[0] ? (
                     <img 
@@ -215,28 +201,27 @@ export default function ReceptionistRoomManagement() {
                   <span className={`absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide shadow-sm ${
                     room.availability ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
                   }`}>
-                    {room.availability ? 'Available' : 'Occupied'}
+                    {room.availability ? t('available') : t('occupied')}
                   </span>
                 </div>
 
-                {/* Details */}
                 <div className="p-5">
                   <div className="flex justify-between items-start mb-3">
                     <div>
-                      <h3 className="text-xl font-bold text-gray-900">Room {room.roomNumber}</h3>
-                      <p className="text-sm text-gray-500 capitalize">{room.type} • Floor {room.floorNumber}</p>
+                      <h3 className="text-xl font-bold text-gray-900">{t('room')} {room.roomNumber}</h3>
+                      <p className="text-sm text-gray-500 capitalize">{t(room.type)} • {t('floor')} {room.floorNumber}</p>
                     </div>
                     <div className={`px-2 py-1 rounded text-xs font-bold uppercase border ${
                        room.status === 'clean' ? 'bg-green-50 text-green-700 border-green-200' :
                        room.status === 'dirty' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 
                        'bg-red-50 text-red-700 border-red-200'
                     }`}>
-                      {room.status}
+                      {room.status === 'clean' ? t('clean') : room.status === 'dirty' ? t('dirty') : t('maintenance')}
                     </div>
                   </div>
                   
                   <div className="flex items-center justify-between mb-4">
-                     <p className="text-lg font-bold text-amber-600">ETB {room.price}<span className="text-sm text-gray-400 font-normal">/night</span></p>
+                     <p className="text-lg font-bold text-amber-600">ETB {room.price}<span className="text-sm text-gray-400 font-normal">/{t('night').toLowerCase()}</span></p>
                      <div className="flex items-center gap-2 text-xs text-gray-500">
                         <span className="flex items-center gap-1"><Users size={12}/> {room.capacity}</span>
                         <span className="flex items-center gap-1"><Bed size={12}/> {room.numberOfBeds}</span>
@@ -252,7 +237,7 @@ export default function ReceptionistRoomManagement() {
                       : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                     }`}
                   >
-                    {room.availability && room.status === 'clean' ? <><DoorOpen size={18}/> Assign Room</> : 'Unavailable'}
+                    {room.availability && room.status === 'clean' ? <><DoorOpen size={18}/> {t('assignRoom')}</> : t('unavailable')}
                   </button>
                 </div>
               </motion.div>
@@ -262,12 +247,11 @@ export default function ReceptionistRoomManagement() {
           {filteredRooms.length === 0 && (
             <div className="col-span-full text-center py-12 text-gray-400">
               <Hotel size={48} className="mx-auto mb-2 opacity-50"/>
-              <p>No rooms found matching your search.</p>
+              <p>{t('noRoomsFound')}</p>
             </div>
           )}
         </div>
 
-        {/* Pagination Controls */}
         {totalPages > 1 && (
           <div className="flex justify-center items-center gap-4 mt-10 pb-10">
             <button

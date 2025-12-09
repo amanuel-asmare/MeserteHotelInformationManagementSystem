@@ -5,10 +5,10 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Home, Clock, Users, Bed, CreditCard, FileText, BarChart3, MessageSquare,Calendar,
-  Settings, Phone, MapPin, ChevronDown, Hotel, CircleDollarSign, 
+  Home, Users, Bed, FileText, MessageSquare, Calendar,
+  Settings, ChevronDown, CircleDollarSign, 
 } from 'lucide-react';
-import Image from 'next/image'; // Import Image component
+import { useLanguage } from '../../../../context/LanguageContext'; // Import Language Hook
 
 interface SidebarItem {
   icon: any;
@@ -26,109 +26,88 @@ interface ReceptionSidebarProps {
   isSidebarOpen: boolean;
 }
 
-const sidebarItems: SidebarItem[] = [
-  { icon: Home, label: 'Dashboard', href: '/receptionist' },
- 
-  {
-    icon: Users,
-    label: 'Guest Management',
-    href: '/receptionist/guestManagement',
-    subItems: [
-      { label: 'All Guests', href: '/receptionist/guestManagement/guestList' },
-      { label: 'Add Guest', href: '/receptionist/guestManagement' }
-    ]
-  },
-  {
-    icon: Bed,
-    label: 'Room Management',
-    href: '/receptionist/rooms',
-    subItems: [
-     
-      { label: 'View reservation', href: '/receptionist/rooms/view' },
-      { label: 'Assign Room', href: '/receptionist/rooms' }
-    ]
-  },
-
-  {
-    icon: FileText,
-    label: 'Reports',
-    href: '/reception/reports',
-    subItems: [
-      { label: 'Daily Report', href: '/receptionist/reports/daily' },
-      { label: 'Occupancy', href: '/receptionist/reports/occupancy' },
-      { label: 'Revenue', href: '/receptionist/reports/revenue' },
-      { label: 'Guest Report', href: '/receptionist/reports/guests' }
-    ]
-  },,
-
-  {
-    icon: Calendar,
-    label: 'Attendance',
-    href: '/receptionist/attendance',
-    subItems: [
-      { label: 'Mark Attendance', href: '/receptionist/attendance' },
-     
-    ]
-  },
-  {
-    icon: MessageSquare,
-    label: 'Communication',
-    href: '/reception/chat',
-    subItems: [
-       { label: 'Oline Chat', href: '/receptionist/chat' },
-      // { label: 'Messages', href: '/reception/communication/messages' },
-      // { label: 'Emails', href: '/reception/communication/emails' },
-      // { label: 'SMS', href: '/reception/communication/sms' }
-    ]
-  }, {
-    icon: FileText,
-    label: 'feedBack',
-    href: '/receptionist/feedback',
-    subItems: [
-    { 
-     label: 'View Feedback', href: '/receptionist/feedback' },
-    
-    ]
-  },
-  
-  {
-    icon: CircleDollarSign, 
-    label: 'Salary manageme',
-    href: '/receptionist/ownSalary',
-    subItems: [
-      { label: 'OwnSalary', href: '/receptionist/ownSalary' },
-      
-    ]
-  },
-  {
-    icon: Settings,
-    label: 'Settings',
-    href: '/reception/settings',
-    subItems: [
-      { label: 'Profile', href: '/receptionist/settings' },
-   ]
-  }
-];
-
 export default function ReceptionSidebar({ isSidebarOpen }: ReceptionSidebarProps) {
   const pathname = usePathname();
+  const { t } = useLanguage(); // Initialize translation
   const [openSubmenu, setOpenSubmenu] = useState<string | null>(null);
-  const [currentTime, setCurrentTime] = useState<string>('');
-
-  useEffect(() => {
-    const updateTime = () => {
-      setCurrentTime(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }));
-    };
-
-    updateTime();
-    const interval = setInterval(updateTime, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
+  
+  // Defined inside component to access 't'
+  const sidebarItems: SidebarItem[] = [
+    { icon: Home, label: t('dashboard'), href: '/receptionist' },
+   
+    {
+      icon: Users,
+      label: t('gusetmanagement') , // specialized combination
+      href: '/receptionist/guestManagement',
+      subItems: [
+        { label: t('guest'), href: '/receptionist/guestManagement/guestList' },
+        { label: t('add') + ' ' + t('guest'), href: '/receptionist/guestManagement' }
+      ]
+    },
+    {
+      icon: Bed,
+      label: t('roomManagement'),
+      href: '/receptionist/rooms',
+      subItems: [
+        { label: t('view'), href: '/receptionist/rooms/view' },
+        { label: t('roomControl'), href: '/receptionist/rooms' }
+      ]
+    },
+    {
+      icon: FileText,
+      label: t('reportingHub'),
+      href: '/reception/reports',
+      subItems: [
+        { label: t('daily'), href: '/receptionist/reports/daily' },
+        { label: t('occupancy'), href: '/receptionist/reports/occupancy' },
+        { label: t('revenue'), href: '/receptionist/reports/revenue' },
+        { label: t('guest'), href: '/receptionist/reports/guests' }
+      ]
+    },
+    {
+      icon: Calendar,
+      label: t('attendance'),
+      href: '/receptionist/attendance',
+      subItems: [
+        { label: t('attendance'), href: '/receptionist/attendance' },
+      ]
+    },
+    {
+      icon: MessageSquare,
+      label: t('chat'),
+      href: '/reception/chat',
+      subItems: [
+         { label: t('chat'), href: '/receptionist/chat' },
+      ]
+    }, 
+    {
+      icon: FileText,
+      label: t('feedback'),
+      href: '/receptionist/feedback',
+      subItems: [
+        { label: t('view') + ' ' + t('feedback'), href: '/receptionist/feedback' },
+      ]
+    },
+    {
+      icon: CircleDollarSign, 
+      label: t('salarymanagement'),
+      href: '/receptionist/ownSalary',
+      subItems: [
+        { label: t('salary'), href: '/receptionist/ownSalary' },
+      ]
+    },
+    {
+      icon: Settings,
+      label: t('settings'),
+      href: '/reception/settings',
+      subItems: [
+        { label: t('profile'), href: '/receptionist/settings' },
+     ]
+    }
+  ];
 
   const isActive = (href: string) => pathname === href || (itemHasSubItems(href) && pathname.startsWith(href));
 
-  // Function to check if the current path is a subitem of a given item.href
   const itemHasSubItems = (itemHref: string) => {
     return sidebarItems.some(item =>
       item.href === itemHref && item.subItems?.some(sub => pathname.startsWith(sub.href))
@@ -136,7 +115,6 @@ export default function ReceptionSidebar({ isSidebarOpen }: ReceptionSidebarProp
   };
 
   useEffect(() => {
-    // Automatically open submenu if a subitem is active
     sidebarItems.forEach(item => {
       if (item.subItems && item.subItems.some(sub => pathname.startsWith(sub.href))) {
         setOpenSubmenu(item.href);
@@ -144,39 +122,31 @@ export default function ReceptionSidebar({ isSidebarOpen }: ReceptionSidebarProp
     });
   }, [pathname]);
 
-
   return (
     <motion.aside
       initial={false}
-      // Animate sidebar position
       animate={{ x: isSidebarOpen ? 0 : -300 }}
       transition={{ duration: 0.3 }}
-      // Fixed positioning and z-index to stay on top
-      className={`fixed  inset-y-0 left-0 z-40 w-64 bg-white  dark:bg-gray-800 shadow-xl border-r border-gray-200 dark:border-gray-700 overflow-y-auto pt-16 lg:block ${isSidebarOpen ? 'block' : 'hidden'}`} // pt-16 for navbar height
+      className={`fixed inset-y-0 left-0 z-40 w-64 bg-white dark:bg-gray-800 shadow-xl border-r border-gray-200 dark:border-gray-700 overflow-y-auto pt-16 lg:block ${isSidebarOpen ? 'block' : 'hidden'}`}
     >
-      {/* Header (always visible in sidebar, pushes content below navbar) */}
       <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center gap-3 ">
-        
         <div>
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white">Reception</h2> {/* Slightly smaller text */}
-          <p className="text-xs text-gray-600 dark:text-gray-400">Hotel Management</p>
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white">{t('receptionPortal')}</h2>
+          <p className="text-xs text-gray-600 dark:text-gray-400">{t('meseretHotel')}</p>
         </div>
       </div>
 
-      {/* Navigation */}
       <nav className="p-4">
         <ul className="space-y-2">
           {sidebarItems.map((item) => (
             <li key={item.href}>
               <motion.button
-                whileHover={{ x: 5, backgroundColor: 'rgba(251, 191, 36, 0.1)' }} // Hover animation
-                whileTap={{ scale: 0.98 }} // Click animation
+                whileHover={{ x: 5, backgroundColor: 'rgba(251, 191, 36, 0.1)' }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => {
                   if (item.subItems) {
                     setOpenSubmenu(openSubmenu === item.href ? null : item.href);
                   } else {
-                    // For direct links, use Next.js Link for SPA navigation
-                    // For full page reload behavior, keep window.location.href
                     window.location.href = item.href; 
                   }
                 }}
@@ -198,7 +168,6 @@ export default function ReceptionSidebar({ isSidebarOpen }: ReceptionSidebarProp
                 )}
               </motion.button>
 
-              {/* Submenu */}
               <AnimatePresence>
                 {item.subItems && openSubmenu === item.href && (
                   <motion.ul
@@ -229,9 +198,6 @@ export default function ReceptionSidebar({ isSidebarOpen }: ReceptionSidebarProp
           ))}
         </ul>
       </nav>
-
-      {/* Footer in Sidebar */}
-   
     </motion.aside>
   );
 }

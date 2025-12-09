@@ -1,14 +1,14 @@
 'use client';
-import { View, Image } from 'react-native';
+import { View } from 'react-native';
 
 import { useState, useEffect, useMemo } from 'react';
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { Star, Tag, ShieldCheck, MessageSquareWarning, Search, X, ChevronLeft, ChevronRight, History, Eye, EyeOff, Calendar, MessageSquare, Crown } from 'lucide-react';
-// import Image from 'next/image'; <--- REMOVE THIS to use standard <img> tag for easier external URL handling
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import BackButton from '@/app/manager/ui/BackButton';
+import { useLanguage } from '../../../context/LanguageContext'; // Import Hook
 
 // --- INTERFACES ---
 interface User {
@@ -34,7 +34,6 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000'
 const getFullImageUrl = (imagePath: string | undefined) => {
     if (!imagePath) return '/default-avatar.png';
     if (imagePath.startsWith('http')) return imagePath;
-    // Remove double slashes if present
     const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
     return `${API_BASE_URL}${cleanPath}`;
 };
@@ -59,11 +58,12 @@ const RatingStars = ({ rating, className = '' }: { rating: number; className?: s
 );
 
 const FeedbackDetailModal = ({ feedback, onClose }: { feedback: Feedback | null; onClose: () => void }) => {
+    const { t } = useLanguage(); // Use Translation Hook
+    
     if (!feedback) return null;
 
     const { user, category, rating, message, target, createdAt, isAnonymous } = feedback;
-    const userName = isAnonymous || !user ? 'Anonymous' : `${user.firstName} ${user.lastName}`;
-    // Correctly use helper
+    const userName = isAnonymous || !user ? t('anonymous') : `${user.firstName} ${user.lastName}`;
     const userImage = isAnonymous || !user ? '/shield-avatar.png' : getFullImageUrl(user.profileImage);
 
     return (
@@ -86,7 +86,6 @@ const FeedbackDetailModal = ({ feedback, onClose }: { feedback: Feedback | null;
                     <div className="p-8">
                         <div className="flex items-start justify-between mb-6">
                             <div className="flex items-center space-x-4">
-                                {/* Use standard <img> tag for reliability with dynamic backend URLs */}
                                 <img 
                                     src={userImage} 
                                     alt={userName} 
@@ -96,7 +95,7 @@ const FeedbackDetailModal = ({ feedback, onClose }: { feedback: Feedback | null;
                                 <div>
                                     <h2 className="text-2xl font-bold text-gray-800 dark:text-white">{userName}</h2>
                                     <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2 mt-1">
-                                        <Calendar size={14} /> {new Date(createdAt).toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' })}
+                                        <Calendar size={14} /> {new Date(createdAt).toLocaleString()}
                                     </p>
                                 </div>
                             </div>
@@ -106,7 +105,7 @@ const FeedbackDetailModal = ({ feedback, onClose }: { feedback: Feedback | null;
                         </div>
 
                         <div className="mb-6">
-                            <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">Rating</h3>
+                            <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">{t('rating')}</h3>
                             <div className="flex items-center space-x-2">
                                 <RatingStars rating={rating} />
                                 <span className="font-bold text-lg text-gray-700 dark:text-gray-200">{rating}.0</span>
@@ -115,7 +114,7 @@ const FeedbackDetailModal = ({ feedback, onClose }: { feedback: Feedback | null;
 
                         <div className="mb-6">
                              <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
-                                <MessageSquare size={20} /> Feedback Message
+                                <MessageSquare size={20} /> {t('feedbackMessage')}
                             </h3>
                             <p className="text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg whitespace-pre-wrap leading-relaxed">
                                 {message}
@@ -126,11 +125,11 @@ const FeedbackDetailModal = ({ feedback, onClose }: { feedback: Feedback | null;
                     <div className="bg-gray-50 dark:bg-gray-900/50 px-8 py-4 flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700">
                         <div className="flex items-center gap-2 capitalize">
                             <Tag size={16} />
-                            <strong>Category:</strong> <span>{category}</span>
+                            <strong>{t('category')}:</strong> <span>{category}</span>
                         </div>
                         <div className="flex items-center gap-2 capitalize">
                             <ShieldCheck size={16} />
-                            <strong>Sent To:</strong> <span>{target}</span>
+                            <strong>{t('sentTo')}:</strong> <span>{target}</span>
                         </div>
                     </div>
                 </motion.div>
@@ -140,6 +139,8 @@ const FeedbackDetailModal = ({ feedback, onClose }: { feedback: Feedback | null;
 };
 
 const ViewFeedbackPage = () => {
+    const { t } = useLanguage(); // Use Translation Hook
+
     const [feedbackList, setFeedbackList] = useState<Feedback[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -149,7 +150,6 @@ const ViewFeedbackPage = () => {
     const [showHistory, setShowHistory] = useState(false);
     const [minTimePassed, setMinTimePassed] = useState(false);
 
-    // Royal loading delay
     useEffect(() => {
         const timer = setTimeout(() => setMinTimePassed(true), 4500);
         return () => clearTimeout(timer);
@@ -157,7 +157,6 @@ const ViewFeedbackPage = () => {
 
     useEffect(() => {
         const fetchFeedback = async () => {
-            // Don't set loading true here if minTimePassed handles the initial load view
             try {
                 const response = await api.get('/api/feedback');
                 const sortedFeedback = response.data.data.sort((a: Feedback, b: Feedback) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -201,7 +200,6 @@ const ViewFeedbackPage = () => {
         setCurrentPage(1);
     };
 
-    // Combined Loading Check
     if (loading || !minTimePassed) {
         return (
             <div className="fixed inset-0 bg-gradient-to-br from-amber-950 via-black to-amber-900 flex items-center justify-center overflow-hidden z-50">
@@ -210,8 +208,8 @@ const ViewFeedbackPage = () => {
                     <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center shadow-2xl ring-4 ring-amber-900/50">
                         <Crown className="text-white w-12 h-12" />
                     </div>
-                    <h2 className="text-4xl font-black text-amber-400 tracking-widest mb-2">CUSTOMER FEEDBACK</h2>
-                    <p className="text-amber-200/80 tracking-wide">Every Voice Deserves Royal Attention</p>
+                    <h2 className="text-4xl font-black text-amber-400 tracking-widest mb-2">{t('feedbackCenter')}</h2>
+                    <p className="text-amber-200/80 tracking-wide">{t('royalAttention')}</p>
                 </motion.div>
             </div>
         );
@@ -221,7 +219,7 @@ const ViewFeedbackPage = () => {
         <div className="mb-12">
             <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-semibold text-gray-800 dark:text-white flex items-center gap-3">
-                    {title === 'History' && <History />}
+                    {title === t('historyFeedback') && <History />}
                     {title}
                 </h2>
             </div>
@@ -230,24 +228,22 @@ const ViewFeedbackPage = () => {
                     <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
                         <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
                             <tr>
-                                <th scope="col" className="px-6 py-3">Customer</th>
-                                <th scope="col" className="px-6 py-3">Rating</th>
-                                <th scope="col" className="px-6 py-3">Category</th>
-                                <th scope="col" className="px-6 py-3">Comment</th>
-                                <th scope="col" className="px-6 py-3 text-right">Date</th>
+                                <th scope="col" className="px-6 py-3">{t('customer')}</th>
+                                <th scope="col" className="px-6 py-3">{t('rating')}</th>
+                                <th scope="col" className="px-6 py-3">{t('category')}</th>
+                                <th scope="col" className="px-6 py-3">{t('comment')}</th>
+                                <th scope="col" className="px-6 py-3 text-right">{t('date')}</th>
                             </tr>
                         </thead>
                         <tbody>
                             {data.map(fb => {
-                                const userName = fb.isAnonymous || !fb.user ? 'Anonymous' : `${fb.user.firstName} ${fb.user.lastName}`;
-                                // Correctly use helper here too
+                                const userName = fb.isAnonymous || !fb.user ? t('anonymous') : `${fb.user.firstName} ${fb.user.lastName}`;
                                 const userImage = fb.isAnonymous || !fb.user ? '/shield-avatar.png' : getFullImageUrl(fb.user.profileImage);
                                 
                                 return (
                                     <tr key={fb._id} onClick={() => setSelectedFeedback(fb)} className="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer transition-colors">
                                         <td className="px-6 py-4 font-medium text-gray-900 dark:text-white whitespace-nowrap">
                                             <div className="flex items-center gap-3">
-                                                {/* Use standard <img> tag */}
                                                 <img 
                                                     src={userImage} 
                                                     alt={userName} 
@@ -276,14 +272,14 @@ const ViewFeedbackPage = () => {
             <div className="max-w-7xl mx-auto">
                 <BackButton />
                 <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-                    <h1 className="text-4xl font-bold text-gray-900 dark:text-white">Customer Feedback</h1>
+                    <h1 className="text-4xl font-bold text-gray-900 dark:text-white">{t('customerFeedback')}</h1>
                     <div className="relative w-full md:w-80">
                         <Search className="w-5 h-5 text-gray-500 dark:text-gray-400 absolute inset-y-0 left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                         <input
                             type="text"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            placeholder="Search feedback..."
+                            placeholder={t('searchFeedback')}
                             className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-amber-500 focus:border-amber-500 block w-full pl-10 p-2.5 transition"
                         />
                     </div>
@@ -292,11 +288,11 @@ const ViewFeedbackPage = () => {
                 {feedbackList.length > 0 ? (
                     <>
                         {todayFeedback.length > 0 ? (
-                             renderTable(todayFeedback, "Today's Feedback")
+                             renderTable(todayFeedback, t('todaysFeedback'))
                         ) : (
                              <div className="text-center py-10 my-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-                                <h3 className="text-lg font-medium text-gray-900 dark:text-white">No feedback from today.</h3>
-                                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Check back later or view the history.</p>
+                                <h3 className="text-lg font-medium text-gray-900 dark:text-white">{t('noFeedbackToday')}</h3>
+                                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t('checkBackLater')}</p>
                              </div>
                         )}
                        
@@ -304,7 +300,7 @@ const ViewFeedbackPage = () => {
                              <div className="my-8 text-center">
                                 <button onClick={handleToggleHistory} className="inline-flex items-center gap-2 px-6 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-transform transform hover:scale-105">
                                     {showHistory ? <EyeOff size={18}/> : <Eye size={18} />}
-                                    {showHistory ? 'Hide History' : 'View History'}
+                                    {showHistory ? t('hideHistory') : t('viewHistory')}
                                 </button>
                              </div>
                         )}
@@ -317,12 +313,12 @@ const ViewFeedbackPage = () => {
                                     exit={{ opacity: 0, y: -20 }}
                                     transition={{ duration: 0.3 }}
                                 >
-                                    {renderTable(paginatedHistory, "History")}
+                                    {renderTable(paginatedHistory, t('historyFeedback'))}
 
                                     {totalPages > 1 && (
                                         <div className="flex justify-between items-center mt-6">
                                             <span className="text-sm text-gray-700 dark:text-gray-400">
-                                                Page {currentPage} of {totalPages}
+                                                {t('page')} {currentPage} {t('of')} {totalPages}
                                             </span>
                                             <div className="inline-flex items-center -space-x-px">
                                                 <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="px-3 py-2 ml-0 leading-tight text-gray-500 bg-white border border-gray-300 rounded-l-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white disabled:opacity-50 transition">
@@ -341,8 +337,8 @@ const ViewFeedbackPage = () => {
                 ) : (
                     <div className="text-center py-20">
                         <MessageSquareWarning className="mx-auto h-12 w-12 text-gray-400" />
-                        <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-white">No Feedback Yet</h3>
-                        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">When customers submit feedback, it will appear here.</p>
+                        <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-white">{t('noFeedbackYet')}</h3>
+                        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t('whenCustomersSubmit')}</p>
                     </div>
                 )}
             </div>

@@ -10,6 +10,7 @@ import AddGuestModal from '../modals/AddGuestModal';
 import axios from 'axios';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { Avatar } from '@mui/material';
+import { useLanguage } from '../../../../../context/LanguageContext'; // Import Language Hook
 
 interface Guest {
   _id: string;
@@ -22,9 +23,10 @@ interface Guest {
   createdAt: string;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export default function GuestList() {
+  const { t } = useLanguage(); // Initialize translation
   const [guests, setGuests] = useState<Guest[]>([]);
   const [filtered, setFiltered] = useState<Guest[]>([]);
   const [search, setSearch] = useState('');
@@ -66,6 +68,55 @@ export default function GuestList() {
     }
     setFiltered(result);
   }, [search, guests]);
+
+  // Defined inside component to access 't'
+  const columns: GridColDef[] = [
+    {
+      field: 'profileImage',
+      headerName: t('photo').toUpperCase(),
+      width: 100,
+      renderCell: (params) => (
+        <div className="flex items-center justify-center h-full">
+           <Avatar src={params.value || ""} sx={{ width: 44, height: 44, border: '2px solid #FCD34D' }} />
+        </div>
+      ),
+      sortable: false,
+      filterable: false,
+    },
+    {
+      field: 'name',
+      headerName: (t('guest') + ' ' + t('firstName')).toUpperCase(), // "GUEST NAME"
+      minWidth: 200,
+      flex: 1,
+      valueGetter: (_, row) => `${row.firstName} ${row.lastName}`,
+      renderCell: (params) => (
+        <div className="font-bold text-amber-900 dark:text-amber-100 text-base md:text-lg self-center">{params.value}</div>
+      ),
+    },
+    { field: 'email', headerName: t('email').toUpperCase(), width: 250 },
+    { field: 'phone', headerName: t('phone').toUpperCase(), width: 160 },
+    {
+      field: 'address',
+      headerName: t('location').toUpperCase(),
+      width: 250,
+      valueGetter: (_, row) => {
+        const parts = [row.address.city];
+        if (row.address.country) parts.push(row.address.country);
+        if (row.address.kebele) parts.push(`${t('kebele')} ${row.address.kebele}`);
+        return parts.join(' • ');
+      },
+    },
+    {
+      field: 'createdAt',
+      headerName: t('registeredOn').toUpperCase(),
+      width: 180,
+      valueGetter: (value) => new Date(value).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      }),
+    },
+  ];
 
   // Luxury Loading Screen
   if (loading || !minTimePassed) {
@@ -112,7 +163,9 @@ export default function GuestList() {
           
           <motion.h2 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 2.2, duration: 1.5 }}
             className="text-2xl md:text-6xl font-bold text-amber-200 tracking-widest mb-6"
-            style={{ fontFamily: "'Playfair Display', serif" }}>LOADING GUEST PROFILES</motion.h2>
+            style={{ fontFamily: "'Playfair Display', serif" }}>
+            {t('loadingGuestProfiles')}
+          </motion.h2>
 
           <div className="mt-16 w-64 md:w-96 mx-auto">
             <div className="h-2 bg-black/50 rounded-full overflow-hidden border border-amber-600/60 backdrop-blur-xl">
@@ -128,63 +181,15 @@ export default function GuestList() {
     );
   }
 
-  const columns: GridColDef[] = [
-    {
-      field: 'profileImage',
-      headerName: 'PHOTO',
-      width: 100,
-      renderCell: (params) => (
-        <div className="flex items-center justify-center h-full">
-           <Avatar src={params.value || ""} sx={{ width: 44, height: 44, border: '2px solid #FCD34D' }} />
-        </div>
-      ),
-      sortable: false,
-      filterable: false,
-    },
-    {
-      field: 'name',
-      headerName: 'GUEST NAME',
-      minWidth: 200,
-      flex: 1,
-      valueGetter: (_, row) => `${row.firstName} ${row.lastName}`,
-      renderCell: (params) => (
-        <div className="font-bold text-amber-900 dark:text-amber-100 text-base md:text-lg self-center">{params.value}</div>
-      ),
-    },
-    { field: 'email', headerName: 'EMAIL ADDRESS', width: 250 },
-    { field: 'phone', headerName: 'PHONE', width: 160 },
-    {
-      field: 'address',
-      headerName: 'LOCATION',
-      width: 250,
-      valueGetter: (_, row) => {
-        const parts = [row.address.city];
-        if (row.address.country) parts.push(row.address.country);
-        if (row.address.kebele) parts.push(`Keb ${row.address.kebele}`);
-        return parts.join(' • ');
-      },
-    },
-    {
-      field: 'createdAt',
-      headerName: 'REGISTERED ON',
-      width: 180,
-      valueGetter: (value) => new Date(value).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      }),
-    },
-  ];
-
   return (
     <div className="p-4 md:p-6 space-y-6 md:space-y-8 min-h-screen bg-gradient-to-br from-amber-50/50 via-white to-amber-50/30 dark:from-gray-900 dark:to-gray-800">
       {/* Header */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
         <div>
           <h1 className="text-3xl md:text-5xl font-bold bg-gradient-to-r from-amber-600 via-amber-700 to-amber-800 bg-clip-text text-transparent leading-tight">
-             Guest Directory
+             {t('guestDirectory')}
           </h1>
-          <p className="text-sm md:text-lg text-amber-700 dark:text-amber-300 mt-2">Excellence in Every Guest Experience</p>
+          <p className="text-sm md:text-lg text-amber-700 dark:text-amber-300 mt-2">{t('guestExperienceSlogan')}</p>
         </div>
 
         <div className="flex flex-col md:flex-row gap-4 w-full lg:w-auto items-stretch md:items-center">
@@ -192,7 +197,7 @@ export default function GuestList() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-amber-600" size={20} />
             <input
               type="text"
-              placeholder="Search distinguished guests..."
+              placeholder={t('searchDistinguishedGuests')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-12 pr-4 py-3 border-2 border-amber-300 dark:border-amber-700 rounded-2xl w-full md:w-80 lg:w-96 text-base focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-500/30 transition-all duration-300 bg-white/70 dark:bg-gray-800/70 backdrop-blur"
@@ -203,7 +208,7 @@ export default function GuestList() {
             onClick={() => setShowAddModal(false)}
             className="flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-bold text-base md:text-lg rounded-2xl shadow-xl hover:shadow-amber-600/50 transform hover:scale-105 transition-all duration-300 whitespace-nowrap"
           >
-            <Plus size={24} /> Add Guest
+            <Plus size={24} /> {t('add')} {t('guest')}
           </button>
         </div>
       </div>
@@ -308,7 +313,7 @@ export default function GuestList() {
         <div className="text-center py-20 md:py-32">
           <Crown className="w-16 h-16 md:w-24 md:h-24 text-amber-400 mx-auto mb-6" />
           <p className="text-xl md:text-2xl text-amber-600 dark:text-amber-400 font-medium">
-            No guests found matching your search.
+             {t('noGuestsFound')}
           </p>
         </div>
       )}
