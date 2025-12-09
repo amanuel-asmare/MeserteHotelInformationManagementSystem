@@ -1,4 +1,3 @@
-/*ontend/src/components/ui/Calendar.tsx
 "use client"
 
 import * as React from "react"
@@ -6,7 +5,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import { DayPicker } from "react-day-picker"
 
 import { cn } from "@/lib/utils"
-import { buttonVariants } from "../ui/receptionistUI/button" // Adjust this path if button is elsewhere
+import { buttonVariants } from "../ui/receptionistUI/button"
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>
 
@@ -20,16 +19,21 @@ function Calendar({
     <DayPicker
       showOutsideDays={showOutsideDays}
       className={cn("p-3", className)}
+      // Move layout config here (optional, enables the dropdowns logic)
+      captionLayout="dropdown-buttons" 
+      // Ensure fromYear/toYear are passed in props for dropdowns to work
+      fromYear={1960} 
+      toYear={2030}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
         caption: "flex justify-center pt-1 relative items-center",
-        caption_dropdowns: "flex gap-1", // Added for dropdowns
-        caption_layout: "dropdown", // Added for dropdowns
+        caption_dropdowns: "flex gap-1", // Valid style key for the dropdown container
+        // caption_layout: "dropdown", // REMOVED: This is not a valid style key
         caption_label: "text-sm font-medium",
         nav: "space-x-1 flex items-center",
         nav_button: cn(
-          buttonVariants.outline, // Corrected: Access 'outline' property directly
+          // buttonVariants({ variant: "outline" }),
           "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
         ),
         nav_button_previous: "absolute left-1",
@@ -41,7 +45,7 @@ function Calendar({
         row: "flex w-full mt-2",
         cell: "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
         day: cn(
-          buttonVariants.ghost, // Corrected: Access 'ghost' property directly
+          // buttonVariants({ variant: "ghost" }),
           "h-9 w-9 p-0 font-normal aria-selected:opacity-100"
         ),
         day_range_end: "day-range-end",
@@ -66,7 +70,7 @@ function Calendar({
 }
 Calendar.displayName = "Calendar"
 
-export { Calendar } */
+export { Calendar }/*
 "use client"
 
 import * as React from "react"
@@ -134,4 +138,4 @@ function Calendar({
 }
 Calendar.displayName = "Calendar"
 
-export { Calendar }
+export { Calendar }*/
