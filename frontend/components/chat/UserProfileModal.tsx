@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, Variants } from 'framer-motion';
 import { X, Mail, Phone, MapPin } from 'lucide-react';
 
 // 1. Define Interfaces
@@ -28,14 +28,21 @@ const UserProfileModal = ({ user, onClose }: UserProfileModalProps) => {
     // Stop propagation to prevent closing when clicking inside the modal content
     const stopPropagation = (e: React.MouseEvent) => e.stopPropagation();
 
-    const backdropVariants = {
+    // Explicitly type variants to fix "type: string" inference error
+    const backdropVariants: Variants = {
         hidden: { opacity: 0 },
         visible: { opacity: 1 },
     };
 
-    const modalVariants = {
+    // Explicitly type variants to fix "type: string" inference error
+    const modalVariants: Variants = {
         hidden: { opacity: 0, scale: 0.8, y: "-50%" },
-        visible: { opacity: 1, scale: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 30 } },
+        visible: { 
+            opacity: 1, 
+            scale: 1, 
+            y: 0, 
+            transition: { type: "spring", stiffness: 300, damping: 30 } 
+        },
         exit: { opacity: 0, scale: 0.8, y: "50%" },
     };
 
