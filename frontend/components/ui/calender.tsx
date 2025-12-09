@@ -19,17 +19,15 @@ function Calendar({
     <DayPicker
       showOutsideDays={showOutsideDays}
       className={cn("p-3", className)}
-      // Move layout config here (optional, enables the dropdowns logic)
-      captionLayout="dropdown-buttons" 
-      // Ensure fromYear/toYear are passed in props for dropdowns to work
+      // Fixed: changed "dropdown-buttons" to "dropdown" based on the TypeScript error
+      captionLayout="dropdown" 
       fromYear={1960} 
       toYear={2030}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
         caption: "flex justify-center pt-1 relative items-center",
-        caption_dropdowns: "flex gap-1", // Valid style key for the dropdown container
-        // caption_layout: "dropdown", // REMOVED: This is not a valid style key
+        caption_dropdowns: "flex gap-1", 
         caption_label: "text-sm font-medium",
         nav: "space-x-1 flex items-center",
         nav_button: cn(
