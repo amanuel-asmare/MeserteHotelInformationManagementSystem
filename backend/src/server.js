@@ -64,15 +64,33 @@ app.use('/api/finance', financeRoutes); // <--- ADD THIS LINE
 
 
 
-// --- [STEP 5] CONFIGURE HTTPS & CREATE SERVER ---
-// Define the paths to your locally generated SSL certificate files
-const options = {
-    key: fs.readFileSync(path.join(__dirname, '..', '..', '.cert', 'localhost-key.pem')),
-    cert: fs.readFileSync(path.join(__dirname, '..', '..', '.cert', 'localhost.pem')),
-};
+// // --- [STEP 5] CONFIGURE HTTPS & CREATE SERVER ---
+// // Define the paths to your locally generated SSL certificate files
+// const options = {
+//     key: fs.readFileSync(path.join(__dirname, '..', '..', '.cert', 'localhost-key.pem')),
+//     cert: fs.readFileSync(path.join(__dirname, '..', '..', '.cert', 'localhost.pem')),
+// };
 
-// Create the HTTPS server with the options and your express app
-const server = https.createServer(options, app);
+// // Create the HTTPS server with the options and your express app
+// const server = https.createServer(options, app);
+
+// --- [STEP 5] CONFIGURE SERVER (ADAPTED FOR DEPLOYMENT) ---
+let server;
+
+// Check if we are in production or development
+if (process.env.NODE_ENV === 'production') {
+    // In production (Render), use standard HTTP. Render handles SSL externally.
+    const http = require('http');
+    server = http.createServer(app);
+} else {
+    // In local development, use your local certificates
+    const https = require('https');
+    const options = {
+        key: fs.readFileSync(path.join(__dirname, '..', '..', '.cert', 'localhost-key.pem')),
+        cert: fs.readFileSync(path.join(__dirname, '..', '..', '.cert', 'localhost.pem')),
+    };
+    server = https.createServer(options, app);
+}
 
 
 // --- [STEP 6] ATTACH SOCKET.IO ---
@@ -85,7 +103,7 @@ global.io = io;
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
     // Updated log message to show HTTPS
-    console.log(`✅ Secure HTTPS Server is running on https://localhost:${PORT}`);
+    console.log(`✅ Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
 });
 
 
