@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import Message from './Message';
@@ -28,9 +28,10 @@ interface MessageListProps {
     loading: boolean;
     onEditMessage: (id: string, text: string) => void;
     onDeleteMessage: (id: string) => void;
+    onReply: (message: MessageType) => void; // <--- ADDED: Required by ChatLayout
 }
 
-// 2. Add types to the helper function
+// 2. Helper to group messages by date
 const groupMessagesByDate = (messages: MessageType[]) => {
     return messages.reduce((acc: Record<string, MessageType[]>, msg) => {
         const date = format(new Date(msg.createdAt), 'yyyy-MM-dd');
@@ -42,9 +43,15 @@ const groupMessagesByDate = (messages: MessageType[]) => {
     }, {});
 };
 
-const MessageList = ({ messages, currentUser, loading, onEditMessage, onDeleteMessage }: MessageListProps) => {
+const MessageList = ({ 
+    messages, 
+    currentUser, 
+    loading, 
+    onEditMessage, 
+    onDeleteMessage,
+    onReply // <--- ADDED: Receive function from parent
+}: MessageListProps) => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
-    const [replyingTo, setReplyingTo] = useState<MessageType | null>(null);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -77,7 +84,7 @@ const MessageList = ({ messages, currentUser, loading, onEditMessage, onDeleteMe
                                 isCurrentUser={msg.sender._id === (currentUser?.id || currentUser?._id)}
                                 onEdit={onEditMessage}
                                 onDelete={onDeleteMessage}
-                                onReply={() => setReplyingTo(msg)} 
+                                onReply={() => onReply(msg)} // <--- FIXED: Call parent function
                             />
                         ))}
                     </div>
