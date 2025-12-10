@@ -11,7 +11,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pi
 import NewsFeed from '../../../components/NewsFeed';
 import { useLanguage } from '../../../context/LanguageContext';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
 
 interface Guest { _id: string; firstName: string; lastName: string; email: string; phone?: string; }
 interface Room { _id: string; roomNumber: string; type: string; availability: boolean; status: string; }

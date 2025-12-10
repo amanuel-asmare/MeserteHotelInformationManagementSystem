@@ -5,7 +5,7 @@ import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import axios from 'axios';
 import { useAuth } from '../../../context/AuthContext';
-
+import Footer from '../../app/admin/Footer';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export default function CashierLayout({
@@ -122,7 +122,9 @@ export default function CashierLayout({
         
         <main className="flex-1 overflow-x-hidden overflow-y-auto p-6 bg-gray-100 dark:bg-gray-900 transition-colors scroll-smooth">
           {children}
+           <Footer/>
         </main>
+       
       </div>
     </div>
   );

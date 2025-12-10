@@ -25,7 +25,10 @@ if (!fs.existsSync(uploadDir)) {
 // --- [STEP 3] SETUP MIDDLEWARE ---
 // IMPORTANT: Update CORS origin for your new HTTPS frontend URL
 app.use(cors({
-    origin: 'https://localhost:3000', // Changed to HTTPS
+    origin: ['https://localhost:3000',
+        process.env.CLIENT_URL
+        // Changed to HTTPS
+    ],
     credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
