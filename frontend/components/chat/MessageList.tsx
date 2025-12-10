@@ -1,42 +1,49 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
-import Message from './Message'; 
+import Message from './Message';
 
-// Define interfaces to match ChatLayout
+// 1. Define User Interface
 interface User {
     _id: string;
     firstName: string;
     lastName: string;
-    email: string;
-    role: string;
+    email?: string;
+    role?: string;
     profileImage?: string;
 }
 
+// 2. Update MessageType Interface to include 'receiver'
 interface MessageType {
     _id: string;
-    sender: User;
-    receiver: User;
-    message?: string;
-    file?: any;
-    replyTo?: any;
-    isRead: boolean;
     createdAt: string;
+    sender: User;
+    receiver: User; // <--- Added this to fix the build error
+    message?: string;
+    file?: {
+        url: string;
+        originalName: string;
+        mimeType: string;
+    };
+    replyTo?: any;
+    isRead?: boolean;
+    isEdited?: boolean;
 }
 
 interface MessageListProps {
     messages: MessageType[];
-    currentUser: User | null;
+    currentUser: any; // Using any to be safe with auth context structure
     loading: boolean;
-    onEditMessage: (messageId: string, newText: string) => Promise<void>;
-    onDeleteMessage: (messageId: string) => Promise<void>;
-    onReply: (message: MessageType) => void; // Added this prop to fix the error
+    onEditMessage: (id: string, text: string) => void;
+    onDeleteMessage: (id: string) => void;
+    onReply: (message: MessageType) => void;
 }
 
+// 3. Helper to group messages by date
 const groupMessagesByDate = (messages: MessageType[]) => {
-    return messages.reduce((acc: any, msg: MessageType) => {
+    return messages.reduce((acc: Record<string, MessageType[]>, msg) => {
         const date = format(new Date(msg.createdAt), 'yyyy-MM-dd');
         if (!acc[date]) {
             acc[date] = [];
@@ -46,7 +53,14 @@ const groupMessagesByDate = (messages: MessageType[]) => {
     }, {});
 };
 
-const MessageList = ({ messages, currentUser, loading, onEditMessage, onDeleteMessage, onReply }: MessageListProps) => {
+const MessageList = ({ 
+    messages, 
+    currentUser, 
+    loading, 
+    onEditMessage, 
+    onDeleteMessage,
+    onReply 
+}: MessageListProps) => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
@@ -56,7 +70,7 @@ const MessageList = ({ messages, currentUser, loading, onEditMessage, onDeleteMe
     useEffect(scrollToBottom, [messages]);
 
     if (loading) {
-        return <div className="flex-grow flex items-center justify-center text-gray-500"><p>Loading conversation...</p></div>;
+        return <div className="flex-grow flex items-center justify-center"><p>Loading conversation...</p></div>;
     }
 
     const groupedMessages = groupMessagesByDate(messages);
@@ -72,14 +86,15 @@ const MessageList = ({ messages, currentUser, loading, onEditMessage, onDeleteMe
                                 {format(new Date(date), 'MMMM d, yyyy')}
                             </span>
                         </div>
-                        {groupedMessages[date].map((msg: MessageType) => (
+                        {groupedMessages[date].map(msg => (
                             <Message
                                 key={msg._id}
-                                message={msg}
-                                isCurrentUser={msg.sender._id === currentUser?._id}
+                                message={msg} // This now matches the expected type because 'receiver' is included
+                                // Ensure we handle currentUser.id vs _id safely
+                                isCurrentUser={msg.sender._id === (currentUser?.id || currentUser?._id)}
                                 onEdit={onEditMessage}
                                 onDelete={onDeleteMessage}
-                                onReply={() => onReply(msg)} // Pass the function down correctly
+                                onReply={() => onReply(msg)} 
                             />
                         ))}
                     </div>
