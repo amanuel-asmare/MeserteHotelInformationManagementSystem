@@ -1,39 +1,42 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
-import Message from './Message';
+import Message from './Message'; 
 
-// 1. Define Interfaces to satisfy TypeScript
+// Define interfaces to match ChatLayout
+interface User {
+    _id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    role: string;
+    profileImage?: string;
+}
+
 interface MessageType {
     _id: string;
-    createdAt: string;
-    sender: {
-        _id: string;
-        firstName?: string;
-        lastName?: string;
-        profileImage?: string;
-    };
+    sender: User;
+    receiver: User;
     message?: string;
     file?: any;
     replyTo?: any;
-    isRead?: boolean;
-    isEdited?: boolean;
+    isRead: boolean;
+    createdAt: string;
 }
 
 interface MessageListProps {
     messages: MessageType[];
-    currentUser: any; // Using any to be safe with your auth context structure
+    currentUser: User | null;
     loading: boolean;
-    onEditMessage: (id: string, text: string) => void;
-    onDeleteMessage: (id: string) => void;
-    onReply: (message: MessageType) => void; // <--- ADDED: Required by ChatLayout
+    onEditMessage: (messageId: string, newText: string) => Promise<void>;
+    onDeleteMessage: (messageId: string) => Promise<void>;
+    onReply: (message: MessageType) => void; // Added this prop to fix the error
 }
 
-// 2. Helper to group messages by date
 const groupMessagesByDate = (messages: MessageType[]) => {
-    return messages.reduce((acc: Record<string, MessageType[]>, msg) => {
+    return messages.reduce((acc: any, msg: MessageType) => {
         const date = format(new Date(msg.createdAt), 'yyyy-MM-dd');
         if (!acc[date]) {
             acc[date] = [];
@@ -43,14 +46,7 @@ const groupMessagesByDate = (messages: MessageType[]) => {
     }, {});
 };
 
-const MessageList = ({ 
-    messages, 
-    currentUser, 
-    loading, 
-    onEditMessage, 
-    onDeleteMessage,
-    onReply // <--- ADDED: Receive function from parent
-}: MessageListProps) => {
+const MessageList = ({ messages, currentUser, loading, onEditMessage, onDeleteMessage, onReply }: MessageListProps) => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
@@ -60,7 +56,7 @@ const MessageList = ({
     useEffect(scrollToBottom, [messages]);
 
     if (loading) {
-        return <div className="flex-grow flex items-center justify-center"><p>Loading conversation...</p></div>;
+        return <div className="flex-grow flex items-center justify-center text-gray-500"><p>Loading conversation...</p></div>;
     }
 
     const groupedMessages = groupMessagesByDate(messages);
@@ -76,15 +72,14 @@ const MessageList = ({
                                 {format(new Date(date), 'MMMM d, yyyy')}
                             </span>
                         </div>
-                        {groupedMessages[date].map(msg => (
+                        {groupedMessages[date].map((msg: MessageType) => (
                             <Message
                                 key={msg._id}
                                 message={msg}
-                                // Ensure we handle currentUser.id vs _id safely
-                                isCurrentUser={msg.sender._id === (currentUser?.id || currentUser?._id)}
+                                isCurrentUser={msg.sender._id === currentUser?._id}
                                 onEdit={onEditMessage}
                                 onDelete={onDeleteMessage}
-                                onReply={() => onReply(msg)} // <--- FIXED: Call parent function
+                                onReply={() => onReply(msg)} // Pass the function down correctly
                             />
                         ))}
                     </div>
