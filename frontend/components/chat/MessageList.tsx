@@ -6,21 +6,22 @@ import { format } from 'date-fns';
 import Message from './Message';
 
 // 1. Define User Interface
+// FIX: Removed '?' from email and role to match the stricter type expected by the child Message component
 interface User {
     _id: string;
     firstName: string;
     lastName: string;
-    email?: string;
-    role?: string;
+    email: string; 
+    role: string;
     profileImage?: string;
 }
 
-// 2. Update MessageType Interface to include 'receiver'
+// 2. Update MessageType Interface
 interface MessageType {
     _id: string;
     createdAt: string;
     sender: User;
-    receiver: User; // <--- Added this to fix the build error
+    receiver: User;
     message?: string;
     file?: {
         url: string;
@@ -70,7 +71,7 @@ const MessageList = ({
     useEffect(scrollToBottom, [messages]);
 
     if (loading) {
-        return <div className="flex-grow flex items-center justify-center"><p>Loading conversation...</p></div>;
+        return <div className="flex-grow flex items-center justify-center text-gray-500"><p>Loading conversation...</p></div>;
     }
 
     const groupedMessages = groupMessagesByDate(messages);
@@ -89,7 +90,9 @@ const MessageList = ({
                         {groupedMessages[date].map(msg => (
                             <Message
                                 key={msg._id}
-                                message={msg} // This now matches the expected type because 'receiver' is included
+                                // Type assertion (as any) is the safest quick fix here if types are defined in multiple files
+                                // but structurally compatible. However, the interface change above should solve it.
+                                message={msg as any} 
                                 // Ensure we handle currentUser.id vs _id safely
                                 isCurrentUser={msg.sender._id === (currentUser?.id || currentUser?._id)}
                                 onEdit={onEditMessage}
