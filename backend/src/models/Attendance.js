@@ -37,13 +37,6 @@ const attendanceSchema = new mongoose.Schema({
     },
 }, { timestamps: true });
 
-// Compound unique index to ensure one attendance record per user per day
-// The 'date' field will be stored as a full Date object, but for uniqueness,
-// we often want to consider only the day part. This can be tricky with native Mongoose.
-// A common approach is to store a 'YYYY-MM-DD' string for the date part as an additional field,
-// or normalize the 'date' to start of day before saving and then use the unique index.
-// For simplicity here, we'll rely on the frontend/controller to prevent duplicates
-// and use a regular index on user and date.
 
 attendanceSchema.index({ user: 1, date: 1 }, { unique: true });
 
