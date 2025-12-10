@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import {
   Search, Plus, Edit, Trash2, Filter, ChevronDown,
-  CheckCircle, Utensils, Image as ImageIcon, X, ChevronLeft, ChevronRight, Crown
+  CheckCircle, Utensils, Image as ImageIcon, X, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '@/lib/api';
@@ -19,11 +19,10 @@ interface MenuItem {
   category: 'breakfast' | 'lunch' | 'dinner' | 'drinks';
   image: string;
   isActive: boolean;
-  tags: string[];
+  tags?: string[]; // Made optional to reflect potential backend data
   createdAt: string;
 }
 
-// Interface for particles to handle hydration safety
 interface Particle {
   id: number;
   top: string;
@@ -46,30 +45,30 @@ export default function MenuManagementClient() {
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   
-  // State for particles to ensure client-side rendering matches
   const [particles, setParticles] = useState<Particle[]>([]);
   
-  // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8; 
 
   const [form, setForm] = useState({
-    name: '', description: '', price: '', category: 'breakfast' as any,
-    tags: '', image: null as File | null
+    name: '', 
+    description: '', 
+    price: '', 
+    category: 'breakfast' as any,
+    tags: '', 
+    image: null as File | null
   });
 
-  // Generate particles only on client to prevent hydration mismatch
   useEffect(() => {
-    const newParticles = [...Array(6)].map((_, i) => ({
+    const generatedParticles = [...Array(6)].map((_, i) => ({
       id: i,
       top: `${Math.random() * 100}%`,
       left: `${Math.random() * 100}%`,
       duration: 5 + i
     }));
-    setParticles(newParticles);
+    setParticles(generatedParticles);
   }, []);
 
-  // Royal Loading Delay
   useEffect(() => {
     const timer = setTimeout(() => setMinTimePassed(true), 3000);
     return () => clearTimeout(timer);
@@ -79,7 +78,6 @@ export default function MenuManagementClient() {
     fetchMenu();
   }, []);
 
-  // ESC to close zoom
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setZoomedImage(null);
@@ -106,14 +104,12 @@ export default function MenuManagementClient() {
     return matchesSearch && matchesCategory;
   });
 
-  // Pagination Logic
   const totalPages = Math.ceil(filteredMenu.length / itemsPerPage);
   const paginatedItems = filteredMenu.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
-  // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, categoryFilter]);
@@ -136,13 +132,15 @@ export default function MenuManagementClient() {
         await api.post('/api/menu', formData);
       }
       setSuccess(true);
+      
+      // Delay closing to show success animation
       setTimeout(() => {
         setSuccess(false);
         setShowAddModal(false);
         setEditingItem(null);
         resetForm();
         fetchMenu();
-      }, 3000);
+      }, 2000); 
     } catch (err: any) {
       alert(err.response?.data?.message || 'Error saving menu');
     } finally {
@@ -174,13 +172,10 @@ export default function MenuManagementClient() {
     }
   };
 
-  // --- ROYAL LOADING SCREEN ---
   if (loading || !minTimePassed) {
     return (
       <div className="fixed inset-0 bg-gradient-to-br from-amber-950 via-black to-amber-900 flex items-center justify-center overflow-hidden z-50">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(251,191,36,0.15),transparent_70%)]" />
-        
-        {/* Animated Particles - Rendering from state to fix hydration error */}
         {particles.map((particle) => (
           <motion.div
             key={particle.id}
@@ -190,7 +185,6 @@ export default function MenuManagementClient() {
             style={{ top: particle.top, left: particle.left }}
           />
         ))}
-
         <motion.div 
           initial={{ opacity: 0, scale: 0.9 }} 
           animate={{ opacity: 1, scale: 1 }} 
@@ -212,7 +206,6 @@ export default function MenuManagementClient() {
 
   return (
     <>
-      {/* Rest of the component remains exactly the same as provided... */}
       <AnimatePresence>
         {zoomedImage && (
           <motion.div
@@ -245,7 +238,6 @@ export default function MenuManagementClient() {
         )}
       </AnimatePresence>
 
-      {/* Success Modal */}
       <AnimatePresence>
         {success && (
           <motion.div
@@ -271,7 +263,6 @@ export default function MenuManagementClient() {
         )}
       </AnimatePresence>
 
-      {/* Delete Modal */}
       <AnimatePresence>
         {showDeleteModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
@@ -292,7 +283,6 @@ export default function MenuManagementClient() {
         )}
       </AnimatePresence>
 
-      {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div>
           <h1 className="text-4xl font-black text-gray-900 tracking-tight">{t('menuManagement')}</h1>
@@ -303,7 +293,6 @@ export default function MenuManagementClient() {
         </button>
       </div>
 
-      {/* Search & Filter */}
       <div className="mb-6 flex flex-col sm:flex-row gap-3 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
@@ -322,7 +311,6 @@ export default function MenuManagementClient() {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="mb-8">
         <div className="flex space-x-2 bg-gray-100 p-1 rounded-xl w-fit overflow-x-auto">
           {['all', 'breakfast', 'lunch', 'dinner', 'drinks'].map((cat) => (
@@ -337,7 +325,6 @@ export default function MenuManagementClient() {
         </div>
       </div>
 
-      {/* MENU GRID WITH PAGINATION ANIMATION */}
       <div className="min-h-[600px] relative">
         <AnimatePresence mode="wait">
            <motion.div
@@ -354,7 +341,6 @@ export default function MenuManagementClient() {
                  whileHover={{ y: -8, transition: { duration: 0.2 } }}
                  className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-300 group"
                >
-                 {/* IMAGE SECTION */}
                  <div className="relative mb-4 rounded-xl overflow-hidden">
                    <div className="relative cursor-pointer" onClick={() => setZoomedImage(getImageUrl(item.image))}>
                      <img
@@ -405,7 +391,8 @@ export default function MenuManagementClient() {
                          description: item.description,
                          price: item.price.toString(),
                          category: item.category,
-                         tags: item.tags.join(', '),
+                         // FIXED: Safe access to tags with default empty array
+                         tags: (item.tags || []).join(', '),
                          image: null
                        });
                        setShowAddModal(true);
@@ -434,7 +421,6 @@ export default function MenuManagementClient() {
         )}
       </div>
 
-      {/* --- ROYAL PAGINATION --- */}
       {totalPages > 1 && (
         <div className="fixed bottom-8 left-0 right-0 flex justify-center z-10 pointer-events-none">
           <div className="bg-white/90 backdrop-blur-md shadow-2xl border border-gray-200 rounded-full p-2 flex items-center gap-4 pointer-events-auto transform hover:scale-105 transition-transform duration-300">
@@ -445,7 +431,6 @@ export default function MenuManagementClient() {
             >
               <ChevronLeft size={20} />
             </button>
-            
             <div className="flex gap-2 px-2">
               {[...Array(totalPages)].map((_, i) => (
                 <button
@@ -459,7 +444,6 @@ export default function MenuManagementClient() {
                 />
               ))}
             </div>
-
             <button
               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
@@ -471,8 +455,6 @@ export default function MenuManagementClient() {
         </div>
       )}
 
-
-      {/* ADD/EDIT MODAL */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 overflow-y-auto backdrop-blur-sm">
           <motion.div
