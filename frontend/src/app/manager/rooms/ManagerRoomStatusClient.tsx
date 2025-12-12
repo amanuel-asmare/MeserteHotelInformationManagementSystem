@@ -1,11 +1,14 @@
-import { Keyboard } from 'react-native';
 'use client';
+import React from 'react';
+import { Keyboard } from 'react-native';
+
 import { useState, useEffect, useCallback, useMemo } from 'react';
 
 import { Bed, Search, Filter, ChevronDown, CheckCircle, RefreshCw, Loader2, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
-import { useLanguage } from '@/context/LanguageContext';
+import { useLanguage } from '../../../../context/LanguageContext';
+
 
 interface Room {
   _id: string;

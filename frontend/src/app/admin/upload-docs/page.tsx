@@ -17,8 +17,9 @@ const SuccessModal = ({ message, onClose }: { message: string, onClose: () => vo
   const { t } = useLanguage();
   const refAnimationInstance = useRef<any>(null);
 
-  const getInstance = (instance: any) => {
-    refAnimationInstance.current = instance;
+  // FIX: Destructure 'confetti' instead of 'confettis' (v2+ API change)
+  const getInstance = ({ confetti }: { confetti: any }) => {
+    refAnimationInstance.current = confetti;
   };
 
   const makeShot = (particleRatio: number, opts: any) => {
@@ -52,7 +53,8 @@ const SuccessModal = ({ message, onClose }: { message: string, onClose: () => vo
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
     >
       <ReactCanvasConfetti
-        refConfetti={getInstance}
+        // FIX: Changed from refConfetti to onInit for v2 compatibility
+        onInit={getInstance}
         style={{
           position: 'fixed',
           pointerEvents: 'none',
@@ -467,22 +469,22 @@ export const NewsCard = ({ news, isAdmin, onDelete }: any) => {
     </div>
   );
 };/*'use client';
-import { View, Image } from 'react-native';
 
 import { useState, useEffect, useRef } from 'react';
-
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   UploadCloud, FileText, Video, Image as ImageIcon, Music, 
-  Send, Trash2, Megaphone, CheckCircle, X,Radio, Activity  
+  Send, Trash2, Megaphone, CheckCircle, X, Radio, Activity  
 } from 'lucide-react';
 import axios from 'axios';
 import ReactCanvasConfetti from 'react-canvas-confetti';
+import { useLanguage } from '../../../../context/LanguageContext'; // Import Hook
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
 
 // --- SUCCESS MODAL COMPONENT ---
 const SuccessModal = ({ message, onClose }: { message: string, onClose: () => void }) => {
+  const { t } = useLanguage();
   const refAnimationInstance = useRef<any>(null);
 
   const getInstance = (instance: any) => {
@@ -508,7 +510,7 @@ const SuccessModal = ({ message, onClose }: { message: string, onClose: () => vo
       makeShot(0.1, { spread: 120, startVelocity: 45 });
     };
     fire();
-    const interval = setInterval(fire, 2000); // Repeat fireworks
+    const interval = setInterval(fire, 2000); 
     return () => clearInterval(interval);
   }, []);
 
@@ -547,14 +549,14 @@ const SuccessModal = ({ message, onClose }: { message: string, onClose: () => vo
           <CheckCircle className="text-green-600 w-12 h-12" />
         </motion.div>
         
-        <h2 className="text-3xl font-black text-gray-800 mb-2">Success!</h2>
+        <h2 className="text-3xl font-black text-gray-800 mb-2">{t('success')}</h2>
         <p className="text-gray-600 mb-8 text-lg">{message}</p>
         
         <button 
           onClick={onClose}
           className="w-full py-4 bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold rounded-xl text-lg shadow-xl hover:shadow-2xl hover:scale-105 transition transform"
         >
-          Continue
+          {t('continue')}
         </button>
       </motion.div>
     </motion.div>
@@ -562,6 +564,8 @@ const SuccessModal = ({ message, onClose }: { message: string, onClose: () => vo
 };
 
 export default function AdminNewsPage() {
+  const { t, language } = useLanguage(); // Use Hook
+
   const [activeTab, setActiveTab] = useState<'compose' | 'history'>('compose');
   const [loading, setLoading] = useState(true);
   const [newsList, setNewsList] = useState<any[]>([]);
@@ -572,7 +576,7 @@ export default function AdminNewsPage() {
   // Form State
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [category, setCategory] = useState('announcement');
+  const [category, setCategory] = useState('promotion'); // Default changed to promotion
   const [target, setTarget] = useState('all');
   const [files, setFiles] = useState<File[]>([]);
 
@@ -586,6 +590,9 @@ export default function AdminNewsPage() {
       setNewsList(res.data);
     } catch (err) {
       console.error(err);
+    } finally {
+        if(newsList.length > 0) setLoading(false); 
+        setTimeout(() => setLoading(false), 2000); 
     }
   };
 
@@ -612,7 +619,6 @@ export default function AdminNewsPage() {
         withCredentials: true
       });
       
-      // --- SHOW SUCCESS MODAL INSTEAD OF ALERT ---
       setShowSuccess(true);
       
       // Reset Form
@@ -621,7 +627,6 @@ export default function AdminNewsPage() {
       setFiles([]);
       fetchNews();
       
-      // Don't change tab immediately, let them enjoy the success screen
     } catch (err: any) {
       alert('Failed to post news');
     } finally {
@@ -631,11 +636,11 @@ export default function AdminNewsPage() {
 
   const handleSuccessClose = () => {
     setShowSuccess(false);
-    setActiveTab('history'); // Move to history ONLY after clicking continue
+    setActiveTab('history'); 
   };
 
   const handleDelete = async (id: string) => {
-    if(!confirm("Delete this news post?")) return;
+    if(!confirm(t('deletePostConfirm'))) return;
     try {
       await axios.delete(`${API_BASE}/api/news/${id}`, { withCredentials: true });
       setNewsList(prev => prev.filter(n => n._id !== id));
@@ -643,7 +648,8 @@ export default function AdminNewsPage() {
       alert('Failed delete');
     }
   };
-if (loading && newsList.length === 0) { // Show only on initial load
+
+  if (loading && newsList.length === 0) { 
     return (
       <div className="fixed inset-0 bg-gradient-to-br from-orange-900 via-amber-900 to-black flex items-center justify-center overflow-hidden z-50">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(251,191,36,0.15),transparent_70%)]" />
@@ -653,7 +659,7 @@ if (loading && newsList.length === 0) { // Show only on initial load
           animate={{ opacity: 1, scale: 1 }} 
           className="relative z-10 text-center"
         >
-         
+            
             <div className="relative w-32 h-32 mx-auto mb-8 flex items-center justify-center">
                 <motion.div 
                   animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }}
@@ -670,10 +676,10 @@ if (loading && newsList.length === 0) { // Show only on initial load
                 </div>
             </div>
 
-            <h2 className="text-4xl font-black text-white tracking-widest mb-2">NEWS CENTER</h2>
+            <h2 className="text-4xl font-black text-white tracking-widest mb-2">{t('newsCenter').toUpperCase()}</h2>
             <div className="flex items-center justify-center gap-2 text-amber-400 font-mono text-sm uppercase tracking-widest">
                <Activity size={16} className="animate-bounce" />
-               <span>Establishing Uplink...</span>
+               <span>{t('establishingUplink')}</span>
             </div>
         </motion.div>
       </div>
@@ -682,37 +688,37 @@ if (loading && newsList.length === 0) { // Show only on initial load
   return (
     <div className="space-y-8 p-4 relative">
       
-  
+    
       <AnimatePresence>
         {showSuccess && (
           <SuccessModal 
-            message="Your announcement has been broadcasted successfully!" 
+            message={t('announcementBroadcasted')} 
             onClose={handleSuccessClose} 
           />
         )}
       </AnimatePresence>
 
-    
+      
       <div className="bg-gradient-to-r from-amber-600 to-orange-700 rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-end gap-6">
           <div>
             <h1 className="text-4xl font-black mb-2 flex items-center gap-3">
-              <Megaphone className="animate-bounce" size={36} /> News Center
+              <Megaphone className="animate-bounce" size={36} /> {t('newsCenter')}
             </h1>
-            <p className="text-amber-100 text-lg">Broadcast updates to your hotel empire.</p>
+            <p className="text-amber-100 text-lg">{t('broadcastUpdates')}</p>
           </div>
           <div className="bg-white/10 p-1 rounded-xl backdrop-blur-md flex gap-1">
             <button 
               onClick={() => setActiveTab('compose')}
               className={`px-6 py-2 rounded-lg font-bold transition-all ${activeTab === 'compose' ? 'bg-white text-amber-700 shadow-lg' : 'text-white hover:bg-white/10'}`}
             >
-              Compose
+              {t('compose')}
             </button>
             <button 
               onClick={() => setActiveTab('history')}
               className={`px-6 py-2 rounded-lg font-bold transition-all ${activeTab === 'history' ? 'bg-white text-amber-700 shadow-lg' : 'text-white hover:bg-white/10'}`}
             >
-              History
+              {t('history')}
             </button>
           </div>
         </div>
@@ -729,40 +735,40 @@ if (loading && newsList.length === 0) { // Show only on initial load
             className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8"
           >
             <form onSubmit={handleSubmit} className="space-y-8 max-w-4xl mx-auto">
-             
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-700 uppercase tracking-wide">Headline</label>
+                  <label className="text-sm font-bold text-gray-700 uppercase tracking-wide">{t('headline')}</label>
                   <input 
                     required 
                     value={title}
                     onChange={e => setTitle(e.target.value)}
                     className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-amber-500 focus:bg-white focus:ring-0 transition text-lg font-semibold"
-                    placeholder="Enter catchy headline..." 
+                    placeholder={t('enterHeadline')} 
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-700 uppercase tracking-wide">Target Audience</label>
+                  <label className="text-sm font-bold text-gray-700 uppercase tracking-wide">{t('targetAudience')}</label>
                   <div className="flex bg-gray-100 p-1 rounded-2xl">
-                    {['all', 'staff', 'customer'].map(t => (
+                    {['all', 'staff', 'customer'].map(tr => (
                       <button
                         type="button"
-                        key={t}
-                        onClick={() => setTarget(t)}
-                        className={`flex-1 py-3 rounded-xl font-bold capitalize transition-all ${target === t ? 'bg-white text-amber-600 shadow-md' : 'text-gray-500 hover:text-gray-700'}`}
+                        key={tr}
+                        onClick={() => setTarget(tr)}
+                        className={`flex-1 py-3 rounded-xl font-bold capitalize transition-all ${target === tr ? 'bg-white text-amber-600 shadow-md' : 'text-gray-500 hover:text-gray-700'}`}
                       >
-                        {t}
+                        {t(tr as any)}
                       </button>
                     ))}
                   </div>
                 </div>
               </div>
 
-           
+            
               <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700 uppercase tracking-wide">Category</label>
+                <label className="text-sm font-bold text-gray-700 uppercase tracking-wide">{t('category')}</label>
                 <div className="flex flex-wrap gap-3">
-                  {['announcement', 'event', 'promotion', 'urgent'].map(c => (
+                  {['promotion', 'event', 'urgent'].map(c => (
                     <button
                       type="button"
                       key={c}
@@ -773,26 +779,26 @@ if (loading && newsList.length === 0) { // Show only on initial load
                         : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'
                       }`}
                     >
-                      {c}
+                      {t(c as any)}
                     </button>
                   ))}
                 </div>
               </div>
 
-            
+             
               <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700 uppercase tracking-wide">Content</label>
+                <label className="text-sm font-bold text-gray-700 uppercase tracking-wide">{t('content')}</label>
                 <textarea 
                   required 
                   value={content}
                   onChange={e => setContent(e.target.value)}
                   rows={6}
                   className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-amber-500 focus:bg-white focus:ring-0 transition resize-none text-base"
-                  placeholder="What's happening?" 
+                  placeholder={t('whatsHappening')} 
                 />
               </div>
 
-          
+           
               <div className="relative group">
                 <input 
                   type="file" 
@@ -804,8 +810,8 @@ if (loading && newsList.length === 0) { // Show only on initial load
                   <div className="bg-amber-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-amber-600">
                     <UploadCloud size={32} />
                   </div>
-                  <p className="text-gray-900 font-bold text-lg">Click to Upload Attachments</p>
-                  <p className="text-gray-500 text-sm mt-1">Supports Images, Video, Audio & Documents</p>
+                  <p className="text-gray-900 font-bold text-lg">{t('clickToUploadAttachments')}</p>
+                  <p className="text-gray-500 text-sm mt-1">{t('supportsMedia')}</p>
                   
                   {files.length > 0 && (
                     <div className="mt-6 flex flex-wrap gap-2 justify-center">
@@ -824,7 +830,7 @@ if (loading && newsList.length === 0) { // Show only on initial load
                 type="submit"
                 className="w-full py-5 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-2xl font-bold text-xl shadow-xl hover:shadow-2xl hover:scale-[1.01] transition-all flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                {loading ? 'Broadcasting...' : <><Send size={24} /> Publish Announcement</>}
+                {loading ? t('broadcasting') : <><Send size={24} /> {t('publishAnnouncement')}</>}
               </button>
             </form>
           </motion.div>
@@ -847,6 +853,8 @@ if (loading && newsList.length === 0) { // Show only on initial load
 
 // Reusable News Card
 export const NewsCard = ({ news, isAdmin, onDelete }: any) => {
+  const { t } = useLanguage();
+
   const getIcon = (type: string) => {
     if(type === 'video') return <Video size={16} />;
     if(type === 'audio') return <Music size={16} />;
@@ -856,7 +864,7 @@ export const NewsCard = ({ news, isAdmin, onDelete }: any) => {
 
   return (
     <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-2xl transition-all duration-300 flex flex-col h-full group">
-   
+      
       {news.attachments.length > 0 && (
         <div className="h-56 bg-gray-100 overflow-hidden relative">
           {news.attachments[0].type === 'image' ? (
@@ -866,11 +874,11 @@ export const NewsCard = ({ news, isAdmin, onDelete }: any) => {
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-gray-400 bg-gray-50">
               <FileText size={48} className="mb-2 opacity-50" />
-              <span className="text-xs font-bold uppercase tracking-widest">Document</span>
+              <span className="text-xs font-bold uppercase tracking-widest">{t('document')}</span>
             </div>
           )}
           <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md text-white px-2 py-1 rounded-lg text-xs font-bold">
-            {news.attachments.length} Attachment{news.attachments.length > 1 ? 's' : ''}
+            {news.attachments.length} {news.attachments.length > 1 ? t('attachments') : t('attachment')}
           </div>
         </div>
       )}
@@ -883,7 +891,7 @@ export const NewsCard = ({ news, isAdmin, onDelete }: any) => {
             news.category === 'promotion' ? 'bg-green-100 text-green-600' :
             'bg-blue-100 text-blue-600'
           }`}>
-            {news.category}
+            {t(news.category as any)}
           </span>
           <span className="text-xs text-gray-400 font-bold">
             {new Date(news.createdAt).toLocaleDateString()}
@@ -893,7 +901,7 @@ export const NewsCard = ({ news, isAdmin, onDelete }: any) => {
         <h3 className="text-xl font-bold text-gray-900 mb-2 leading-tight line-clamp-2">{news.title}</h3>
         <p className="text-gray-600 text-sm leading-relaxed mb-6 flex-1 line-clamp-4">{news.content}</p>
 
-     
+        
         {news.attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-6">
             {news.attachments.map((att: any, i: number) => (
@@ -903,7 +911,7 @@ export const NewsCard = ({ news, isAdmin, onDelete }: any) => {
                 target="_blank"
                 className="flex items-center gap-1 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-gray-600 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200 transition"
               >
-                {getIcon(att.type)} View
+                {getIcon(att.type)} {t('view')}
               </a>
             ))}
           </div>
@@ -916,7 +924,7 @@ export const NewsCard = ({ news, isAdmin, onDelete }: any) => {
             </div>
             <div>
               <p className="text-xs font-bold text-gray-900">{news.createdBy?.firstName || 'Admin'}</p>
-              <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">{news.targetAudience} Only</p>
+              <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">{t(news.targetAudience as any)} {t('only')}</p>
             </div>
           </div>
           {isAdmin && (

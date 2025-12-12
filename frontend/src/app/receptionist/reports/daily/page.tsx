@@ -206,7 +206,7 @@ export default function DailyReportPage() {
           <Label htmlFor="reportDate" className="text-gray-700 dark:text-gray-300">
             {t('selectDate') || "Select Date"}
           </Label>
-          <Input
+          <input
             id="reportDate"
             type="date"
             value={selectedDate}

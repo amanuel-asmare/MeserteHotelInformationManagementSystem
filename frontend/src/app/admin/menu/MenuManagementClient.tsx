@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import {
   Search, Plus, Edit, Trash2, Filter, ChevronDown,
-  CheckCircle, Utensils, Image as ImageIcon, X, ChevronLeft, ChevronRight
+  CheckCircle, Utensils, Image as ImageIcon, X, ChevronLeft, ChevronRight, Crown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '@/lib/api';
@@ -19,7 +19,7 @@ interface MenuItem {
   category: 'breakfast' | 'lunch' | 'dinner' | 'drinks';
   image: string;
   isActive: boolean;
-  tags?: string[]; // Made optional to reflect potential backend data
+  tags?: string[]; // Make tags optional to handle data where it might be missing
   createdAt: string;
 }
 
@@ -378,7 +378,8 @@ export default function MenuManagementClient() {
                       <span className="block text-2xl font-black text-amber-600">ETB {item.price}</span>
                    </div>
                    <span className={`px-3 py-1 text-xs font-bold rounded-full ${item.isActive ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-gray-100 text-gray-500 border border-gray-200'}`}>
-                     {item.isActive ? t('active') : t('inactive')}
+                     {/* FIX: Cast status keys to any to avoid type error */}
+                     {item.isActive ? t('active' as any) : t('inactive' as any)}
                    </span>
                  </div>
                  
@@ -391,7 +392,7 @@ export default function MenuManagementClient() {
                          description: item.description,
                          price: item.price.toString(),
                          category: item.category,
-                         // FIXED: Safe access to tags with default empty array
+                         // Safe access to tags
                          tags: (item.tags || []).join(', '),
                          image: null
                        });

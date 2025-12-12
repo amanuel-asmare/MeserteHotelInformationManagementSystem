@@ -18,7 +18,7 @@ import {
 } from 'recharts';
 import NewsFeed from '../../../components/NewsFeed';
 import { useLanguage } from '../../../context/LanguageContext';
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
 const COLORS = ['#F59E0B', '#E5E7EB']; 
 
 export default function AdminDashboard() {

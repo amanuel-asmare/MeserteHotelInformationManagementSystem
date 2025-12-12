@@ -126,7 +126,7 @@ export default function Navbar({
             <button
               onClick={toggleDarkMode}
               className="p-2.5 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-yellow-400 transition shadow-sm"
-              title={t('toggleTheme') || "Toggle Theme"}
+              title={t('toggleTheme' as any) || "Toggle Theme"}
             >
               {darkMode ? <Sun size={20} /> : <Moon size={20} />}
             </button>
@@ -156,11 +156,11 @@ export default function Navbar({
                   >
                     <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gradient-to-r from-amber-50 to-orange-50 dark:from-gray-900 dark:to-gray-800">
                       <h3 className="font-bold text-gray-900 dark:text-white text-lg">
-                        {t('notifications') || "Notifications"}
+                        {t('notifications' as any) || "Notifications"}
                       </h3>
                       {unreadCount > 0 && (
                         <span className="text-xs bg-amber-600 text-white px-3 py-1 rounded-full font-bold">
-                          {unreadCount} {t('new') || "New"}
+                          {unreadCount} {t('new' as any) || "New"}
                         </span>
                       )}
                     </div>
@@ -169,8 +169,8 @@ export default function Navbar({
                       {notifications.length === 0 ? (
                         <div className="p-12 text-center text-gray-400">
                           <Bell className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                          <p className="font-medium">{t('allCaughtUp') || "All caught up!"}</p>
-                          <p className="text-sm mt-1">{t('noNewNotifications') || "No new notifications"}</p>
+                          <p className="font-medium">{t('allCaughtUp' as any) || "All caught up!"}</p>
+                          <p className="text-sm mt-1">{t('noNewNotifications' as any) || "No new notifications"}</p>
                         </div>
                       ) : (
                         notifications.map((notif) => (
@@ -206,7 +206,7 @@ export default function Navbar({
                       className="block p-4 text-center font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition text-sm flex items-center justify-center gap-2"
                     >
                       <MessageSquare size={18} />
-                      {t('openCommunicationCenter') || "Open Communication Center"}
+                      {t('openCommunicationCenter' as any) || "Open Communication Center"}
                     </Link>
                   </motion.div>
                 )}

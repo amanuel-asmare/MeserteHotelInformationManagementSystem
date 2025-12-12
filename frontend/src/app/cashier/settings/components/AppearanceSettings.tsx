@@ -1,8 +1,19 @@
 'use client';
+import { ReactNode } from 'react';
+
 // This is a UI-only component for now. Implementing a full theme switcher
 // would require a ThemeContext, which is beyond this scope but easy to add later.
 
-const SettingsCard = ({ title, description, children, footer }) => (
+// 1. Define the interface for props
+interface SettingsCardProps {
+  title: string;
+  description: string;
+  children: ReactNode;
+  footer?: ReactNode;
+}
+
+// 2. Apply the interface to the component
+const SettingsCard = ({ title, description, children, footer }: SettingsCardProps) => (
      <div className="bg-white rounded-lg shadow-md">
         <div className="p-6 border-b">
             <h3 className="text-lg font-semibold text-gray-800">{title}</h3>

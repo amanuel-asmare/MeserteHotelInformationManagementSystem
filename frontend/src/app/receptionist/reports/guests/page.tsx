@@ -213,7 +213,7 @@ export default function GuestReportPage() {
           <Label htmlFor="startDate" className="text-gray-700 dark:text-gray-300">
             {t('startDate') || "Start Date"}
           </Label>
-          <Input
+          <input
             id="startDate"
             type="date"
             value={startDate}
@@ -225,7 +225,7 @@ export default function GuestReportPage() {
           <Label htmlFor="endDate" className="text-gray-700 dark:text-gray-300">
             {t('endDate') || "End Date"}
           </Label>
-          <Input
+          <input
             id="endDate"
             type="date"
             value={endDate}

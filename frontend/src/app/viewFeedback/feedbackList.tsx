@@ -129,7 +129,7 @@ const FeedbackDetailModal = ({ feedback, onClose }: { feedback: Feedback | null;
                         </div>
                         <div className="flex items-center gap-2 capitalize">
                             <ShieldCheck size={16} />
-                            <strong>{t('sentTo')}:</strong> <span>{target}</span>
+                            <strong>{t('sentTo' as any)}:</strong> <span>{target}</span>
                         </div>
                     </div>
                 </motion.div>

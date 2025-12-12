@@ -226,7 +226,7 @@ export default function ManagerDashboard() {
             transition={{ delay: 5.5, duration: 2 }}
             className="text-4xl md:text-5xl text-amber-100 font-light tracking-widest mb-32"
           >
-            {t('royalAnalyticsLoading') || "Initializing Royal Command Center..."}
+            {t('royalAnalyticsLoading' as any) || "Initializing Royal Command Center..."}
           </motion.p>
 
           {/* Progress Bar */}
@@ -251,7 +251,7 @@ export default function ManagerDashboard() {
               transition={{ duration: 4, repeat: Infinity }}
               className="text-center mt-24 text-5xl md:text-6xl font-medium text-amber-200 tracking-widest"
             >
-              {t('preparingDashboard') || "Preparing Your Royal Throne..."}
+              {t('preparingDashboard' as any) || "Preparing Your Royal Throne..."}
             </motion.div>
           </div>
         </motion.div>

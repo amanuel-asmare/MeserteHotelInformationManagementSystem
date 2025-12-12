@@ -145,7 +145,7 @@ export default function ReceptionNavbar({
             <button
               onClick={toggleDarkMode}
               className="p-3 rounded-xl bg-gradient-to-br from-amber-100 to-orange-100 dark:from-gray-700 dark:to-gray-600 hover:shadow-xl transition-all transform hover:scale-110 shadow-lg"
-              title={isDarkMode ? t('lightMode') || "Light Mode" : t('darkMode') || "Dark Mode"}
+              title={isDarkMode ? t('lightMode' as any) || "Light Mode" : t('darkMode' as any) || "Dark Mode"}
             >
               <motion.div
                 key={isDarkMode ? 'sun' : 'moon'}
@@ -185,14 +185,14 @@ export default function ReceptionNavbar({
                   >
                     <div className="p-5 border-b border-amber-200 dark:border-amber-800 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-gray-900 dark:to-gray-800">
                       <h3 className="font-bold text-xl text-amber-700 dark:text-amber-300">
-                        {t('notifications') || "Notifications"}
+                        {t('notifications' as any) || "Notifications"}
                       </h3>
                     </div>
                     <div className="max-h-96 overflow-y-auto">
                       {notifications.length === 0 ? (
                         <div className="p-12 text-center text-gray-400">
                           <Bell className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                          <p className="font-medium">{t('allCaughtUp') || "All caught up!"}</p>
+                          <p className="font-medium">{t('allCaughtUp' as any) || "All caught up!"}</p>
                         </div>
                       ) : (
                         notifications.map((notif) => (
@@ -205,7 +205,7 @@ export default function ReceptionNavbar({
                       )}
                     </div>
                     <Link href="/receptionist/chat" className="block p-4 text-center bg-amber-600 hover:bg-amber-700 text-white font-bold transition">
-                      {t('openChat') || "Open Chat"}
+                      {t('openChat' as any) || "Open Chat"}
                     </Link>
                   </motion.div>
                 )}

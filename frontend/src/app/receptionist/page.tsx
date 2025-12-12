@@ -285,7 +285,7 @@ export default function ReceptionDashboard() {
               transition={{ duration: 4, repeat: Infinity }}
               className="text-xl text-amber-600 dark:text-amber-400 font-medium tracking-wider"
             >
-              {t('receptionReady')} • {new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              {t('receptionReady' as any)} • {new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </motion.div>
           </motion.div>
 

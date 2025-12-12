@@ -201,7 +201,7 @@ export default function OccupancyReportPage() {
       <div className="mb-6 flex flex-wrap items-end space-x-4 space-y-4 md:space-y-0">
         <div>
           <Label htmlFor="startDate" className="text-gray-700 dark:text-gray-300">{t('startDate')}</Label>
-          <Input
+          <input
             id="startDate"
             type="date"
             value={startDate}
@@ -211,7 +211,7 @@ export default function OccupancyReportPage() {
         </div>
         <div>
           <Label htmlFor="endDate" className="text-gray-700 dark:text-gray-300">{t('endDate')}</Label>
-          <Input
+          <input
             id="endDate"
             type="date"
             value={endDate}
