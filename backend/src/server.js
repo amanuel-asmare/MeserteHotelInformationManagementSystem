@@ -1,4 +1,112 @@
-// --- [STEP 1] IMPORT MODULES ---
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const cookieParser = require('cookie-parser');
+const path = require('path');
+const fs = require('fs');
+
+// Routes
+const financeRoutes = require('./routes/financeRoutes');
+const connectionDB = require("./config/db");
+
+// --- INITIALIZE APP & DATABASE ---
+const app = express();
+connectionDB();
+
+// Ensure upload directory exists
+const uploadDir = path.join(__dirname, 'public', 'uploads', 'menu');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// --- SETUP MIDDLEWARE ---
+// IMPORTANT: Allow your Vercel Frontend here
+const allowedOrigins = [
+    'https://localhost:3000',
+    process.env.CLIENT_URL, // e.g. https://meserte-hotel-information-managemen-swart.vercel.app
+    'https://meserte-hotel-information-managemen-swart.vercel.app' // Hardcoded backup
+];
+
+app.use(cors({
+    origin: function(origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.indexOf(origin) === -1) {
+            const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+            return callback(new Error(msg), false);
+        }
+        return callback(null, true);
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
+}));
+
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+
+// Serve static files
+app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
+app.use(express.static(path.join(__dirname, 'public')));
+
+// --- DEFINE ROUTES ---
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/users', require('./routes/users'));
+app.use('/api/rooms', require('./routes/rooms'));
+app.use('/api/menu', require('./routes/menu'));
+app.use('/api/feedback', require('./routes/feedback'));
+app.use('/api/reports', require('./routes/reports'));
+app.use('/api/orders', require('./routes/orderRoutes'));
+app.use('/api/bookings', require('./routes/bookingRoutes'));
+app.use('/api/public/rooms', require('./routes/publicRooms'));
+app.use('/api/dashboard', require('./routes/dashboard'));
+app.use('/api/attendance', require('./routes/attendanceRoutes'));
+app.use('/api/chat', require('./routes/chatRoutes'));
+app.use('/api/billing', require('./routes/billingRoutes'));
+app.use('/api/payroll', require('./routes/payrollRoutes.js'));
+app.use('/api/staff', require('./routes/staffRoutes'));
+app.use('/api/news', require('./routes/newsRoutes.js'));
+app.use('/api/settings', require('./routes/settingRoutes'));
+app.use('/api/finance', financeRoutes);
+
+// --- CONFIGURE SERVER ---
+let server;
+
+// On Render (Production), use HTTP. Render handles the HTTPS layer for you.
+if (process.env.NODE_ENV === 'production') {
+    const http = require('http');
+    server = http.createServer(app);
+} else {
+    // Local Development with custom SSL
+    const https = require('https');
+    try {
+        const options = {
+            key: fs.readFileSync(path.join(__dirname, '..', '..', '.cert', 'localhost-key.pem')),
+            cert: fs.readFileSync(path.join(__dirname, '..', '..', '.cert', 'localhost.pem')),
+        };
+        server = https.createServer(options, app);
+    } catch (error) {
+        console.log("SSL certs not found, falling back to HTTP");
+        const http = require('http');
+        server = http.createServer(app);
+    }
+}
+
+// --- ATTACH SOCKET.IO ---
+const io = require('./socket')(server);
+global.io = io;
+
+// --- START SERVER ---
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => {
+    console.log(`✅ Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+});
+
+// --- BACKGROUND JOBS ---
+const { cleanupFinishedBookings } = require('./utils/cleanup');
+setInterval(cleanupFinishedBookings, 60 * 60 * 1000);
+cleanupFinishedBookings();
+/*// --- [STEP 1] IMPORT MODULES ---
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -111,69 +219,6 @@ server.listen(PORT, () => {
 
 
 // --- [STEP 8] RUN BACKGROUND CLEANUP JOBS ---
-const { cleanupFinishedBookings } = require('./utils/cleanup');
-setInterval(cleanupFinishedBookings, 60 * 60 * 1000);
-cleanupFinishedBookings();
-/*require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const cookieParser = require('cookie-parser');
-const path = require('path');
-const fs = require('fs');
-const http = require('http'); // ← REQUIRED
-const connectionDB = require("./config/db");
-
-const app = express();
-connectionDB();
-
-// Ensure upload directory
-const uploadDir = path.join(__dirname, 'public', 'uploads', 'menu');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-
-// Middleware
-app.use(cors({
-    origin: 'http://localhost:3000',
-    credentials: true
-}));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
-
-// Serve uploaded images
-app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Routes
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/users', require('./routes/users'));
-app.use('/api/rooms', require('./routes/rooms'));
-app.use('/api/menu', require('./routes/menu'));
-app.use('/api/feedback', require('./routes/feedback'));
-app.use('/api/reports', require('./routes/reports'));
-app.use('/api/orders', require('./routes/orderRoutes'));
-app.use('/api/bookings', require('./routes/bookingRoutes'));
-app.use('/api/public/rooms', require('./routes/publicRooms'));
-// In your main routes file or server.js
-app.use('/api/dashboard', require('./routes/dashboard'));
-// ADD THIS NEW LINE
-app.use('/api/attendance', require('./routes/attendanceRoutes')); //
-app.use('/api/chat', require('./routes/chatRoutes'));
-app.use('/api/billing', require('./routes/billingRoutes'));
-app.use('/api/payroll', require('./routes/payrollRoutes.js'));
-//app.use('/api/report', require('./routes/reportCashierRoutes.js'));
-const server = http.createServer(app);
-
-// === SOCKET.IO ===
-const io = require('./socket')(server);
-global.io = io;
-
-// === START SERVER ===
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-    console.log(`✅ Server running at: http://localhost:${PORT}`);
-});
-
-// === CLEANUP ===
 const { cleanupFinishedBookings } = require('./utils/cleanup');
 setInterval(cleanupFinishedBookings, 60 * 60 * 1000);
 cleanupFinishedBookings();*/

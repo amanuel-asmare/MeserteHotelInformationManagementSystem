@@ -1,18 +1,6 @@
 /*
-const nextConfig = {
-  async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: 'http://localhost:5000/api/:path*',
-      },
-    ];
-  },
-};
 
-module.exports = nextConfig;*/
-
-/** @type {import('next').NextConfig} */
+/** @type {import('next').NextConfig} /
 const nextConfig = {
   images: {
     remotePatterns: [
@@ -36,4 +24,39 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+module.exports = nextConfig;*/
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+    images: {
+      remotePatterns: [
+        {
+          protocol: 'https',
+          hostname: 'localhost',
+          port: '5000',
+          pathname: '/**',
+        },
+        {
+          protocol: 'https',
+          hostname: 'mesertehotelinformationmanagementsystem.onrender.com',
+          port: '',
+          pathname: '/**',
+        },
+      ],
+    },
+    // Rewrites help avoid CORS issues in some cases, but direct API calls are better
+    async rewrites() {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
+      return [
+        {
+          source: '/api/:path*',
+          destination: `${apiUrl}/api/:path*`, 
+        },
+        {
+          source: '/uploads/:path*',
+          destination: `${apiUrl}/uploads/:path*`,
+        }
+      ];
+    },
+  };
+  
+  module.exports = nextConfig;

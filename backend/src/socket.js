@@ -1,10 +1,21 @@
 const ChatMessage = require('./models/ChatMessage'); // Make sure to import the model
 
 module.exports = (server) => {
+    // const io = require('socket.io')(server, {
+    //     cors: { origin: 'https://localhost:3000', credentials: true }
+    // });
     const io = require('socket.io')(server, {
-        cors: { origin: 'https://localhost:3000', credentials: true }
+        cors: {
+            // Allow both localhost and your deployed Vercel app
+            origin: [
+                'https://localhost:3000',
+                process.env.CLIENT_URL,
+                'https://meserte-hotel-information-managemen-swart.vercel.app'
+            ],
+            credentials: true,
+            methods: ["GET", "POST"]
+        }
     });
-
     const onlineUsers = new Map();
 
     const getUserIdFromSocket = (socket) => {
