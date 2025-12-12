@@ -20,25 +20,35 @@ if (!fs.existsSync(uploadDir)) {
 }
 
 // --- SETUP MIDDLEWARE ---
-// IMPORTANT: Allow your Vercel Frontend here
+
+// Clean up the URL from Env (remove trailing slash if exists)
+const envClientUrl = process.env.CLIENT_URL ? process.env.CLIENT_URL.replace(/\/$/, "") : "";
+
 const allowedOrigins = [
     'https://localhost:3000',
-    process.env.CLIENT_URL, // e.g. https://meserte-hotel-information-managemen-swart.vercel.app
-    'https://meserte-hotel-information-managemen-swart.vercel.app' // Hardcoded backup
+    'http://localhost:3000',
+    'https://meserte-hotel-information-managemen-swart.vercel.app', // Your specific Vercel URL
+    envClientUrl
 ];
 
 app.use(cors({
     origin: function(origin, callback) {
-        // Allow requests with no origin (like mobile apps or curl requests)
+        // Allow requests with no origin (like mobile apps, curl, or Postman)
         if (!origin) return callback(null, true);
-        if (allowedOrigins.indexOf(origin) === -1) {
+
+        // Check if the origin is in our allowed list
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            return callback(null, true);
+        } else {
+            // DEBUGGING: This will show in Render logs if it fails
+            console.log("BLOCKED CROS ORIGIN:", origin);
             const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
             return callback(new Error(msg), false);
         }
-        return callback(null, true);
     },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
 }));
 
 app.use(express.json({ limit: '10mb' }));
@@ -77,7 +87,7 @@ if (process.env.NODE_ENV === 'production') {
     const http = require('http');
     server = http.createServer(app);
 } else {
-    // Local Development with custom SSL
+    // Local Development
     const https = require('https');
     try {
         const options = {

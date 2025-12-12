@@ -9,6 +9,7 @@ module.exports = (server) => {
             // Allow both localhost and your deployed Vercel app
             origin: [
                 'https://localhost:3000',
+                'http://localhost:3000',
                 process.env.CLIENT_URL,
                 'https://meserte-hotel-information-managemen-swart.vercel.app'
             ],
