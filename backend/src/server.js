@@ -382,4 +382,4 @@ server.listen(PORT, () => {
 // --- [STEP 8] RUN BACKGROUND CLEANUP JOBS ---
 const { cleanupFinishedBookings } = require('./utils/cleanup');
 setInterval(cleanupFinishedBookings, 60 * 60 * 1000);
-cleanupFinishedBookings(); * /
+cleanupFinishedBookings(); */
