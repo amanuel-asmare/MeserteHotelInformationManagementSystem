@@ -1,4 +1,67 @@
-const ChatMessage = require('./models/ChatMessage'); // Make sure to import the model
+const ChatMessage = require('./models/ChatMessage');
+
+module.exports = (server) => {
+
+    // Clean up the URL from Env
+    const envClientUrl = process.env.CLIENT_URL ? process.env.CLIENT_URL.replace(/\/$/, "") : "";
+
+    const io = require('socket.io')(server, {
+        cors: {
+            origin: [
+                'https://localhost:3000',
+                'http://localhost:3000',
+                // Existing URL
+                'https://meserte-hotel-information-managemen-swart.vercel.app',
+                // NEW URL (Added from your Error Logs)
+                'https://meserte-hotel-information-managemen.vercel.app',
+                envClientUrl
+            ],
+            credentials: true,
+            methods: ["GET", "POST"]
+        }
+    });
+
+    const onlineUsers = new Map();
+
+    const getUserIdFromSocket = (socket) => {
+        for (let [userId, socketId] of onlineUsers.entries()) {
+            if (socketId === socket.id) return userId;
+        }
+        return null;
+    };
+
+    io.on('connection', (socket) => {
+        socket.on('join', (userId) => {
+            socket.join(userId);
+            onlineUsers.set(userId, socket.id);
+            io.emit('onlineUsers', Array.from(onlineUsers.keys()));
+        });
+
+        socket.on('markAsRead', async({ receiverId, senderId }) => {
+            try {
+                await ChatMessage.updateMany({ receiver: receiverId, sender: senderId, isRead: false }, { $set: { isRead: true } });
+
+                const senderSocketId = onlineUsers.get(senderId);
+                if (senderSocketId) {
+                    io.to(senderSocketId).emit('messagesRead', { readerId: receiverId });
+                }
+            } catch (error) {
+                console.error("Error in 'markAsRead' socket event:", error);
+            }
+        });
+
+        socket.on('disconnect', () => {
+            const userId = getUserIdFromSocket(socket);
+            if (userId) {
+                onlineUsers.delete(userId);
+                io.emit('onlineUsers', Array.from(onlineUsers.keys()));
+            }
+        });
+    });
+
+    return io;
+};
+/*const ChatMessage = require('./models/ChatMessage'); // Make sure to import the model
 
 module.exports = (server) => {
     // const io = require('socket.io')(server, {
@@ -59,7 +122,10 @@ module.exports = (server) => {
     });
 
     return io;
-};
+};*/
+
+
+
 /*const jwt = require('jsonwebtoken');
 const User = require('./models/User');
 
