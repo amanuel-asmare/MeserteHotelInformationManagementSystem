@@ -39,8 +39,8 @@ export default function MenuOrdersClient() {
   const [loading, setLoading] = useState(true);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
-
+  // const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
   const getImageUrl = (path?: string | null): string => {
     if (!path || path.includes('default-menu')) return '/placeholder-food.jpg';
     return path.startsWith('http') ? path : `${API_BASE}${path.startsWith('/') ? '' : '/'}${path}`;

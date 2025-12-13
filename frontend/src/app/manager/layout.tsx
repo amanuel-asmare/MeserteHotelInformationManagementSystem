@@ -11,8 +11,8 @@ import { Home } from 'lucide-react';
 import axios from 'axios';
 import { useLanguage } from '../../../context/LanguageContext'; // ← ADD THIS
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-
+// const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
 interface Notification {
   id: string;
   title: string;

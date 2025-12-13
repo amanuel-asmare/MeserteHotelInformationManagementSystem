@@ -26,8 +26,8 @@ import { useAuth } from '../../../../context/AuthContext';
 import { DatePicker } from '../../../../components/attendance/DataPicker';
 import { useLanguage } from '../../../../context/LanguageContext'; // Import Language Hook
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
-
+// const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
 interface AttendanceRecord {
     _id: string;
     user: string;

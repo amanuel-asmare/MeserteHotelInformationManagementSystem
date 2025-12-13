@@ -12,8 +12,8 @@ import { Label } from '../../../../../components/reportRecep/label';
 import { Textarea } from '../../../../../components/ui/textarea';
 import { useLanguage } from '../../../../../context/LanguageContext';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
-
+// const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
 interface OccupancyReportData {
   startDate: string;
   endDate: string;

@@ -4,11 +4,14 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 const fs = require('fs');
-
+//for using social midia login and regstration
+const session = require('express-session');
+const passport = require('passport');
 // Routes
 const financeRoutes = require('./routes/financeRoutes');
 const connectionDB = require("./config/db");
-
+// Passport Config
+require('../src/config/passport')(passport);
 // --- INITIALIZE APP & DATABASE ---
 const app = express();
 connectionDB();
@@ -58,6 +61,16 @@ app.use(cookieParser());
 // Serve static files
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 app.use(express.static(path.join(__dirname, 'public')));
+// Session Middleware (Required for Passport)
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'meseret_secret',
+    resave: false,
+    saveUninitialized: false
+}));
+
+// Initialize Passport
+app.use(passport.initialize());
+app.use(passport.session());
 
 // --- DEFINE ROUTES ---
 app.use('/api/auth', require('./routes/auth'));

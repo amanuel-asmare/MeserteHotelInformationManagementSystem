@@ -6,7 +6,8 @@ const path = require('path');
 const getFullUrl = (filePath) => {
     if (!filePath) return '/default-logo.png';
     if (filePath.startsWith('http')) return filePath;
-    const API_BASE = process.env.API_URL || 'https://localhost:5000';
+    // const API_BASE = process.env.API_URL || 'https://localhost:5000';
+    const API_BASE = process.env.API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
     // Ensure path starts with /
     const cleanPath = filePath.startsWith('/') ? filePath : '/' + filePath;
     return API_BASE + cleanPath;

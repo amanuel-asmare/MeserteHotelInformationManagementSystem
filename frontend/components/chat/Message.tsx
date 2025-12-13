@@ -88,7 +88,9 @@ const Message = ({ message, isCurrentUser, onEdit, onDelete, onReply }: MessageP
     const bgColor = isCurrentUser ? 'bg-amber-500 text-white' : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200';
     
     // Ensure API URL is handled correctly
-    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
+    // const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
+   
     const fileUrl = message.file?.url?.startsWith('http') 
         ? message.file.url 
         : `${API_BASE}${message.file?.url}`;

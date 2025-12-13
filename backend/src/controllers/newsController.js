@@ -4,7 +4,8 @@ const path = require('path');
 
 // Helper to get full URL without ?.
 const getFullUrl = (filePath) => {
-    const API_BASE = process.env.API_URL || 'https://localhost:5000';
+    // const API_BASE = process.env.API_URL || 'https://localhost:5000';
+    const API_BASE = process.env.API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
     const cleanPath = filePath.startsWith('/') ? filePath : '/' + filePath;
     return API_BASE + cleanPath;
 };

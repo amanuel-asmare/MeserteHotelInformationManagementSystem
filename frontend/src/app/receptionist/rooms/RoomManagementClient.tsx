@@ -27,8 +27,8 @@ interface Room {
   bathrooms: number;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
-
+// const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
 export default function ReceptionistRoomManagement() {
   const { t } = useLanguage(); // Init hook
   const [rooms, setRooms] = useState<Room[]>([]);

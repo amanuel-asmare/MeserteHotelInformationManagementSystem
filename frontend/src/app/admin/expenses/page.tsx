@@ -11,8 +11,8 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../../../../context/LanguageContext'; // Import Hook
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
-
+// const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
 export default function ExpensesPage() {
   const { t, language } = useLanguage(); // Use Hook
 

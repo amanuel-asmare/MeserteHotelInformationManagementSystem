@@ -12,8 +12,9 @@ import { format } from 'date-fns';
 import PayslipModal from '../src/app/cashier/payroll/components/PayslipModal';
 import { useLanguage } from '../context/LanguageContext';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
+// const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
 
+const API_URL= process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
 const SalaryCard = ({ title, value, subtitle, icon, color, delay }: any) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}

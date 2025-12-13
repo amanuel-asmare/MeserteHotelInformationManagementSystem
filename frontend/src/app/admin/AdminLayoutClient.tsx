@@ -13,7 +13,8 @@ import HotelLogo from '../../../components/HotelLogo';
 const getImageUrl = (path: string | undefined) => {
   if (!path) return '/default-avatar.png';
   if (path.startsWith('http')) return path;
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
+  // const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
   return `${API_BASE}${path}`;
 };
 
@@ -73,11 +74,12 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
     { icon: 'FileText', label: t('feedback'), href: '/admin/feedback' },
     { icon: 'MessageCircle', label: t('chat'), href: '/admin/chat' },
     { icon: 'Banknote', label: t('pyroll'), href: '/admin/payroll' },
-    { icon: 'Settings', label: t('settings'), href: '/admin/settings' },
+   
     { icon: 'Settings', label: t('HotelLego'), href: '/admin/settings/settingConfigration' },
     { icon: 'ShoppingBag', label: t('purchases'), href: '/admin/purchases' },
     { icon: 'Receipt', label: t('expenses'), href: '/admin/expenses' },
     { icon: 'PieChart', label: t('financialReports'), href: '/admin/analytics' },
+    { icon: 'Settings', label: t('settings'), href: '/admin/settings' },
   ];
 
   return (

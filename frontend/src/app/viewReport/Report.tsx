@@ -28,7 +28,8 @@ interface ReportHistoryItem {
   createdAt: string;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
+// const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
 const REPORTS_PER_PAGE = 5;
 
 type ActiveTab = 'receptionist' | 'cashier';

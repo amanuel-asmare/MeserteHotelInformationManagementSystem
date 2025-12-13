@@ -5,7 +5,8 @@ const { calculateEthiopianTax } = require('../utils/taxCalculator');
 
 const getFullImageUrl = (imagePath) => {
     if (!imagePath || imagePath.startsWith('http')) return imagePath || '/default-avatar.png';
-    const API_BASE = process.env.API_URL || 'https://localhost:5000';
+    // const API_BASE = process.env.API_URL || 'https://localhost:5000';
+    const API_BASE = process.env.API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
     return imagePath.startsWith('/uploads') ?
         `${API_BASE}${imagePath}` :
         `${API_BASE}/uploads/avatars/${imagePath}`;

@@ -11,7 +11,8 @@ import { NewsCard } from '../src/app/admin/upload-docs/page'; // Import the card
 
 import { BellRing, ChevronDown, ChevronUp, X, FileText, Video, Image as ImageIcon, Music } from 'lucide-react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
+// const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
 
 // --- ZOOM DETAIL MODAL COMPONENT ---
 const NewsDetailModal = ({ news, onClose }: { news: any, onClose: () => void }) => {

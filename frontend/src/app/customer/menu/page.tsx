@@ -2,14 +2,18 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Coffee, Plus, Minus, ShoppingCart, X, History, Loader2, Hotel, Utensils, Receipt, Calendar, Clock, Bike, MapPin } from 'lucide-react';
+import { 
+  Coffee, Plus, Minus, ShoppingCart, X, History, 
+  Loader2, Hotel, Utensils, Receipt, Calendar, Clock, 
+  Bike, MapPin, Pizza, Sandwich, Soup, IceCream // Added icons for loading animation
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '@/lib/api';
 import { useAuth } from '../../../../context/AuthContext';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import toast, { Toaster } from 'react-hot-toast';
-import { useLanguage } from '../../../../context/LanguageContext'; // Import Hook
+import { useLanguage } from '../../../../context/LanguageContext';
 
 let io: any;
 if (typeof window !== 'undefined') {
@@ -52,10 +56,90 @@ interface Order {
 
 type FilterType = 'active' | 'today' | 'week' | 'month' | 'all';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+// const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
+// --- NEW LOADING COMPONENT ---
+const CulinaryLoader = () => {
+  const [currentIcon, setCurrentIcon] = useState(0);
+  const icons = [Utensils, Pizza, Coffee, Soup, Sandwich, IceCream];
+  
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentIcon((prev) => (prev + 1) % icons.length);
+    }, 600);
+    return () => clearInterval(timer);
+  }, [icons.length]);
+
+  const CurrentIconComponent = icons[currentIcon];
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-[#1a1a1a] flex flex-col items-center justify-center overflow-hidden">
+      {/* Dynamic Background Particles */}
+      <div className="absolute inset-0 overflow-hidden opacity-20 pointer-events-none">
+        {[...Array(20)].map((_, i) => (
+          <motion.div
+            key={i}
+            initial={{ y: "110vh", x: Math.random() * 100 + "vw", opacity: 0 }}
+            animate={{ y: "-10vh", opacity: [0, 0.8, 0] }}
+            transition={{ 
+              duration: 5 + Math.random() * 5, 
+              repeat: Infinity, 
+              delay: Math.random() * 5,
+              ease: "linear"
+            }}
+            className="absolute text-amber-500/30"
+          >
+             <div className="w-2 h-2 rounded-full bg-amber-500" />
+          </motion.div>
+        ))}
+      </div>
+
+      <div className="relative z-10 flex flex-col items-center">
+        {/* Animated Icon Circle */}
+        <motion.div 
+          className="w-32 h-32 rounded-full bg-gradient-to-br from-amber-500 to-orange-700 flex items-center justify-center mb-8 shadow-[0_0_40px_rgba(245,158,11,0.4)] border-4 border-[#2a2a2a]"
+          animate={{ scale: [1, 1.05, 1], rotate: [0, 5, -5, 0] }}
+          transition={{ duration: 4, repeat: Infinity }}
+        >
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentIcon}
+              initial={{ opacity: 0, scale: 0.5, rotate: -45 }}
+              animate={{ opacity: 1, scale: 1, rotate: 0 }}
+              exit={{ opacity: 0, scale: 0.5, rotate: 45 }}
+              transition={{ duration: 0.3 }}
+            >
+              <CurrentIconComponent size={56} className="text-white drop-shadow-lg" />
+            </motion.div>
+          </AnimatePresence>
+        </motion.div>
+
+        {/* Text Animation */}
+        <div className="text-center space-y-2">
+            <h1 className="text-4xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-600 font-serif">
+               MESERET DINING
+            </h1>
+            <p className="text-gray-400 text-sm tracking-[0.3em] uppercase font-light animate-pulse">
+                Preparing Your Experience
+            </p>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="w-64 h-1.5 bg-gray-800 rounded-full mt-8 overflow-hidden relative">
+            <motion.div 
+                className="absolute top-0 left-0 h-full bg-gradient-to-r from-amber-500 to-orange-600"
+                initial={{ width: "0%" }}
+                animate={{ width: "100%" }}
+                transition={{ duration: 3.5, ease: "easeInOut" }}
+            />
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function CustomerMenuPage() {
-  const { t, language } = useLanguage(); // Use Hook
+  const { t, language } = useLanguage(); 
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
@@ -96,7 +180,6 @@ export default function CustomerMenuPage() {
 
   // --- SOCKET.IO CONNECTION ---
   useEffect(() => {
-    // FIX: Cast 'user' to any to avoid property '_id' does not exist error
     if (typeof window === 'undefined' || !(user as any)?._id) return;
     const socket = io(API_BASE, { withCredentials: true });
     socketRef.current = socket;
@@ -119,7 +202,6 @@ export default function CustomerMenuPage() {
       if (updatedOrder.status !== 'pending') {
           // Translate status for toast
           const statusText = t(updatedOrder.status as any) || updatedOrder.status;
-          // FIX: Cast 'order' and 'orderMarkedAs' to any
           toast.success(`${t('order' as any)} ${updatedOrder.orderNumber} ${t('orderMarkedAs' as any)} ${statusText}!`, {
             style: { background: '#10b981', color: 'white' },
             duration: 4000
@@ -128,7 +210,6 @@ export default function CustomerMenuPage() {
     });
 
     return () => socket.disconnect();
-    // FIX: Cast 'user' to any in dependency array as well
   }, [(user as any)?._id, t]);
 
   // --- AUTOMATICALLY RE-FILTER WHEN ORDERS UPDATE ---
@@ -189,7 +270,6 @@ export default function CustomerMenuPage() {
       // Initial filter application
       applyFilter(r.data, 'active'); 
     } catch {
-      // FIX: Cast 'failedLoadHistory' to any
       console.error(t('failedLoadHistory' as any));
     }
   };
@@ -258,7 +338,6 @@ export default function CustomerMenuPage() {
         image: getImageUrl(item.image)
       }];
     });
-    // FIX: Cast 'itemAdded' to any
     toast.success(`${item.name} ${t('itemAdded' as any)}`, { icon: 'Success' });
   };
 
@@ -280,23 +359,19 @@ export default function CustomerMenuPage() {
   const totalPrice = (itemsTotal + deliveryFee).toFixed(2);
 
   const placeOrder = async () => {
-    // FIX: Cast 'pleaseLogIn' and 'cartEmpty' to any
     if (!user) { toast.error(t('pleaseLogIn' as any)); router.push('/login'); return; }
     if (cart.length === 0) { toast.error(t('cartEmpty' as any)); return; }
     
     if (orderType === 'room' && !user.roomNumber) {
-      // FIX: Cast 'setRoomNumber' to any
       toast.error(t('setRoomNumber' as any));
       return;
     }
     if (orderType === 'table' && !tableNumber.trim()) {
-      // FIX: Cast 'enterTableNumber' to any
       toast.error(t('enterTableNumber' as any));
       return;
     }
     if (orderType === 'delivery') {
         if(!deliveryDetails.phone || !deliveryDetails.street || !deliveryDetails.landmark) {
-            // FIX: Cast 'fillDeliveryDetails' to any
             toast.error(t('fillDeliveryDetails' as any));
             return;
         }
@@ -355,7 +430,7 @@ export default function CustomerMenuPage() {
     }
   };
 
-  // Loading Screen
+  // Loading Screen Timer
   const MIN_LOADING_TIME = 3500; 
   const [minTimePassed, setMinTimePassed] = useState(false);
 
@@ -365,11 +440,7 @@ export default function CustomerMenuPage() {
   }, []);
 
   if (loading || authLoading || !minTimePassed) {
-    return (
-      <div className="fixed inset-0 bg-gradient-to-br from-amber-900 via-orange-800 to-amber-950 flex items-center justify-center overflow-hidden">
-        <Loader2 className="animate-spin text-white w-16 h-16" />
-      </div>
-    )
+    return <CulinaryLoader />;
   }
 
   return (
@@ -383,14 +454,10 @@ export default function CustomerMenuPage() {
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{t('orderFoodDrinks')}</h1>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
               {t('deliveredTo')} {' '}
-              {/* FIX: Cast 'notSet' to any */}
               {orderType === 'room' && <span className="font-semibold text-amber-600">{t('room')} {user?.roomNumber || t('notSet' as any)}</span>}
-              {/* FIX: Cast 'table' and 'notSet' to any */}
               {orderType === 'table' && <span className="font-semibold text-amber-600">{t('table' as any)} {tableNumber || t('notSet' as any)}</span>}
-              {/* FIX: Cast 'deliveryService' to any */}
               {orderType === 'delivery' && <span className="font-semibold text-amber-600">{t('deliveryService' as any)}</span>}
               {(orderType === 'room' && !user?.roomNumber) && (
-                // FIX: Cast 'setRoom' to any
                 <Link href="/customer/settings/roomSet" className="ml-2 text-amber-600 underline text-sm">{t('setRoom' as any)}</Link>
               )}
             </p>
@@ -455,7 +522,6 @@ export default function CustomerMenuPage() {
             <div className="absolute inset-0 bg-black/50" onClick={() => setShowCart(false)} />
             <motion.div className="relative w-full max-w-md bg-white dark:bg-gray-800 shadow-2xl flex flex-col h-full" onClick={e => e.stopPropagation()}>
               <div className="p-6 border-b flex items-center justify-between bg-gray-50 dark:bg-gray-900">
-                {/* FIX: Cast 'yourOrder' to any */}
                 <h2 className="text-2xl font-bold">{t('yourOrder' as any)}</h2>
                 <button onClick={() => setShowCart(false)} className="p-2 hover:bg-gray-200 rounded-full"><X size={24} /></button>
               </div>
@@ -464,7 +530,6 @@ export default function CustomerMenuPage() {
                 {cart.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full text-gray-500 gap-4">
                       <ShoppingCart size={64} className="text-gray-300" />
-                      {/* FIX: Cast 'cartEmpty' to any */}
                       <p>{t('cartEmpty' as any)}</p>
                   </div>
                 ) : (
@@ -492,7 +557,6 @@ export default function CustomerMenuPage() {
                                 <div className={`p-3 rounded-lg border-2 ${orderType === 'delivery' ? 'border-amber-600 bg-white text-amber-600' : 'border-transparent text-gray-500'}`}>
                                     <Bike size={24} />
                                 </div>
-                                {/* FIX: Cast 'deliveryService' to any */}
                                 <span className="text-xs font-bold">{t('deliveryService' as any)}</span>
                             </label>
                         </div>
@@ -501,7 +565,6 @@ export default function CustomerMenuPage() {
                     {/* Table Number Input */}
                     {orderType === 'table' && (
                       <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-lg animate-in slide-in-from-top-2">
-                        {/* FIX: Cast 'tableNumber' to any */}
                         <label className="block text-sm font-bold mb-1">{t('tableNumber' as any)}</label>
                         <input
                           type="text"
@@ -517,12 +580,10 @@ export default function CustomerMenuPage() {
                     {orderType === 'delivery' && (
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 bg-gray-50 border border-gray-200 rounded-xl space-y-3">
                             <h4 className="font-bold text-gray-800 flex items-center gap-2 text-sm">
-                                {/* FIX: Cast 'deliveryDetails' to any */}
                                 <MapPin size={16} /> {t('deliveryDetails' as any)}
                             </h4>
                             <input
                                 type="text"
-                                // FIX: Cast 'phoneNumber' to any
                                 placeholder={t('phoneNumber' as any)}
                                 value={deliveryDetails.phone}
                                 onChange={e => setDeliveryDetails({...deliveryDetails, phone: e.target.value})}
@@ -530,14 +591,12 @@ export default function CustomerMenuPage() {
                             />
                             <input
                                 type="text"
-                                // FIX: Cast 'streetArea' to any
                                 placeholder={t('streetArea' as any)}
                                 value={deliveryDetails.street}
                                 onChange={e => setDeliveryDetails({...deliveryDetails, street: e.target.value})}
                                 className="w-full px-3 py-2 border rounded-lg text-sm bg-white"
                             />
                             <textarea
-                                // FIX: Cast 'landmarkInstructions' to any
                                 placeholder={t('landmarkInstructions' as any)}
                                 value={deliveryDetails.landmark}
                                 onChange={e => setDeliveryDetails({...deliveryDetails, landmark: e.target.value})}
@@ -668,7 +727,6 @@ export default function CustomerMenuPage() {
                 {filteredOrders.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-48 text-gray-400">
                     <History size={48} className="mb-2 opacity-50" />
-                    {/* FIX: Cast 'noOrdersFoundCategory' to any */}
                     <p>{t('noOrdersFoundCategory' as any)}</p>
                   </div>
                 ) : (
@@ -692,18 +750,14 @@ export default function CustomerMenuPage() {
                                     )}
                                 </div>
                                 <div>
-                                    {/* FIX: Cast 'order' to any */}
                                     <h3 className="font-bold text-lg text-gray-900 dark:text-white flex items-center gap-2">
                                         {t('order' as any)} {order.orderNumber}
                                     </h3>
-                                    {/* --- CORRECT DATE FORMAT HERE --- */}
                                     <p className="text-sm text-gray-500 font-medium">
                                         {format(new Date(order.orderedAt), "MMMM do, yyyy 'at' h:mm a")}
                                     </p>
                                     <p className="text-xs text-gray-400 mt-1">
-                                        {/* Translated Location Type */}
                                         {order.orderType === 'delivery' 
-                                            // FIX: Cast 'homeDelivery' to any
                                             ? t('homeDelivery' as any)
                                             : order.customer?.roomNumber 
                                                 ? `${t('room')} ${order.customer.roomNumber}` 

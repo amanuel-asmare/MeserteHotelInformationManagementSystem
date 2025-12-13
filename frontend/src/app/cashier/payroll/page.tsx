@@ -10,8 +10,8 @@ import PayslipModal from './components/PayslipModal';
 import { DollarSign, Users, Clock, Calendar } from 'lucide-react';
 import { useLanguage } from '../../../../context/LanguageContext'; // Import translation hook
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-
+// const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL= process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
 const StatCard = ({ title, value, icon, color }: { title: string; value: string | number; icon: React.ReactNode; color: string }) => (
   <motion.div
     whileHover={{ y: -4, scale: 1.02 }}

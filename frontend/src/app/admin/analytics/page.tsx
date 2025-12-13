@@ -10,8 +10,8 @@ import {
 import { TrendingUp, TrendingDown, DollarSign, Wallet, Activity, ArrowUpRight, ArrowDownRight, PieChart } from 'lucide-react';
 import { useLanguage } from '../../../../context/LanguageContext'; // Import Hook
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
-
+// const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
 const formatCurrency = (val: number) => 
   new Intl.NumberFormat('en-ET', { style: 'currency', currency: 'ETB', maximumFractionDigits: 0 }).format(val);
 

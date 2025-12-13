@@ -12,8 +12,8 @@ import {
 import ReactCanvasConfetti from 'react-canvas-confetti';
 import { useLanguage } from '../../../../context/LanguageContext'; // Import Hook
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
-
+// const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
+const API_URL= process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
 // Format Currency Helper
 const formatCurrency = (amount: number) => {
   // You could also make locale dynamic based on language if desired

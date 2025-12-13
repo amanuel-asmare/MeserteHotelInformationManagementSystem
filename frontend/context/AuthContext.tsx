@@ -242,8 +242,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  // const API_URL = 'https://localhost:5000';
- const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
+  //  const API_URL = 'https://localhost:5000';
+const API_URL='https://mesertehotelinformationmanagementsystem.onrender.com'
   const checkAuth = async () => {
     try {
       const res = await fetch(`${API_URL}/api/auth/me`, { credentials: 'include' });

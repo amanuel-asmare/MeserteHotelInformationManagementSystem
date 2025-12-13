@@ -6,8 +6,8 @@ import Header from './components/Header';
 import axios from 'axios';
 import { useAuth } from '../../../context/AuthContext';
 import Footer from '../../app/admin/Footer';
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-
+// const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
 export default function CashierLayout({
   children,
 }: {

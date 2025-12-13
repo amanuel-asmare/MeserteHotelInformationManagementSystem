@@ -31,7 +31,9 @@ const UserList = ({ users, onlineUsers, selectedUser, onUserSelect, onViewProfil
     const getImageUrl = (path?: string) => {
         if (!path) return '/default-avatar.png';
         if (path.startsWith('http')) return path;
-        const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
+        // const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
+        const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
+        
         return `${API_BASE}${path}`;
     };
 

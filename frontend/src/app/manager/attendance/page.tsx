@@ -45,8 +45,8 @@ import { Label } from '../../../../components/reportRecep/label';
 import { Textarea } from '../../../../components/ui/textarea';
 import { DatePicker } from '../../../../components/attendance/DataPicker';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-
+// const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL= process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
 interface User {
   _id: string;
   firstName: string;

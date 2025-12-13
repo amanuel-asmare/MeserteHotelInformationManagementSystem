@@ -14,8 +14,8 @@ export default function CustomerSettings() {
   const { t } = useLanguage(); // Use Translation Hook
   const { user, updateUser } = useAuth();
   
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
-
+  // const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
   const [form, setForm] = useState({
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',

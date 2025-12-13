@@ -109,8 +109,8 @@ export default function PayrollClient() {
   // Dashboard Analytics State
   const [activeView, setActiveView] = useState<'overview' | 'paid' | 'pending'>('overview');
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-
+  // const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
   // --- Fetching Logic ---
   const fetchStaff = async () => {
     try {

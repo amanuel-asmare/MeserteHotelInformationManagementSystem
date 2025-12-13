@@ -51,8 +51,8 @@ export default function CustomerDashboardPage() {
       if (!user) return;
       setStatsLoading(true);
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
-
+        // const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
         const bookingsRes = await fetch(`${API_URL}/api/bookings/my-bookings`, { credentials: 'include' });
         let currentRoomNumber = t('notAssigned'); // Use Translation Default
         if (bookingsRes.ok) {

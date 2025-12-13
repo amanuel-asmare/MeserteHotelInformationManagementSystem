@@ -15,7 +15,8 @@ import {
 } from 'recharts';
 import NewsFeed from '../../../components/NewsFeed';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
+// const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL= process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
 const COLORS = ['#8B5CF6', '#EC4899', '#10B981', '#F59E0B'];
 
 // Reusable Components

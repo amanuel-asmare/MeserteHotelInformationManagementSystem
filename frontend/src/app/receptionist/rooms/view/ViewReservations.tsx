@@ -48,7 +48,8 @@ interface Booking {
   updatedAt: string;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
+// const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
 
 export default function ReceptionistViewReservations() {
   const { t } = useLanguage(); // Init hook

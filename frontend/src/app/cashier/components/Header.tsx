@@ -16,7 +16,8 @@ import HotelLogo from '../../../../components/HotelLogo';
 const getImageUrl = (path: string | undefined) => {
   if (!path) return '/default-avatar.png';
   if (path.startsWith('http')) return path;
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  // const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
   return `${API_BASE}${path}`;
 };
 

@@ -85,7 +85,8 @@ const ChatLayout = () => {
     // --- SOCKET.IO & REAL-TIME EVENT HANDLING ---
     useEffect(() => {
         if (user) {
-            socket.current = io('https://localhost:5000');
+            //  socket.current = io('https://localhost:5000');
+            socket.current = io('https://mesertehotelinformationmanagementsystem.onrender.com');
             socket.current.emit('join', user.id);
             socket.current.on('onlineUsers', setOnlineUsers);
 

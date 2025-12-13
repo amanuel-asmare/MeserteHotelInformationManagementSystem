@@ -19,8 +19,8 @@ interface Room {
   images: string[];
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
-
+// const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
 const Pagination = ({ currentPage, totalPages, onPageChange }: { currentPage: number; totalPages: number; onPageChange: (page: number) => void }) => {
   if (totalPages <= 1) return null;
   const pageNumbers: (number | string)[] = [];

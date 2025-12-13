@@ -41,8 +41,8 @@ interface FloatingIconData {
   size: number;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
-
+// const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
 // --- SUCCESS MODAL WITH FIREWORKS ---
 const SuccessModal = ({ message, onClose }: { message: string, onClose: () => void }) => {
   const refAnimationInstance = useRef<any>(null);

@@ -10,7 +10,8 @@ const path = require('path');
 const getFullImageUrl = (path) => {
     if (!path) return null;
     if (path.startsWith('http')) return path;
-    const base = process.env.API_URL || 'https://localhost:5000';
+    // const base = process.env.API_URL || 'https://localhost:5000';
+    const base = process.env.API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
     const cleanPath = path.startsWith('/') ? path : '/' + path;
     return base + cleanPath;
 };

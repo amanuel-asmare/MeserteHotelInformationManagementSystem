@@ -78,7 +78,8 @@ type SortConfig = {
 };
 
 // --- CONSTANTS ---
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+// const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
 const ITEMS_PER_PAGE = 8;
 
 const getImageUrl = (image: string | null | undefined): string => {

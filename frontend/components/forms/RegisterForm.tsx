@@ -287,7 +287,7 @@ export default function RegisterForm({ onClose, forceRole, onSwitchToLogin, onSw
                                 <div className="group">
                                     <label className="text-xs font-bold text-gray-500 mb-1 block uppercase">First Name</label>
                                     <input
-                                        placeholder="Abebe"
+                                        placeholder="First Name ..."
                                         {...register('firstName')}
                                         className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all text-sm"
                                     />
@@ -296,7 +296,7 @@ export default function RegisterForm({ onClose, forceRole, onSwitchToLogin, onSw
                                 <div className="group">
                                     <label className="text-xs font-bold text-gray-500 mb-1 block uppercase">Last Name</label>
                                     <input
-                                        placeholder="Kebede"
+                                        placeholder="Last Name ..."
                                         {...register('lastName')}
                                         className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all text-sm"
                                     />
@@ -368,7 +368,7 @@ export default function RegisterForm({ onClose, forceRole, onSwitchToLogin, onSw
                                     <div className="relative">
                                         <Building className="absolute left-3 top-3 text-gray-400" size={16} />
                                         <input
-                                            placeholder="Addis Ababa"
+                                            placeholder="woldia"
                                             {...register('city')}
                                             className="w-full pl-9 pr-3 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all text-sm"
                                         />

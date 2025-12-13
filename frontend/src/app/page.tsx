@@ -274,7 +274,7 @@ export default function Home() {
     // Get the current domain (localhost or production domain)
     // and append the path to the customer menu
     if (typeof window !== 'undefined') {
-      setMenuUrl(`${'https://192.168.56.1'}/customer/menu`);
+      setMenuUrl(`${'https://mesertehotelinformationmanagementsystem.onrender.com'}/customer/menu`);
     }
   }, []);
 

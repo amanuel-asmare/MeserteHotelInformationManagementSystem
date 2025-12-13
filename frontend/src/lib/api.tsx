@@ -8,11 +8,13 @@ const api = axios.create({
   withCredentials: true,
 });
 
-export default api;/*// src/lib/api.ts
+export default api;
+/*
+// src/lib/api.ts
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000',
   withCredentials: true,
 });
 
