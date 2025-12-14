@@ -28,12 +28,13 @@ if (!fs.existsSync(uploadDir)) {
 const envClientUrl = process.env.CLIENT_URL ? process.env.CLIENT_URL.replace(/\/$/, "") : "";
 
 const allowedOrigins = [
-    'https://localhost:3000',
-    'http://localhost:3000',
-    // Existing URL
-    'https://meserte-hotel-information-managemen-swart.vercel.app',
-    // NEW URL (Added from your Error Logs)
-    'https://meserte-hotel-information-managemen.vercel.app',
+    // 'https://localhost:3000',
+    // 'http://localhost:3000',
+    // // Existing URL
+    // 'https://meserte-hotel-information-managemen-swart.vercel.app',
+    // // NEW URL (Added from your Error Logs)
+    //'https://meserte-hotel-information-managemen.vercel.app',
+    'https://meseret-hotel-ims.vercel.app',
     envClientUrl
 ];
 
