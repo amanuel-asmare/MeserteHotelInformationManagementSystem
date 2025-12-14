@@ -1,6 +1,212 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const sendEmail = require('../utils/sendEmail');
+
+const generateToken = (id, role) => {
+    return jwt.sign({ id, role }, process.env.JWT_SECRET, { expiresIn: '7d' });
+};
+
+// HELPER: Define cookie options once for consistency
+const cookieOptions = {
+    httpOnly: true,
+    // CRITICAL: Set secure and sameSite for production
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+};
+
+// === HELPER: GET FULL IMAGE URL ===
+const getFullImageUrl = (path) => {
+    if (!path) return '/default-avatar.png';
+    if (path.startsWith('http')) return path;
+    const API_BASE = process.env.API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
+    return `${API_BASE}${path}`;
+};
+
+
+// LOGIN — UPDATED
+exports.login = async(req, res) => {
+    const { email, password } = req.body;
+    try {
+        const user = await User.findOne({ email }).select('+password');
+        if (!user || !(await bcrypt.compare(password, user.password))) {
+            return res.status(401).json({ message: 'Invalid credentials' });
+        }
+        if (!user.isActive) {
+            return res.status(403).json({ message: 'Your account is deactivated. Contact admin to reactivate.' });
+        }
+
+        const token = generateToken(user._id, user.role);
+
+        // Use the consistent cookie options
+        res.cookie('token', token, cookieOptions);
+
+        res.json({
+            message: 'Logged in successfully',
+            user: {
+                id: user._id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                role: user.role,
+                profileImage: getFullImageUrl(user.profileImage)
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+// REGISTER - UPDATED
+exports.register = async(req, res) => {
+    const { firstName, lastName, email, password, phone, country, city, kebele } = req.body;
+    try {
+        if (await User.findOne({ email })) return res.status(400).json({ message: 'Email already in use' });
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const user = await User.create({
+            firstName,
+            lastName,
+            email,
+            password: hashedPassword,
+            phone,
+            profileImage: req.file ? `/uploads/avatars/${req.file.filename}` : '/default-avatar.png',
+            address: { country: country || 'Ethiopia', city, kebele }
+        });
+
+        const token = generateToken(user._id, user.role);
+
+        // Use the consistent cookie options
+        res.cookie('token', token, cookieOptions);
+
+        res.status(201).json({
+            message: 'Registered successfully',
+            user: {
+                id: user._id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                role: user.role,
+                profileImage: getFullImageUrl(user.profileImage)
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+// SOCIAL LOGIN CALLBACK - UPDATED
+exports.socialLoginCallback = (req, res) => {
+    const user = req.user;
+    const token = generateToken(user._id, user.role);
+
+    // Use the consistent cookie options
+    res.cookie('token', token, cookieOptions);
+
+    const clientUrl = process.env.CLIENT_URL || 'https://meseret-hotel-ims.vercel.app';
+    res.redirect(`${clientUrl}/${user.role === 'customer' ? 'customer' : user.role}`);
+};
+
+// RESET PASSWORD - UPDATED
+exports.resetPassword = async(req, res) => {
+    try {
+        const resetPasswordToken = crypto.createHash('sha256').update(req.params.resettoken).digest('hex');
+        const user = await User.findOne({
+            resetPasswordToken,
+            resetPasswordExpire: { $gt: Date.now() }
+        });
+
+        if (!user) {
+            return res.status(400).json({ message: 'Invalid token' });
+        }
+
+        user.password = await bcrypt.hash(req.body.password, 10);
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpire = undefined;
+        await user.save();
+
+        const token = generateToken(user._id, user.role);
+
+        // Use the consistent cookie options
+        res.cookie('token', token, cookieOptions);
+
+        res.status(200).json({
+            success: true,
+            message: 'Password updated successfully',
+            user: { id: user._id, role: user.role }
+        });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+
+// --- OTHER FUNCTIONS (No changes needed) ---
+
+// GET ME
+exports.getMe = async(req, res) => {
+    // ... (This function remains the same, it only reads cookies, doesn't set them)
+    try {
+        const user = await User.findById(req.user.id).select('-password');
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        if (!user.isActive) {
+            return res.status(403).json({ message: 'Account deactivated. Contact admin.' });
+        }
+
+        res.json({
+            user: {
+                id: user._id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                role: user.role,
+                profileImage: getFullImageUrl(user.profileImage)
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+// LOGOUT
+exports.logout = (req, res) => {
+    // ... (This function remains the same)
+    res.clearCookie('token');
+    res.json({ message: 'Logged out' });
+};
+
+// FORGOT PASSWORD
+exports.forgotPassword = async(req, res) => {
+    // ... (This function remains the same, it sends an email, doesn't set cookies)
+    const { email } = req.body;
+    try {
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ message: 'There is no user with that email' });
+        }
+        const resetToken = user.getResetPasswordToken();
+        await user.save({ validateBeforeSave: false });
+        const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
+        const message = `... your email HTML ...`;
+        try {
+            await sendEmail({ email: user.email, subject: 'Password Reset Token', message });
+            res.status(200).json({ success: true, data: 'Email sent' });
+        } catch (err) {
+            user.resetPasswordToken = undefined;
+            user.resetPasswordExpire = undefined;
+            await user.save({ validateBeforeSave: false });
+            return res.status(500).json({ message: 'Email could not be sent' });
+        }
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+/*const User = require('../models / User ');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const crypto = require('crypto'); // Built-in Node module
 const sendEmail = require('../utils/sendEmail'); // Import the utility
 // const { getFullImageUrl } = require('../controllers/userController'); // Reuse helper
@@ -115,7 +321,7 @@ exports.resetPassword = async(req, res) => {
 const getFullImageUrl = (path) => {
     if (!path) return '/default-avatar.png';
     if (path.startsWith('http')) return path;
-    const API_BASE = process.env.API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
+    const API_BASE = process.env.API_URL || 'https://meseret-hotel-ims.vercel.app';
     return `${API_BASE}${path}`;
 };
 
@@ -266,4 +472,4 @@ exports.socialLoginCallback = (req, res) => {
         // Fallback for staff
         res.redirect(`${clientUrl}/${user.role}`);
     }
-};
+};*/
