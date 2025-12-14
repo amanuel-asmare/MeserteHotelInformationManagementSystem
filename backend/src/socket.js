@@ -14,7 +14,7 @@ module.exports = (server) => {
                 // 'https://meserte-hotel-information-managemen-swart.vercel.app',
                 // // NEW URL (Added from your Error Logs)
                 // 'https://meserte-hotel-information-managemen.vercel.app',
-                'https://meseret-hotel-oi6oyvfje-amanuel-asmares-projects.vercel.app', process.env.CLIENT_URL,
+                'https://meseret-hotel-dqizezmns-amanuel-asmares-projects.vercel.app', process.env.CLIENT_URL,
                 envClientUrl
             ],
             credentials: true,
