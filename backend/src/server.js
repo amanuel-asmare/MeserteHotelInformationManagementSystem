@@ -24,19 +24,18 @@ if (!fs.existsSync(uploadDir)) {
 
 // --- SETUP MIDDLEWARE ---
 
+// backend/src/server.js
+
+// ... imports
+
 // Clean up the URL from Env (remove trailing slash if exists)
 const envClientUrl = process.env.CLIENT_URL ? process.env.CLIENT_URL.replace(/\/$/, "") : "";
 
+// EXACT LIST OF ALLOWED ORIGINS (No trailing slashes)
 const allowedOrigins = [
-    // 'https://localhost:3000',
-    // 'http://localhost:3000',
-    // // Existing URL
-    // 'https://meserte-hotel-information-managemen-swart.vercel.app',
-    // // NEW URL (Added from your Error Logs)
-    //'https://meserte-hotel-information-managemen.vercel.app',
-
-    'https://meseret-hotel-dqizezmns-amanuel-asmares-projects.vercel.app',
-    process.env.CLIENT_URL,
+    'https://meseret-hotel-ims.vercel.app', // Your MAIN production frontend
+    'https://meseret-hotel-ims-git-main-amanuel-asmares-projects.vercel.app', // Vercel Preview URL pattern
+    'https://mesertehotelinformationmanagementsystem.onrender.com', // Self-reference (sometimes needed)
     envClientUrl
 ];
 
@@ -45,20 +44,19 @@ app.use(cors({
         // Allow requests with no origin (like mobile apps, curl, or Postman)
         if (!origin) return callback(null, true);
 
-        // Check if the origin is in our allowed list
-        if (allowedOrigins.indexOf(origin) !== -1) {
+        if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
             return callback(null, true);
         } else {
-            // DEBUGGING: This will show in Render logs if it fails
-            console.log("BLOCKED CROS ORIGIN:", origin);
-            const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-            return callback(new Error(msg), false);
+            console.log("BLOCKED CORS ORIGIN:", origin); // Logs to Render Dashboard
+            return callback(new Error('Not allowed by CORS'), false);
         }
     },
-    credentials: true,
+    credentials: true, // ESSENTIAL for cookies/sessions to work
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
 }));
+
+
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));

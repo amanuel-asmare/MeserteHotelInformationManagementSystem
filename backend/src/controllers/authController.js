@@ -115,7 +115,7 @@ exports.resetPassword = async(req, res) => {
 const getFullImageUrl = (path) => {
     if (!path) return '/default-avatar.png';
     if (path.startsWith('http')) return path;
-    const API_BASE = process.env.API_URL || 'https://localhost:5000';
+    const API_BASE = process.env.API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
     return `${API_BASE}${path}`;
 };
 
@@ -258,7 +258,7 @@ exports.socialLoginCallback = (req, res) => {
 
     // Redirect to Client Frontend (Dashboard or Home)
     // Adjust CLIENT_URL based on user role if needed, or just go to home
-    const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+    const clientUrl = process.env.CLIENT_URL || 'https://meseret-hotel-ims.vercel.app';
 
     if (user.role === 'customer') {
         res.redirect(`${clientUrl}/customer`);

@@ -253,7 +253,7 @@ exports.getCustomerBookings = async(req, res) => {
             })
             .sort({ createdAt: -1 });
 
-        const API_BASE = process.env.API_URL || 'https://localhost:5000';
+        const API_BASE = process.env.API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
         const formattedBookings = bookings.map(booking => {
             const b = booking.toObject();
             if (b.room && b.room.images) {
@@ -328,7 +328,7 @@ exports.getAllBookings = async(req, res) => {
             .sort({ createdAt: -1 }); // Sort by most recent
 
         // Format image URLs as done for customer bookings
-        const API_BASE = process.env.API_URL || 'https://localhost:5000';
+        const API_BASE = process.env.API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
         const formattedBookings = bookings.map(booking => {
             const b = booking.toObject();
             if (b.room && b.room.images) {
