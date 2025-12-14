@@ -39,7 +39,9 @@ router.get('/', async(req, res) => {
 
         // reuse the same helper that the admin UI uses
         const getFullImageUrl = (path) => {
-            const API_BASE = process.env.API_URL || 'https://localhost:5000';
+            // const API_BASE = process.env.API_URL || 'https://localhost:5000';
+            const API_BASE = process.env.API_URL || 'https: //mesertehotelinformationmanagementsystem.onrender.com';
+
             return path.startsWith('http') ? path : `${API_BASE}${path}`;
         };
 

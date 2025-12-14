@@ -24,9 +24,7 @@ if (!fs.existsSync(uploadDir)) {
 
 // --- SETUP MIDDLEWARE ---
 
-// backend/src/server.js
 
-// ... imports
 
 // Clean up the URL from Env (remove trailing slash if exists)
 const envClientUrl = process.env.CLIENT_URL ? process.env.CLIENT_URL.replace(/\/$/, "") : "";

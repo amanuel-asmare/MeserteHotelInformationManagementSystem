@@ -18,14 +18,14 @@ router.get('/payroll-preview', protect, async(req, res) => {
             salary: { $gt: 0 }
         }).select('firstName lastName role salary profileImage _id').lean();
 
-        const baseUrl = process.env.API_URL || 'https://localhost:5000';
+        // const baseUrl = process.env.API_URL || 'https://localhost:5000';
+        const baseUrl = process.env.API_URL || "https://mesertehotelinformationmanagementsystem.onrender.com";
         const formatted = staff.map(user => ({
             ...user,
             profileImage: user.profileImage ?
                 user.profileImage.startsWith('http') ?
                 user.profileImage :
-                `${baseUrl}${user.profileImage.startsWith('/') ? '' : '/uploads/avatars/'}${user.profileImage}` :
-                '/default-avatar.png'
+                `${baseUrl}${user.profileImage.startsWith('/') ? '' : '/uploads/avatars/'}${user.profileImage}` : '/default-avatar.png'
         }));
 
         res.json(formatted);
