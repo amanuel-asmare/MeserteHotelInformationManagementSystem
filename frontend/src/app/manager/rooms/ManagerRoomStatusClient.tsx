@@ -17,7 +17,7 @@ interface Room {
 }
 
 // Ensure NO trailing slash
-const API_BASE = 'https://mesertehotelinformationmanagementsystem.onrender.com';
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
 
 const Pagination = ({ currentPage, totalPages, onPageChange }: { currentPage: number; totalPages: number; onPageChange: (page: number) => void }) => {
   if (totalPages <= 1) return null;
@@ -96,13 +96,8 @@ export default function ManagerRoomStatusClient() {
     try {
       // 1. Explicitly use the full Render URL
       // 2. withCredentials: true is MANDATORY for cookies
-      const res = await axios.get(`${API_BASE}/api/rooms`, { 
-        withCredentials: true,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      });
+     const res = await axios.get(`${API_BASE}/api/rooms`, { withCredentials: true });
+     
       setRooms(res.data);
       setCurrentPage(1);
     } catch (err: any) {
