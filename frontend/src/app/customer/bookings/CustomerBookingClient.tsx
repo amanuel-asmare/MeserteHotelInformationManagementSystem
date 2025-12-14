@@ -384,7 +384,7 @@ export default function CustomerBookingClient() {
             <Bed size={24} />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">{t('bookRoomTitle') || "Book a Stay"}</h1>
+            <h1 className="text-3xl font-bold text-gray-900">{t('bookRoomTitle' ) || "Book a Stay"}</h1>
             <p className="text-gray-600">{t('bookRoomDesc') || "Find your perfect room"}</p>
           </div>
         </div>
