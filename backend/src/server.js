@@ -35,7 +35,7 @@ const allowedOrigins = [
     // // NEW URL (Added from your Error Logs)
     //'https://meserte-hotel-information-managemen.vercel.app',
 
-    'https://meseret-hotel-eeojlbb8z-amanuel-asmares-projects.vercel.app',
+    'https://meseret-hotel-oi6oyvfje-amanuel-asmares-projects.vercel.app',
     process.env.CLIENT_URL,
     envClientUrl
 ];
