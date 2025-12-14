@@ -8,14 +8,22 @@ const generateToken = (id, role) => {
     return jwt.sign({ id, role }, process.env.JWT_SECRET, { expiresIn: '7d' });
 };
 
-// HELPER: Define cookie options once for consistency
+// // HELPER: Define cookie options once for consistency
+// const cookieOptions = {
+//     httpOnly: true,
+//     // CRITICAL: Set secure and sameSite for production
+//     secure: process.env.NODE_ENV === 'production',
+//     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+//     maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+// };
+// === CRITICAL FIX: EXACT COOKIE SETTINGS FOR VERCEL/RENDER ===
 const cookieOptions = {
     httpOnly: true,
-    // CRITICAL: Set secure and sameSite for production
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    secure: true, // MUST be true for cross-site (Vercel -> Render)
+    sameSite: 'none', // MUST be 'none' to allow cross-domain cookies
     maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
 };
+
 
 // === HELPER: GET FULL IMAGE URL ===
 const getFullImageUrl = (path) => {
@@ -26,7 +34,40 @@ const getFullImageUrl = (path) => {
 };
 
 
-// LOGIN — UPDATED
+// // LOGIN — UPDATED
+// exports.login = async(req, res) => {
+//     const { email, password } = req.body;
+//     try {
+//         const user = await User.findOne({ email }).select('+password');
+//         if (!user || !(await bcrypt.compare(password, user.password))) {
+//             return res.status(401).json({ message: 'Invalid credentials' });
+//         }
+//         if (!user.isActive) {
+//             return res.status(403).json({ message: 'Your account is deactivated. Contact admin to reactivate.' });
+//         }
+
+//         const token = generateToken(user._id, user.role);
+
+//         // Use the consistent cookie options
+//         res.cookie('token', token, cookieOptions);
+
+//         res.json({
+//             message: 'Logged in successfully',
+//             user: {
+//                 id: user._id,
+//                 firstName: user.firstName,
+//                 lastName: user.lastName,
+//                 email: user.email,
+//                 role: user.role,
+//                 profileImage: getFullImageUrl(user.profileImage)
+//             }
+//         });
+//     } catch (err) {
+//         res.status(500).json({ message: err.message });
+//     }
+// };
+
+// LOGIN
 exports.login = async(req, res) => {
     const { email, password } = req.body;
     try {
@@ -35,12 +76,12 @@ exports.login = async(req, res) => {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
         if (!user.isActive) {
-            return res.status(403).json({ message: 'Your account is deactivated. Contact admin to reactivate.' });
+            return res.status(403).json({ message: 'Account deactivated.' });
         }
 
         const token = generateToken(user._id, user.role);
 
-        // Use the consistent cookie options
+        // APPLY FIX HERE
         res.cookie('token', token, cookieOptions);
 
         res.json({
@@ -51,14 +92,13 @@ exports.login = async(req, res) => {
                 lastName: user.lastName,
                 email: user.email,
                 role: user.role,
-                profileImage: getFullImageUrl(user.profileImage)
+                profileImage: user.profileImage // Your existing image logic
             }
         });
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
 };
-
 // REGISTER - UPDATED
 exports.register = async(req, res) => {
     const { firstName, lastName, email, password, phone, country, city, kebele } = req.body;
