@@ -16,6 +16,7 @@ export default function RoomsPage() {
     </div>
   );
 }*/
+//frontend/src/app/admin/rooms/page.tsx
 'use client';
 import RoomManagementClient from './RoomManagementClient';
 import { Bed } from 'lucide-react';

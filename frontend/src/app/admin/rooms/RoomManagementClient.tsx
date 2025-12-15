@@ -1,3 +1,4 @@
+//frontend/src/app/admin/rooms/RoomManagementClient.tsx
 'use client';
 
 import { useState, useEffect, useRef } from 'react';

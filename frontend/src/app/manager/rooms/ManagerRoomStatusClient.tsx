@@ -4,7 +4,7 @@ import { Bed, Search, Filter, ChevronDown, CheckCircle, RefreshCw, Loader2, X, C
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { useLanguage } from '../../../../context/LanguageContext';
-import { useRouter } from 'next/navigation'; // Added for redirect on 401
+import { useRouter } from 'next/navigation';
 
 interface Room {
   _id: string;
@@ -16,8 +16,8 @@ interface Room {
   images: string[];
 }
 
-// Ensure NO trailing slash
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
+// Ensure NO trailing slash. Use the Render URL directly.
+const API_BASE = 'https://mesertehotelinformationmanagementsystem.onrender.com';
 
 const Pagination = ({ currentPage, totalPages, onPageChange }: { currentPage: number; totalPages: number; onPageChange: (page: number) => void }) => {
   if (totalPages <= 1) return null;
@@ -67,7 +67,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }: { currentPage: nu
 
 export default function ManagerRoomStatusClient() {
   const { t } = useLanguage();
-  const router = useRouter(); // For redirecting if session expired
+  const router = useRouter(); 
 
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,21 +96,27 @@ export default function ManagerRoomStatusClient() {
     try {
       // 1. Explicitly use the full Render URL
       // 2. withCredentials: true is MANDATORY for cookies
-     const res = await axios.get(`${API_BASE}/api/rooms`, { withCredentials: true });
-     
+      const res = await axios.get(`${API_BASE}/api/rooms`, { 
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
       setRooms(res.data);
       setCurrentPage(1);
     } catch (err: any) {
       console.error("Fetch Rooms Error:", err);
       
-      // If 401 Unauthorized, it means cookie is missing/expired. 
-      // Redirect to login instead of showing a generic alert.
+      // Handle 401 Unauthorized (Cookie missing/blocked)
       if (err.response && (err.response.status === 401 || err.response.status === 403)) {
          alert("Session expired. Please login again.");
-         router.push('/login'); 
+         // Optional: router.push('/login'); 
       } else {
+         // Only show alert for other errors
          const msg = err.response?.data?.message || err.message || t('failedLoadRooms');
-         alert(msg);
+         // Suppress alert if it's just a network glitch during hydration
+         if (msg !== 'Network Error') alert(msg);
       }
     } finally {
       setLoading(false);
@@ -136,7 +142,6 @@ export default function ManagerRoomStatusClient() {
       console.error("Update Status Error:", err);
       if (err.response && (err.response.status === 401 || err.response.status === 403)) {
          alert("Session expired. Please login again.");
-         router.push('/login');
       } else {
          alert(err.response?.data?.message || t('failedUpdateStatus'));
       }

@@ -1,13 +1,10 @@
 'use client';
-import React from 'react';
-import { Keyboard } from 'react-native';
-
-import { useState, useEffect, useCallback, useMemo } from 'react';
-
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Bed, Search, Filter, ChevronDown, CheckCircle, RefreshCw, Loader2, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { useLanguage } from '../../../../context/LanguageContext';
+import { useRouter } from 'next/navigation';
 
 interface Room {
   _id: string;
@@ -19,8 +16,9 @@ interface Room {
   images: string[];
 }
 
-// const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
+// Ensure NO trailing slash. Use the Render URL directly.
+const API_BASE = 'https://mesertehotelinformationmanagementsystem.onrender.com';
+
 const Pagination = ({ currentPage, totalPages, onPageChange }: { currentPage: number; totalPages: number; onPageChange: (page: number) => void }) => {
   if (totalPages <= 1) return null;
   const pageNumbers: (number | string)[] = [];
@@ -68,7 +66,8 @@ const Pagination = ({ currentPage, totalPages, onPageChange }: { currentPage: nu
 };
 
 export default function ManagerRoomStatusClient() {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
+  const router = useRouter(); 
 
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
@@ -85,25 +84,47 @@ export default function ManagerRoomStatusClient() {
 
   const [showRoyalLoading, setShowRoyalLoading] = useState(true);
 
+  // Royal Loading Timer
   useEffect(() => {
     const timer = setTimeout(() => setShowRoyalLoading(false), 4500);
     return () => clearTimeout(timer);
   }, []);
 
+  // --- FIXED FETCH FUNCTION ---
   const fetchRooms = useCallback(async () => {
     setRefreshing(true);
     try {
-      const res = await axios.get('/api/rooms', { withCredentials: true });
+      // 1. Explicitly use the full Render URL
+      // 2. withCredentials: true is MANDATORY for cookies
+      const res = await axios.get(`${API_BASE}/api/rooms`, { 
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
       setRooms(res.data);
       setCurrentPage(1);
     } catch (err: any) {
-      alert(err.response?.data?.message || t('failedLoadRooms') || 'Failed to load rooms');
+      console.error("Fetch Rooms Error:", err);
+      
+      // Handle 401 Unauthorized (Cookie missing/blocked)
+      if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+         alert("Session expired. Please login again.");
+         // Optional: router.push('/login'); 
+      } else {
+         // Only show alert for other errors
+         const msg = err.response?.data?.message || err.message || t('failedLoadRooms');
+         // Suppress alert if it's just a network glitch during hydration
+         if (msg !== 'Network Error') alert(msg);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [t]);
+  }, [t, router]);
 
+  // Trigger fetch when royal loading finishes
   useEffect(() => {
     if (!showRoyalLoading) {
       fetchRooms();
@@ -113,12 +134,17 @@ export default function ManagerRoomStatusClient() {
   const updateStatus = async (id: string, newStatus: 'clean' | 'dirty' | 'maintenance') => {
     setUpdating(id);
     try {
-      await axios.put(`/api/rooms/${id}/status`, { status: newStatus }, { withCredentials: true });
+      await axios.put(`${API_BASE}/api/rooms/${id}/status`, { status: newStatus }, { withCredentials: true });
       setRooms(prev => prev.map(r => r._id === id ? { ...r, status: newStatus } : r));
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: any) {
-      alert(err.response?.data?.message || t('failedUpdateStatus') || 'Failed to update status');
+      console.error("Update Status Error:", err);
+      if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+         alert("Session expired. Please login again.");
+      } else {
+         alert(err.response?.data?.message || t('failedUpdateStatus'));
+      }
     } finally {
       setUpdating(null);
     }
@@ -141,10 +167,6 @@ export default function ManagerRoomStatusClient() {
     setAnimationDirection(page > currentPage ? 1 : -1);
     setCurrentPage(page);
   };
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, statusFilter]);
 
   const pageTurnVariants = {
     enter: (dir: number) => ({ x: dir > 0 ? 50 : -50, opacity: 0 }),
@@ -190,10 +212,10 @@ export default function ManagerRoomStatusClient() {
     return () => window.removeEventListener('keydown', handleKey);
   }, [carouselImages]);
 
-  // ROYAL LOADING SCREEN — 4.5 seconds
+  // ROYAL LOADING SCREEN
   if (showRoyalLoading) {
     return (
-      <div className="fixed inset-0 bg-gradient-to-br from-amber-950 via-black to-amber-900 flex items-center justify-center overflow-hidden">
+      <div className="fixed inset-0 bg-gradient-to-br from-amber-950 via-black to-amber-900 flex items-center justify-center overflow-hidden z-50">
         <div className="absolute inset-0">
           <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-amber-950/80 to-transparent" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(251,191,36,0.35),transparent_70%)]" />
@@ -211,51 +233,31 @@ export default function ManagerRoomStatusClient() {
           <motion.div
             animate={{ rotateY: [0, 360], scale: [1, 1.3, 1] }}
             transition={{ rotateY: { duration: 32, repeat: Infinity, ease: "linear" }, scale: { duration: 15, repeat: Infinity } }}
-            className="relative mx-auto w-[420px] h-[420px] mb-20 perspective-1000"
+            className="relative mx-auto w-[300px] h-[300px] sm:w-[420px] sm:h-[420px] mb-20 perspective-1000"
             style={{ transformStyle: "preserve-3d" }}
           >
             <div className="absolute inset-0 rounded-full bg-gradient-to-br from-yellow-300 via-amber-500 to-orange-700 shadow-2xl ring-20 ring-yellow-400/70 blur-xl" />
             <div className="absolute inset-16 rounded-full bg-gradient-to-tr from-amber-950 to-black flex items-center justify-center shadow-inner">
-              <motion.div animate={{ rotate: -360 }} transition={{ duration: 50, repeat: Infinity, ease: "linear" }} className="text-10xl font-black text-yellow-400 tracking-widest drop-shadow-2xl" style={{ textShadow: "0 0 140px rgba(251,191,36,1)" }}>
+              <motion.div animate={{ rotate: -360 }} transition={{ duration: 50, repeat: Infinity, ease: "linear" }} className="text-8xl sm:text-10xl font-black text-yellow-400 tracking-widest drop-shadow-2xl" style={{ textShadow: "0 0 140px rgba(251,191,36,1)" }}>
                 MH
               </motion.div>
             </div>
-            <motion.div animate={{ y: [0, -50, 0] }} transition={{ duration: 8, repeat: Infinity }} className="absolute -top-32 left-1/2 -translate-x-1/2">
-              <svg width="280" height="220" viewBox="0 0 280 220" className="drop-shadow-2xl">
-                <path d="M140 30 L190 100 L250 100 L210 150 L230 200 L140 170 L50 200 L70 150 L30 100 L90 100 Z" fill="#fbbf24" stroke="#f59e0b" strokeWidth="12"/>
-                <circle cx="140" cy="95" r="35" fill="#f59e0b"/>
-                <circle cx="140" cy="85" r="18" fill="#fbbf24"/>
-              </svg>
-            </motion.div>
           </motion.div>
-          <div className="flex justify-center gap-7 mb-14">
-            {["R","O","O","M"," ","S","T","A","T","U","S"].map((l, i) => (
-              <motion.span
-                key={i}
-                initial={{ opacity: 0, y: 180, rotateX: -110 }}
-                animate={{ opacity: 1, y: 0, rotateX: 0 }}
-                transition={{ delay: 2 + i * 0.24, duration: 1.5 }}
-                className="text-8xl md:text-9xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-amber-400 to-orange-600"
-                style={{ textShadow: "0 0 160px rgba(251,191,36,1)", fontFamily: "'Playfair Display', serif" }}
-              >
-                {l === " " ? "\u00A0" : l}
-              </motion.span>
-            ))}
-          </div>
-          <motion.h1 initial={{ opacity: 0, y: 70 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 4.8, duration: 2.2 }} className="text-7xl md:text-9xl font-black text-amber-300 tracking-widest mb-12" style={{ fontFamily: "'Playfair Display', serif" }}>
+          
+          <motion.h1 initial={{ opacity: 0, y: 70 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 4.8, duration: 2.2 }} className="text-5xl md:text-9xl font-black text-amber-300 tracking-widest mb-12" style={{ fontFamily: "'Playfair Display', serif" }}>
             {t('managerPalace') || "MANAGER PALACE"}
           </motion.h1>
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 6.2, duration: 2.8 }} className="text-4xl text-amber-100 font-light tracking-widest mb-28">
+          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 6.2, duration: 2.8 }} className="text-2xl sm:text-4xl text-amber-100 font-light tracking-widest mb-28">
             {t('everyRoomRoyal') || "Every Room Deserves Royal Perfection"}
           </motion.p>
           <div className="w-full max-w-4xl mx-auto">
-            <div className="h-6 bg-black/80 rounded-full overflow-hidden border-6 border-amber-700/95 backdrop-blur-3xl shadow-2xl">
+            <div className="h-4 sm:h-6 bg-black/80 rounded-full overflow-hidden border-4 sm:border-6 border-amber-700/95 backdrop-blur-3xl shadow-2xl">
               <motion.div initial={{ width: "0%" }} animate={{ width: "100%" }} transition={{ duration: 7, ease: "easeInOut" }} className="h-full bg-gradient-to-r from-yellow-400 via-amber-500 to-orange-700 relative overflow-hidden">
                 <motion.div animate={{ x: ["-100%", "100%"] }} transition={{ duration: 3.5, repeat: Infinity }} className="absolute inset-0 bg-gradient-to-r from-transparent via-white/70 to-transparent" />
               </motion.div>
             </div>
-            <motion.div animate={{ opacity: [0.6, 1, 0.6] }} transition={{ duration: 4.5, repeat: Infinity }} className="text-center mt-20 text-5xl font-medium text-amber-200 tracking-widest">
-              {t('preparingOverview') || "Preparing Your Royal Chamber Overview..."}
+            <motion.div animate={{ opacity: [0.6, 1, 0.6] }} transition={{ duration: 4.5, repeat: Infinity }} className="text-center mt-10 text-2xl sm:text-5xl font-medium text-amber-200 tracking-widest">
+              {t('preparingOverview') || "Preparing Overview..."}
             </motion.div>
           </div>
         </motion.div>
@@ -263,7 +265,7 @@ export default function ManagerRoomStatusClient() {
     );
   }
 
-  // MAIN UI
+  // MAIN CONTENT
   return (
     <>
       <AnimatePresence>
