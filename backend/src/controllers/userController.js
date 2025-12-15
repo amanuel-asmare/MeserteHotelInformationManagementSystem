@@ -4,7 +4,20 @@ const bcrypt = require('bcryptjs');
 const fs = require('fs');
 const path = require('path');
 
-
+/*// === HELPER: GET FULL IMAGE URL ===
+const getFullImageUrl = (imagePath) => {
+    if (!imagePath) return '/default-avatar.png'; // Fallback for profile images
+    if (imagePath.startsWith('http')) return imagePath;
+    // const API_BASE = process.env.API_URL || 'https://localhost:5000';
+    const API_BASE = process.env.API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
+    // Handle menu images which might use /uploads/menu/ or /uploads/avatars/ for avatars
+    if (imagePath.startsWith('/uploads/menu/') || imagePath.startsWith('/uploads/avatars/')) {
+        return `${API_BASE}${imagePath}`;
+    }
+    // Generic fallback if path structure is unknown
+    return `${API_BASE}/uploads/menu/${imagePath}`; // Default to menu upload path if unsure
+};
+*/
 // HELPER - UPDATED TO BE ROBUST
 const getFullImageUrl = (imagePath) => {
     if (!imagePath) return '/default-avatar.png';
@@ -586,4 +599,4 @@ exports.deleteUser = async(req, res) => {
     }
 };
 // Add this line at the end to export the helper
-exports.getFullImageUrl = getFullImageUrl; * /
+exports.getFullImageUrl = getFullImageUrl; */
