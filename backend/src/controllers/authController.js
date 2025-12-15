@@ -17,12 +17,21 @@ const cookieOptions = {
     maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
 };
 
-// === HELPER: GET FULL IMAGE URL ===
+// // === HELPER: GET FULL IMAGE URL ===
+// const getFullImageUrl = (path) => {
+//     if (!path) return '/default-avatar.png';
+//     if (path.startsWith('http')) return path;
+//     const API_BASE = process.env.API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
+//     return `${API_BASE}${path}`;
+// };
+// HELPER
 const getFullImageUrl = (path) => {
     if (!path) return '/default-avatar.png';
     if (path.startsWith('http')) return path;
     const API_BASE = process.env.API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
-    return `${API_BASE}${path}`;
+    // Ensure path starts with /
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    return `${API_BASE}${cleanPath}`;
 };
 
 
@@ -59,7 +68,7 @@ exports.login = async(req, res) => {
     }
 };
 
-// REGISTER - UPDATED
+/*// REGISTER - UPDATED
 exports.register = async(req, res) => {
     const { firstName, lastName, email, password, phone, country, city, kebele } = req.body;
     try {
@@ -90,6 +99,50 @@ exports.register = async(req, res) => {
                 email: user.email,
                 role: user.role,
                 profileImage: getFullImageUrl(user.profileImage)
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};*/
+// REGISTER - UPDATED
+exports.register = async(req, res) => {
+    const { firstName, lastName, email, password, phone, country, city, kebele } = req.body;
+    try {
+        if (await User.findOne({ email })) return res.status(400).json({ message: 'Email already in use' });
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // CRITICAL FIX: Ensure the path stored in DB always starts with /uploads/avatars/
+        let profileImage = '/default-avatar.png';
+        if (req.file) {
+            // Force the correct relative path structure
+            profileImage = `/uploads/avatars/${req.file.filename}`;
+        }
+
+        const user = await User.create({
+            firstName,
+            lastName,
+            email,
+            password: hashedPassword,
+            phone,
+            profileImage, // Save the consistent path
+            address: { country: country || 'Ethiopia', city, kebele }
+        });
+
+        const token = generateToken(user._id, user.role);
+
+        res.cookie('token', token, cookieOptions);
+
+        res.status(201).json({
+            message: 'Registered successfully',
+            user: {
+                id: user._id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                role: user.role,
+                profileImage: getFullImageUrl(user.profileImage) // Return full URL
             }
         });
     } catch (err) {

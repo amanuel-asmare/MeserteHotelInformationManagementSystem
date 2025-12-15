@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const fs = require('fs');
 const path = require('path');
 
-// === HELPER: GET FULL IMAGE URL ===
+/*// === HELPER: GET FULL IMAGE URL ===
 const getFullImageUrl = (imagePath) => {
     if (!imagePath) return '/default-avatar.png'; // Fallback for profile images
     if (imagePath.startsWith('http')) return imagePath;
@@ -16,6 +16,19 @@ const getFullImageUrl = (imagePath) => {
     }
     // Generic fallback if path structure is unknown
     return `${API_BASE}/uploads/menu/${imagePath}`; // Default to menu upload path if unsure
+};
+*/
+// HELPER - UPDATED TO BE ROBUST
+const getFullImageUrl = (imagePath) => {
+    if (!imagePath) return '/default-avatar.png';
+    if (imagePath.startsWith('http')) return imagePath;
+
+    const API_BASE = process.env.API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
+
+    // Ensure leading slash
+    const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+
+    return `${API_BASE}${cleanPath}`;
 };
 
 // GET USERS FOR CHAT (Handles logic for different roles)
@@ -102,8 +115,10 @@ exports.createStaff = async(req, res) => {
     } = req.body;
 
     let profileImage = '/default-avatar.png';
-    if (req.file) profileImage = `/uploads/avatars/${req.file.filename}`;
-
+    if (req.file) {
+        // FIX: Ensure consistent path format
+        profileImage = `/uploads/avatars/${req.file.filename}`;
+    }
     if (!firstName || !lastName || !email || !password || !role) {
         return res.status(400).json({ message: 'First name, last name, email, password, and role are required' });
     }
@@ -195,6 +210,7 @@ exports.updateUser = async(req, res) => {
         }
 
         if (req.file) {
+            // FIX: Ensure consistent path format
             updates.profileImage = `/uploads/avatars/${req.file.filename}`;
         }
 
@@ -235,6 +251,7 @@ exports.updateMyProfile = async(req, res) => {
 
         // Profile image
         if (req.file) {
+            // FIX: Ensure consistent path format
             updates.profileImage = `/uploads/avatars/${req.file.filename}`;
         }
 
@@ -294,7 +311,8 @@ exports.getFullImageUrl = getFullImageUrl;
 
 
 
-/*// backend/src/controllers/userController.js
+/*/
+/ backend/src / controllers / userController.js
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const fs = require('fs');
@@ -581,4 +599,4 @@ exports.deleteUser = async(req, res) => {
     }
 };
 // Add this line at the end to export the helper
-exports.getFullImageUrl = getFullImageUrl;*/
+exports.getFullImageUrl = getFullImageUrl; * /

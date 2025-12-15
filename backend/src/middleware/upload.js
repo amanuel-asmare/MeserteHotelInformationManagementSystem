@@ -74,21 +74,36 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
+// const createStorage = (folder) => {
+//     return multer.diskStorage({
+//         destination: (req, file, cb) => {
+//             const dir = path.join(__dirname, '..', 'public', 'uploads', folder);
+//             if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+//             cb(null, dir);
+//         },
+//         filename: (req, file, cb) => {
+//             const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1e9);
+//             const prefix = folder === 'avatars' ? 'avatar' : folder === 'menu' ? 'menu' : 'room';
+//             cb(null, `${prefix}-${uniqueName}${path.extname(file.originalname)}`);
+//         },
+//     });
+// };
 const createStorage = (folder) => {
     return multer.diskStorage({
         destination: (req, file, cb) => {
+            // This is correct for saving
             const dir = path.join(__dirname, '..', 'public', 'uploads', folder);
             if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
             cb(null, dir);
         },
         filename: (req, file, cb) => {
+            // This just sets the filename, which is what we want
             const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1e9);
             const prefix = folder === 'avatars' ? 'avatar' : folder === 'menu' ? 'menu' : 'room';
             cb(null, `${prefix}-${uniqueName}${path.extname(file.originalname)}`);
         },
     });
 };
-
 const uploadAvatar = multer({
     storage: createStorage('avatars'),
     limits: { fileSize: 5 * 1024 * 1024 },
