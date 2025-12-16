@@ -245,13 +245,22 @@ exports.forgotPassword = async(req, res) => {
         const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
         const message = `... your email HTML ...`;
         try {
-            await sendEmail({ email: user.email, subject: 'Password Reset Token', message });
+            await sendEmail({
+                email: user.email,
+                subject: 'Password Reset Token',
+                message
+            });
+
             res.status(200).json({ success: true, data: 'Email sent' });
         } catch (err) {
+            console.error("EMAIL SEND ERROR:", err); // <--- Add this log
             user.resetPasswordToken = undefined;
             user.resetPasswordExpire = undefined;
+
             await user.save({ validateBeforeSave: false });
-            return res.status(500).json({ message: 'Email could not be sent' });
+
+            // Return the specific error message to help debug (or keep generic for security)
+            return res.status(500).json({ message: 'Email could not be sent. Server Error.' });
         }
     } catch (err) {
         res.status(500).json({ message: err.message });
