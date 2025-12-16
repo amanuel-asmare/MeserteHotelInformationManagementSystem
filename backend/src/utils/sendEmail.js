@@ -1,9 +1,9 @@
 const nodemailer = require('nodemailer');
 
 const sendEmail = async(options) => {
-    // DEBUG: Check if variables exist (Do not log the actual password for security)
+    // DEBUG LOGS
     console.log("Attempting to send email...");
-    console.log("SMTP Host:", process.env.SMTP_HOST);
+    console.log("SMTP Host: smtp.gmail.com");
     console.log("SMTP User:", process.env.SMTP_EMAIL);
 
     if (!process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
@@ -11,27 +11,29 @@ const sendEmail = async(options) => {
     }
 
     // FOR REAL ENVIRONMENT: Gmail SMTP Configuration
-    // Use standard SMTP settings instead of 'service: gmail' for better container compatibility
+    // We use Port 465 (SSL) + IPv4 enforcement to prevent timeouts on Render
     const transporter = nodemailer.createTransport({
         host: 'smtp.gmail.com',
-        port: 587,
-        secure: false, // Must be false for port 587 (uses STARTTLS)
+        port: 465,
+        secure: true, // TRUE for port 465
         auth: {
-            user: process.env.SMTP_EMAIL.trim(), // Remove potential whitespace
-            pass: process.env.SMTP_PASSWORD.trim() // Remove potential whitespace
+            user: process.env.SMTP_EMAIL.trim(),
+            pass: process.env.SMTP_PASSWORD.trim()
         },
         tls: {
-            rejectUnauthorized: false, // Essential for some cloud environments
-            ciphers: 'SSLv3'
+            // Helps avoid certificate errors in some cloud environments
+            rejectUnauthorized: false
         },
-        // Increase timeouts significantly for cloud environments
+        // CRITICAL FIX: Force IPv4. Render/Docker sometimes fail on IPv6
+        family: 4,
+        // Increase timeouts
         connectionTimeout: 10000,
         greetingTimeout: 10000,
         socketTimeout: 10000
     });
 
     const message = {
-        from: `"${process.env.FROM_NAME}" <${process.env.SMTP_EMAIL}>`, // Gmail overrides 'from' anyway
+        from: `"${process.env.FROM_NAME}" <${process.env.SMTP_EMAIL}>`,
         to: options.email,
         subject: options.subject,
         html: options.message
