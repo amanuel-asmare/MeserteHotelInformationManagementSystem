@@ -11,32 +11,34 @@ const sendEmail = async(options) => {
     }
 
     // FOR REAL ENVIRONMENT: Gmail SMTP Configuration
+    // Use standard SMTP settings instead of 'service: gmail' for better container compatibility
     const transporter = nodemailer.createTransport({
         host: 'smtp.gmail.com',
-        port: 465, // SSL
-        secure: true, // MUST be true for 465
+        port: 587,
+        secure: false, // Must be false for port 587 (uses STARTTLS)
         auth: {
-            user: process.env.SMTP_EMAIL.trim(),
-            pass: process.env.SMTP_PASSWORD.trim(),
-        }
-
-        // Pool connections to prevent timeout on single connect
-        ,
-        pool: true,
-        maxConnections: 1,
-        rateDelta: 20000,
-        rateLimit: 5,
+            user: process.env.SMTP_EMAIL.trim(), // Remove potential whitespace
+            pass: process.env.SMTP_PASSWORD.trim() // Remove potential whitespace
+        },
+        tls: {
+            rejectUnauthorized: false, // Essential for some cloud environments
+            ciphers: 'SSLv3'
+        },
+        // Increase timeouts significantly for cloud environments
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 10000
     });
 
     const message = {
-        from: `"${process.env.FROM_NAME}" <${process.env.SMTP_EMAIL}>`,
+        from: `"${process.env.FROM_NAME}" <${process.env.SMTP_EMAIL}>`, // Gmail overrides 'from' anyway
         to: options.email,
         subject: options.subject,
         html: options.message
     };
 
     try {
-        // Verify connection first
+        // Verify connection before sending
         await transporter.verify();
         console.log("SMTP Connection Verified");
 
@@ -44,7 +46,7 @@ const sendEmail = async(options) => {
         console.log('Message sent: %s', info.messageId);
         return info;
     } catch (error) {
-        console.error("Nodemailer Error:", error);
+        console.error("Nodemailer Error Details:", error);
         throw new Error(error.message);
     }
 };

@@ -232,6 +232,7 @@ exports.logout = (req, res) => {
 };
 
 // FIXED FORGOT PASSWORD FUNCTION
+
 exports.forgotPassword = async(req, res) => {
     const { email } = req.body;
 
@@ -271,14 +272,15 @@ exports.forgotPassword = async(req, res) => {
 
             res.status(200).json({ success: true, data: 'Email sent' });
         } catch (err) {
-            console.error("EMAIL CONTROLLER ERROR:", err.message);
+            console.error("EMAIL CONTROLLER ERROR:", err); // Log the full error object
 
             // Clean up the token since sending failed
             user.resetPasswordToken = undefined;
             user.resetPasswordExpire = undefined;
             await user.save({ validateBeforeSave: false });
 
-            return res.status(500).json({ message: 'Email could not be sent. Check server logs.' });
+            // Send back the specific error message for debugging
+            return res.status(500).json({ message: `Email could not be sent: ${err.message}` });
         }
     } catch (err) {
         console.error("DATABASE ERROR:", err);
