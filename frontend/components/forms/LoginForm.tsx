@@ -76,9 +76,10 @@ export default function LoginForm({ onClose, onSwitch, onSwitchToRegister }: Log
     setGlobalSuccess(null);
     try {
       await axios.post(`${API_URL}/api/auth/forgotpassword`, { email: data.email });
-      // Use replace logic for email placeholder if your translation setup supports it, 
-      // otherwise simple concatenation or just the message.
-      const message = t('emailSentMessage').replace('{email}', data.email);
+      // Translate the success message dynamically
+      // Ensure 'emailSentMessage' exists in your translation file like: "Reset link sent to {email}."
+      let message = t('emailSentMessage') || `Reset link sent to {email}.`;
+      message = message.replace('{email}', data.email);
       setGlobalSuccess(message);
     } catch (err: any) {
       setGlobalError(err.response?.data?.message || 'Failed to send email.');
@@ -94,11 +95,12 @@ export default function LoginForm({ onClose, onSwitch, onSwitchToRegister }: Log
 
   return (
     <Modal title="" onClose={onClose}>
-      <div className="max-w-md w-full mx-auto overflow-hidden rounded-3xl bg-white dark:bg-gray-900 shadow-xl min-h-[500px]">
+      {/* Added max-h-[90vh] and overflow-y-auto to ensure scrolling on small screens */}
+      <div className="max-w-md w-full mx-auto overflow-hidden rounded-3xl bg-white dark:bg-gray-900 shadow-xl min-h-[500px] max-h-[90vh] overflow-y-auto custom-scrollbar">
         <div className="flex flex-col h-full">
           
           {/* Header */}
-          <div className="bg-gradient-to-r from-amber-600 to-amber-800 p-8 text-center relative overflow-hidden transition-all duration-500">
+          <div className="bg-gradient-to-r from-amber-600 to-amber-800 p-8 text-center relative overflow-hidden transition-all duration-500 shrink-0">
             <motion.div
               key={view}
               initial={{ scale: 0.8, opacity: 0 }}
@@ -110,7 +112,7 @@ export default function LoginForm({ onClose, onSwitch, onSwitchToRegister }: Log
                 {view === 'login' ? <LogIn className="text-white w-8 h-8" /> : <Mail className="text-white w-8 h-8" />}
               </div>
               <h2 className="text-3xl font-bold text-white tracking-wide font-serif">
-                {view === 'login' ? t('welcomeBack') : t('recoverAccount')}
+                {view === 'login' ? t('welcomeBack') : t('recoverAccount')} 
               </h2>
               <p className="text-amber-100 mt-2 text-sm">
                 {view === 'login' ? t('signInAccessDashboard') : t('enterEmailReset')}
@@ -156,7 +158,7 @@ export default function LoginForm({ onClose, onSwitch, onSwitchToRegister }: Log
                     <div className="flex justify-between items-center ml-1">
                       <label className="text-xs font-semibold uppercase tracking-wider text-gray-500">{t('password')}</label>
                       <button type="button" onClick={() => setView('forgot')} className="text-xs text-amber-600 hover:underline">
-                        Forgot password?
+                        {t('forgotPassword') || "Forgot password?"}
                       </button>
                     </div>
                     <div className="relative group">
