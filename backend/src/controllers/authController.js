@@ -231,19 +231,37 @@ exports.logout = (req, res) => {
     res.json({ message: 'Logged out' });
 };
 
-// FORGOT PASSWORD
+// FIXED FORGOT PASSWORD FUNCTION
 exports.forgotPassword = async(req, res) => {
-    // ... (This function remains the same, it sends an email, doesn't set cookies)
     const { email } = req.body;
+
     try {
         const user = await User.findOne({ email });
+
         if (!user) {
             return res.status(404).json({ message: 'There is no user with that email' });
         }
+
+        // Get reset token
         const resetToken = user.getResetPasswordToken();
+
         await user.save({ validateBeforeSave: false });
-        const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
-        const message = `... your email HTML ...`;
+
+        // Ensure CLIENT_URL does not have a trailing slash
+        const clientUrl = process.env.CLIENT_URL ? process.env.CLIENT_URL.replace(/\/$/, "") : "https://meseret-hotel-ims.vercel.app";
+        const resetUrl = `${clientUrl}/reset-password/${resetToken}`;
+
+        const message = `
+            <div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
+                <h2 style="color: #d97706; text-align: center;">Meseret Hotel Password Reset</h2>
+                <p>You requested a password reset. Click the button below:</p>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="${resetUrl}" style="background-color: #d97706; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Reset Password</a>
+                </div>
+                <p>Link expires in 10 minutes.</p>
+            </div>
+        `;
+
         try {
             await sendEmail({
                 email: user.email,
@@ -253,19 +271,55 @@ exports.forgotPassword = async(req, res) => {
 
             res.status(200).json({ success: true, data: 'Email sent' });
         } catch (err) {
-            console.error("EMAIL SEND ERROR:", err); // <--- Add this log
+            console.error("EMAIL CONTROLLER ERROR:", err.message);
+
+            // Clean up the token since sending failed
             user.resetPasswordToken = undefined;
             user.resetPasswordExpire = undefined;
-
             await user.save({ validateBeforeSave: false });
 
-            // Return the specific error message to help debug (or keep generic for security)
-            return res.status(500).json({ message: 'Email could not be sent. Server Error.' });
+            return res.status(500).json({ message: 'Email could not be sent. Check server logs.' });
         }
     } catch (err) {
+        console.error("DATABASE ERROR:", err);
         res.status(500).json({ message: err.message });
     }
 };
+// FORGOT PASSWORD
+// exports.forgotPassword = async(req, res) => {
+//     // ... (This function remains the same, it sends an email, doesn't set cookies)
+//     const { email } = req.body;
+//     try {
+//         const user = await User.findOne({ email });
+//         if (!user) {
+//             return res.status(404).json({ message: 'There is no user with that email' });
+//         }
+//         const resetToken = user.getResetPasswordToken();
+//         await user.save({ validateBeforeSave: false });
+//         const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
+//         const message = `... your email HTML ...`;
+//         try {
+//             await sendEmail({
+//                 email: user.email,
+//                 subject: 'Password Reset Token',
+//                 message
+//             });
+
+//             res.status(200).json({ success: true, data: 'Email sent' });
+//         } catch (err) {
+//             console.error("EMAIL SEND ERROR:", err); // <--- Add this log
+//             user.resetPasswordToken = undefined;
+//             user.resetPasswordExpire = undefined;
+
+//             await user.save({ validateBeforeSave: false });
+
+//             // Return the specific error message to help debug (or keep generic for security)
+//             return res.status(500).json({ message: 'Email could not be sent. Server Error.' });
+//         }
+//     } catch (err) {
+//         res.status(500).json({ message: err.message });
+//     }
+// };
 /*const User = require('../models / User ');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
