@@ -158,7 +158,7 @@ export default function LoginForm({ onClose, onSwitch, onSwitchToRegister }: Log
                       <label className="text-xs font-semibold uppercase tracking-wider text-gray-500">{t('password')}</label>
                       <button type="button" onClick={() => setView('forgot')} className="text-xs text-amber-600 hover:underline">
                         {/* FIX: Use 'forgotPassword' translation key, fallback if missing */}
-                        {t('forgotPassword') || "Forgot password?"}
+                        {t('forgotPassword' as any) || "Forgot password?"}
                       </button>
                     </div>
                     <div className="relative group">
