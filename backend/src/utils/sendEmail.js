@@ -12,16 +12,16 @@ const sendEmail = async(options) => {
 
     // FOR REAL ENVIRONMENT: Gmail SMTP Configuration
     const transporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com', // Hardcoded for Gmail to ensure it works
-        port: 587,
-        secure: false, // Must be false for port 587
+        service: 'gmail', // Use built-in service instead of host/port for better Gmail handling
         auth: {
-            user: process.env.SMTP_EMAIL.trim(), // .trim() removes hidden spaces
-            pass: process.env.SMTP_PASSWORD.trim() // .trim() removes hidden spaces
+            user: process.env.SMTP_EMAIL.trim(),
+            pass: process.env.SMTP_PASSWORD.trim()
         },
-        tls: {
-            rejectUnauthorized: false // Helps with Render/Cloud network restrictions
-        }
+        // Pool connections to prevent timeout on single connect
+        pool: true,
+        maxConnections: 1,
+        rateDelta: 20000,
+        rateLimit: 5,
     });
 
     const message = {
@@ -32,6 +32,10 @@ const sendEmail = async(options) => {
     };
 
     try {
+        // Verify connection first
+        await transporter.verify();
+        console.log("SMTP Connection Verified");
+
         const info = await transporter.sendMail(message);
         console.log('Message sent: %s', info.messageId);
         return info;
