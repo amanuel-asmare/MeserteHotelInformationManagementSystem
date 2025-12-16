@@ -12,12 +12,16 @@ const sendEmail = async(options) => {
 
     // FOR REAL ENVIRONMENT: Gmail SMTP Configuration
     const transporter = nodemailer.createTransport({
-        service: 'gmail', // Use built-in service instead of host/port for better Gmail handling
+        host: 'smtp.gmail.com',
+        port: 465, // SSL
+        secure: true, // MUST be true for 465
         auth: {
             user: process.env.SMTP_EMAIL.trim(),
-            pass: process.env.SMTP_PASSWORD.trim()
-        },
+            pass: process.env.SMTP_PASSWORD.trim(),
+        }
+
         // Pool connections to prevent timeout on single connect
+        ,
         pool: true,
         maxConnections: 1,
         rateDelta: 20000,
