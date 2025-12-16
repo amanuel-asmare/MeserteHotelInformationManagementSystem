@@ -232,7 +232,7 @@ exports.logout = (req, res) => {
 };
 
 // FIXED FORGOT PASSWORD FUNCTION
-
+// FIXED FORGOT PASSWORD FUNCTION
 exports.forgotPassword = async(req, res) => {
     const { email } = req.body;
 
@@ -249,8 +249,12 @@ exports.forgotPassword = async(req, res) => {
         await user.save({ validateBeforeSave: false });
 
         // Ensure CLIENT_URL does not have a trailing slash
-        const clientUrl = process.env.CLIENT_URL ? process.env.CLIENT_URL.replace(/\/$/, "") : "https://meseret-hotel-ims.vercel.app";
-        const resetUrl = `${clientUrl}/reset-password/${resetToken}`;
+        // Fallback to hardcoded URL if env var is missing or empty
+        const baseUrl = process.env.CLIENT_URL ?
+            process.env.CLIENT_URL.replace(/\/$/, "") :
+            "https://meseret-hotel-ims.vercel.app";
+
+        const resetUrl = `${baseUrl}/reset-password/${resetToken}`;
 
         const message = `
             <div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
@@ -260,6 +264,7 @@ exports.forgotPassword = async(req, res) => {
                     <a href="${resetUrl}" style="background-color: #d97706; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Reset Password</a>
                 </div>
                 <p>Link expires in 10 minutes.</p>
+                <p style="font-size: 12px; color: #666;">If you didn't request this, please ignore this email.</p>
             </div>
         `;
 
@@ -272,7 +277,7 @@ exports.forgotPassword = async(req, res) => {
 
             res.status(200).json({ success: true, data: 'Email sent' });
         } catch (err) {
-            console.error("EMAIL CONTROLLER ERROR:", err); // Log the full error object
+            console.error("EMAIL CONTROLLER ERROR:", err);
 
             // Clean up the token since sending failed
             user.resetPasswordToken = undefined;

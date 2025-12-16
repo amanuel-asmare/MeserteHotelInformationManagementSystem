@@ -4,32 +4,27 @@ const sendEmail = async(options) => {
     // DEBUG LOGS
     console.log("Attempting to send email...");
     console.log("SMTP Host: smtp.gmail.com");
-    console.log("SMTP User:", process.env.SMTP_EMAIL);
+    // Mask email for security in logs
+    console.log("SMTP User:", process.env.SMTP_EMAIL ? process.env.SMTP_EMAIL.substring(0, 3) + '***' : 'MISSING');
 
     if (!process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
         throw new Error("SMTP Credentials missing in Environment Variables");
     }
 
     // FOR REAL ENVIRONMENT: Gmail SMTP Configuration
-    // We use Port 465 (SSL) + IPv4 enforcement to prevent timeouts on Render
+    // Use standard SMTP transport without pooling for better reliability on serverless/cloud functions
     const transporter = nodemailer.createTransport({
         host: 'smtp.gmail.com',
         port: 465,
-        secure: true, // TRUE for port 465
+        secure: true, // true for 465, false for other ports
         auth: {
             user: process.env.SMTP_EMAIL.trim(),
             pass: process.env.SMTP_PASSWORD.trim()
         },
         tls: {
-            // Helps avoid certificate errors in some cloud environments
+            // Necessary for some cloud providers to accept the certificate
             rejectUnauthorized: false
-        },
-        // CRITICAL FIX: Force IPv4. Render/Docker sometimes fail on IPv6
-        family: 4,
-        // Increase timeouts
-        connectionTimeout: 10000,
-        greetingTimeout: 10000,
-        socketTimeout: 10000
+        }
     });
 
     const message = {
