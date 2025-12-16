@@ -980,7 +980,31 @@ trackYourDuty: "Track Your Duty with Royal Precision",
     scanForMenu: "Scan for Menu",
     pointCamera: "Point your camera at the code below to access the menu & order.",
     worksOnMobile: "Works on iOS & Android",
-},
+// --- AUTH FORMS (NEW KEYS) ---
+    
+    signInAccessDashboard: "Sign in to access your dashboard",
+    recoverAccount: "Recover Account",
+    enterEmailReset: "Enter your email to reset password",
+    emailSentTitle: "Email Sent!",
+    emailSentMessage: "Reset link sent to {email}. Check your inbox!",
+    backToLogin: "Back to Login",
+    sendResetLink: "Send Reset Link",
+    registeredEmail: "Registered Email",
+    dontHaveAccount: "Don't have an account?",
+    orContinueWith: "Or continue with",
+    
+    // --- REGISTER FORM (NEW KEYS) ---
+    createAccount: "Create Account",
+    newGuest: "New Guest",
+    fillDetailsBelow: "Please fill in the details below.",
+    personalDetails: "Personal Details",
+    contactAddress: "Contact & Address",
+    nextStep: "Next Step",
+    registrationComplete: "Registration Complete!",
+    guestAddedSuccess: "Guest {name} added successfully.",
+    accountCreatedRedirect: "Account created. Redirecting to login...",
+    alreadyHaveAccount: "Already have an account?",
+  },
   am: {
     // --- BRAND ---
     meseretHotel: "መሰረት ሆቴል",
@@ -1984,5 +2008,28 @@ trackYourDuty: "የተከበሩ ሰራተኞች – የሥራ መልክ�ዎን
     pointCamera: "ካሜራዎን ከታች ባለው ኮድ ላይ በማነጣጠር ሜኑውን ይድረሱ እና ይዘዙ።",
     worksOnMobile: "በiOS እና Android ላይ ይሰራል",
 
+    // --- AUTH FORMS (NEW KEYS) ---
+    signInAccessDashboard: "ወደ ዳሽቦርድ ለመግባት ይግቡ",
+    recoverAccount: "መለያ መልሶ ማግኘት",
+    enterEmailReset: "የይለፍ ቃል ለመቀየር ኢሜይል ያስገቡ",
+    emailSentTitle: "ኢሜይል ተልኳል!",
+    emailSentMessage: "የመልሶ ማግኛ ሊንክ ወደ {email} ተልኳል። Inbox ይፈትሹ!",
+    backToLogin: "ወደ መግቢያ ተመለስ",
+    sendResetLink: "የመልሶ ማግኛ ሊንክ ላክ",
+    registeredEmail: "የተመዘገበ ኢሜይል",
+    dontHaveAccount: "መለያ የለዎትም?",
+    orContinueWith: "ወይም በዚህ ይቀጥሉ",
+
+    // --- REGISTER FORM (NEW KEYS) ---
+    createAccount: "መለያ ይፍጠሩ",
+    newGuest: "አዲስ እንግዳ",
+    fillDetailsBelow: "እባክዎ ዝርዝሮችን ከዚህ በታች ይሙሉ",
+    personalDetails: "ግላዊ መረጃ",
+    contactAddress: "አድራሻ እና ግንኙነት",
+    nextStep: "ቀጣይ",
+    registrationComplete: "ምዝገባ ተጠናቅቋል!",
+    guestAddedSuccess: "እንግዳ {name} በተሳካ ሁኔታ ተመዝግቧል።",
+    accountCreatedRedirect: "መለያ ተፈጥሯል። ወደ መግቢያ በመሄድ ላይ...",
+    alreadyHaveAccount: "መለያ አለዎት?",
 }
 };
