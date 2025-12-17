@@ -1,33 +1,24 @@
 const nodemailer = require('nodemailer');
 
 const sendEmail = async(options) => {
-    console.log("Attempting to send email via SMTP...");
+    console.log("Attempting to send email via Resend SMTP...");
 
-    if (!process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
-        throw new Error("SMTP Credentials missing in Environment Variables");
+    if (!process.env.RESEND_API_KEY) {
+        throw new Error("RESEND_API_KEY missing in Environment Variables");
     }
 
     const transporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 587, // Use 587 for STARTTLS (recommended)
-        secure: false, // false for port 587 (STARTTLS)
+        host: 'smtp.resend.com',
+        port: 465,
+        secure: true, // true for port 465 (SSL)
         auth: {
-            user: process.env.SMTP_EMAIL.trim(),
-            pass: process.env.SMTP_PASSWORD.trim() // Must be a 16-digit Gmail App Password
-        },
-        tls: {
-            rejectUnauthorized: false // Helps with cloud cert issues
-        },
-        // Critical for Render.com (prevents IPv6 hang)
-        family: 4,
-        // Add timeouts to avoid indefinite hangs
-        connectionTimeout: 10000, // 10 seconds
-        greetingTimeout: 10000,
-        socketTimeout: 10000
+            user: 'resend', // Fixed username for Resend SMTP
+            pass: process.env.RESEND_API_KEY // Your Resend API key
+        }
     });
 
     const message = {
-        from: `"${process.env.FROM_NAME}" <${process.env.SMTP_EMAIL}>`,
+        from: `"${process.env.FROM_NAME || 'Meseret Hotel'}" <noreply@your-verified-domain.com>`, // See note below
         to: options.email,
         subject: options.subject,
         html: options.message
