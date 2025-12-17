@@ -1,37 +1,28 @@
-const nodemailer = require('nodemailer');
+// utils/sendEmail.js
+const { Resend } = require('resend');
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const sendEmail = async(options) => {
-    console.log("Attempting to send email via Resend SMTP...");
+    console.log("Attempting to send email via Resend API...");
 
     if (!process.env.RESEND_API_KEY) {
         throw new Error("RESEND_API_KEY missing in Environment Variables");
     }
 
-    const transporter = nodemailer.createTransport({
-        host: 'smtp.resend.com',
-        port: 465,
-        secure: true, // true for port 465 (SSL)
-        auth: {
-            user: 'resend', // Fixed username for Resend SMTP
-            pass: process.env.RESEND_API_KEY // Your Resend API key
-        }
-    });
-
-    const message = {
-        from: `"${process.env.FROM_NAME || 'Meseret Hotel'}" <noreply@your-verified-domain.com>`, // See note below
-        to: options.email,
-        subject: options.subject,
-        html: options.message
-    };
-
     try {
-        await transporter.verify();
-        console.log("SMTP Connection Verified");
-        const info = await transporter.sendMail(message);
-        console.log('Message sent: %s', info.messageId);
-        return info;
+        const data = await resend.emails.send({
+            from: 'Meseret Hotel <onboarding@resend.dev>', // Test sender (emails go to your Resend dashboard)
+            to: [options.email], // Real recipient
+            subject: options.subject,
+            html: options.message
+        });
+
+        console.log('Email sent via Resend API:', data);
+        return data;
     } catch (error) {
-        console.error("Nodemailer Error Details:", error);
+        console.error("Resend API Error Details:", error);
+        // Resend returns structured errors
         throw new Error(error.message || 'Failed to send email');
     }
 };
