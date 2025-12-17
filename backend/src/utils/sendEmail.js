@@ -1,29 +1,33 @@
-// utils/sendEmail.js
+// src/utils/sendEmail.js
 const { Resend } = require('resend');
+
+if (!process.env.RESEND_API_KEY) {
+    throw new Error('RESEND_API_KEY is missing!');
+}
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const sendEmail = async(options) => {
-    console.log("Attempting to send email via Resend API...");
-
-    if (!process.env.RESEND_API_KEY) {
-        throw new Error("RESEND_API_KEY missing in Environment Variables");
-    }
+    console.log('Sending email via Resend HTTPS API to:', options.email);
 
     try {
-        const data = await resend.emails.send({
-            from: 'Meseret Hotel <onboarding@resend.dev>', // Test sender (emails go to your Resend dashboard)
-            to: [options.email], // Real recipient
+        const { data, error } = await resend.emails.send({
+            from: 'Meseret Hotel <onboarding@resend.dev>', // Test sender – works without domain verification
+            to: [options.email],
             subject: options.subject,
-            html: options.message
+            html: options.message,
         });
 
-        console.log('Email sent via Resend API:', data);
+        if (error) {
+            console.error('Resend API Error:', error);
+            throw new Error(error.message || 'Failed to send email');
+        }
+
+        console.log('Email successfully sent via Resend! ID:', data.id);
         return data;
-    } catch (error) {
-        console.error("Resend API Error Details:", error);
-        // Resend returns structured errors
-        throw new Error(error.message || 'Failed to send email');
+    } catch (err) {
+        console.error('Resend Send Error:', err);
+        throw new Error(err.message || 'Failed to send email');
     }
 };
 
