@@ -231,8 +231,10 @@ exports.logout = (req, res) => {
     res.json({ message: 'Logged out' });
 };
 
+
 // FIXED FORGOT PASSWORD FUNCTION
-// FIXED FORGOT PASSWORD FUNCTION
+// ... existing imports
+
 exports.forgotPassword = async(req, res) => {
     const { email } = req.body;
 
@@ -250,11 +252,8 @@ exports.forgotPassword = async(req, res) => {
 
         // Ensure CLIENT_URL does not have a trailing slash
         // Fallback to hardcoded URL if env var is missing or empty
-        const baseUrl = process.env.CLIENT_URL ?
-            process.env.CLIENT_URL.replace(/\/$/, "") :
-            "https://meseret-hotel-ims.vercel.app";
-
-        const resetUrl = `${baseUrl}/reset-password/${resetToken}`;
+        const clientUrl = process.env.CLIENT_URL ? process.env.CLIENT_URL.replace(/\/$/, "") : "https://meseret-hotel-ims.vercel.app";
+        const resetUrl = `${clientUrl}/reset-password/${resetToken}`;
 
         const message = `
             <div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
@@ -263,8 +262,8 @@ exports.forgotPassword = async(req, res) => {
                 <div style="text-align: center; margin: 30px 0;">
                     <a href="${resetUrl}" style="background-color: #d97706; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Reset Password</a>
                 </div>
+                <p>Or copy this link: <a href="${resetUrl}">${resetUrl}</a></p>
                 <p>Link expires in 10 minutes.</p>
-                <p style="font-size: 12px; color: #666;">If you didn't request this, please ignore this email.</p>
             </div>
         `;
 
@@ -279,12 +278,10 @@ exports.forgotPassword = async(req, res) => {
         } catch (err) {
             console.error("EMAIL CONTROLLER ERROR:", err);
 
-            // Clean up the token since sending failed
             user.resetPasswordToken = undefined;
             user.resetPasswordExpire = undefined;
             await user.save({ validateBeforeSave: false });
 
-            // Send back the specific error message for debugging
             return res.status(500).json({ message: `Email could not be sent: ${err.message}` });
         }
     } catch (err) {
@@ -292,6 +289,8 @@ exports.forgotPassword = async(req, res) => {
         res.status(500).json({ message: err.message });
     }
 };
+
+
 // FORGOT PASSWORD
 // exports.forgotPassword = async(req, res) => {
 //     // ... (This function remains the same, it sends an email, doesn't set cookies)

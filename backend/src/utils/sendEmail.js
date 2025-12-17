@@ -1,30 +1,32 @@
 const nodemailer = require('nodemailer');
 
 const sendEmail = async(options) => {
-    // DEBUG LOGS
-    console.log("Attempting to send email...");
-    console.log("SMTP Host: smtp.gmail.com");
-    // Mask email for security in logs
-    console.log("SMTP User:", process.env.SMTP_EMAIL ? process.env.SMTP_EMAIL.substring(0, 3) + '***' : 'MISSING');
+    console.log("Attempting to send email via SMTP...");
 
     if (!process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
         throw new Error("SMTP Credentials missing in Environment Variables");
     }
 
-    // FOR REAL ENVIRONMENT: Gmail SMTP Configuration
-    // Use standard SMTP transport without pooling for better reliability on serverless/cloud functions
+    // FOR PRODUCTION: Use Port 587 with STARTTLS (secure: false)
+    // This is often more firewall-friendly in cloud environments than 465
     const transporter = nodemailer.createTransport({
         host: 'smtp.gmail.com',
-        port: 465,
-        secure: true, // true for 465, false for other ports
+        port: 587,
+        secure: false, // Must be false for port 587
         auth: {
             user: process.env.SMTP_EMAIL.trim(),
             pass: process.env.SMTP_PASSWORD.trim()
         },
         tls: {
-            // Necessary for some cloud providers to accept the certificate
-            rejectUnauthorized: false
-        }
+            rejectUnauthorized: false, // Helps with self-signed certs in containers
+            ciphers: 'SSLv3'
+        },
+        // IMPORTANT: Disable pooling to prevent stale connections causing timeouts
+        pool: false,
+        // Increase timeouts significantly
+        connectionTimeout: 20000, // 20 seconds
+        greetingTimeout: 20000,
+        socketTimeout: 20000
     });
 
     const message = {
@@ -35,7 +37,7 @@ const sendEmail = async(options) => {
     };
 
     try {
-        // Verify connection before sending
+        // Verify connection first
         await transporter.verify();
         console.log("SMTP Connection Verified");
 
