@@ -1,25 +1,33 @@
 const nodemailer = require('nodemailer');
 
 const sendEmail = async(options) => {
-    console.log("Sending email via Gmail SMTP (465 SSL)");
+    console.log("Attempting to send email via SMTP...");
 
     if (!process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
-        throw new Error("SMTP credentials missing");
+        throw new Error("SMTP Credentials missing in Environment Variables");
     }
 
     const transporter = nodemailer.createTransport({
         host: 'smtp.gmail.com',
-        port: 465,
-        secure: true, // ✅ REQUIRED for 465
+        port: 587, // Use 587 for STARTTLS (recommended)
+        secure: false, // false for port 587 (STARTTLS)
         auth: {
-            user: process.env.SMTP_EMAIL,
-            pass: process.env.SMTP_PASSWORD
+            user: process.env.SMTP_EMAIL.trim(),
+            pass: process.env.SMTP_PASSWORD.trim() // Must be a 16-digit Gmail App Password
         },
-        family: 4 // Force IPv4 (good for Render)
+        tls: {
+            rejectUnauthorized: false // Helps with cloud cert issues
+        },
+        // Critical for Render.com (prevents IPv6 hang)
+        family: 4,
+        // Add timeouts to avoid indefinite hangs
+        connectionTimeout: 10000, // 10 seconds
+        greetingTimeout: 10000,
+        socketTimeout: 10000
     });
 
     const message = {
-        from: `"${process.env.FROM_NAME}" <${process.env.SMTP_EMAIL}>`, // ✅ Gmail-safe
+        from: `"${process.env.FROM_NAME}" <${process.env.SMTP_EMAIL}>`,
         to: options.email,
         subject: options.subject,
         html: options.message
@@ -27,14 +35,13 @@ const sendEmail = async(options) => {
 
     try {
         await transporter.verify();
-        console.log("SMTP verified");
-
+        console.log("SMTP Connection Verified");
         const info = await transporter.sendMail(message);
-        console.log("Email sent:", info.messageId);
+        console.log('Message sent: %s', info.messageId);
         return info;
     } catch (error) {
-        console.error("SMTP ERROR:", error);
-        throw new Error("Email service unavailable");
+        console.error("Nodemailer Error Details:", error);
+        throw new Error(error.message || 'Failed to send email');
     }
 };
 
