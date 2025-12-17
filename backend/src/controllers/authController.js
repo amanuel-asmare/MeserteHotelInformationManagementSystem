@@ -233,7 +233,6 @@ exports.logout = (req, res) => {
 
 
 // FIXED FORGOT PASSWORD FUNCTION
-// ... existing imports
 
 exports.forgotPassword = async(req, res) => {
     const { email } = req.body;
@@ -250,9 +249,11 @@ exports.forgotPassword = async(req, res) => {
 
         await user.save({ validateBeforeSave: false });
 
-        // Ensure CLIENT_URL does not have a trailing slash
-        // Fallback to hardcoded URL if env var is missing or empty
-        const clientUrl = process.env.CLIENT_URL ? process.env.CLIENT_URL.replace(/\/$/, "") : "https://meseret-hotel-ims.vercel.app";
+        // Ensure proper URL formation
+        const clientUrl = process.env.CLIENT_URL ?
+            process.env.CLIENT_URL.replace(/\/$/, "") :
+            "https://meseret-hotel-ims.vercel.app";
+
         const resetUrl = `${clientUrl}/reset-password/${resetToken}`;
 
         const message = `
@@ -262,7 +263,6 @@ exports.forgotPassword = async(req, res) => {
                 <div style="text-align: center; margin: 30px 0;">
                     <a href="${resetUrl}" style="background-color: #d97706; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Reset Password</a>
                 </div>
-                <p>Or copy this link: <a href="${resetUrl}">${resetUrl}</a></p>
                 <p>Link expires in 10 minutes.</p>
             </div>
         `;
@@ -276,19 +276,22 @@ exports.forgotPassword = async(req, res) => {
 
             res.status(200).json({ success: true, data: 'Email sent' });
         } catch (err) {
-            console.error("EMAIL CONTROLLER ERROR:", err);
+            console.error("Forgot Password Email Error:", err);
 
             user.resetPasswordToken = undefined;
             user.resetPasswordExpire = undefined;
             await user.save({ validateBeforeSave: false });
 
-            return res.status(500).json({ message: `Email could not be sent: ${err.message}` });
+            // Send detailed error to frontend to help debugging (you can remove this later for security)
+            return res.status(500).json({ message: err.message });
         }
     } catch (err) {
-        console.error("DATABASE ERROR:", err);
+        console.error("Database Error:", err);
         res.status(500).json({ message: err.message });
     }
 };
+
+// ... other exports
 
 
 // FORGOT PASSWORD
