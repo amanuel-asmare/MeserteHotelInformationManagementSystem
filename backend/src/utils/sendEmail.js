@@ -1,37 +1,25 @@
 const nodemailer = require('nodemailer');
 
 const sendEmail = async(options) => {
-    // Debug logging to verify env vars are loaded (masking password)
-    console.log("Preparing to send email...");
-    console.log(`SMTP_HOST: ${process.env.SMTP_HOST}`);
-    console.log(`SMTP_PORT: ${process.env.SMTP_PORT}`);
-    console.log(`SMTP_EMAIL: ${process.env.SMTP_EMAIL}`);
+    console.log("Attempting to send email via Gmail Service...");
 
     if (!process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
         throw new Error("SMTP Credentials missing in Environment Variables");
     }
 
-    // CREATE TRANSPORTER
-    // We use port 465 with secure: true for the most reliable connection.
-    // KEY FIX: family: 4 forces IPv4 to avoid IPv6 timeouts on Render.
+    // USE 'service: gmail' which handles the port/host logic automatically
+    // BUT force family: 4 to prevent IPv6 timeouts on Render
     const transporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 465,
-        secure: true, // Use SSL
+        service: 'gmail',
         auth: {
             user: process.env.SMTP_EMAIL.trim(),
             pass: process.env.SMTP_PASSWORD.trim()
         },
-        tls: {
-            // Do not fail on invalid certs (common in some container environments)
-            rejectUnauthorized: false
-        },
-        // Force IPv4
+        // CRITICAL FIX FOR RENDER: Force IPv4
         family: 4,
-        // Generous timeouts for cloud latency
-        connectionTimeout: 10000,
-        greetingTimeout: 10000,
-        socketTimeout: 10000
+        // Additional settings to prevent hangs
+        logger: true, // Logs SMTP traffic to console for debugging
+        debug: true // Logs SMTP traffic to console for debugging
     });
 
     const message = {
@@ -42,16 +30,12 @@ const sendEmail = async(options) => {
     };
 
     try {
-        // Verify connection before sending
-        await transporter.verify();
-        console.log("SMTP Connection Verified successfully.");
-
         const info = await transporter.sendMail(message);
         console.log('Message sent: %s', info.messageId);
         return info;
     } catch (error) {
-        console.error("Nodemailer Fatal Error:", error);
-        throw new Error(`Email sending failed: ${error.message}`);
+        console.error("Nodemailer Error Details:", error);
+        throw new Error(error.message);
     }
 };
 
