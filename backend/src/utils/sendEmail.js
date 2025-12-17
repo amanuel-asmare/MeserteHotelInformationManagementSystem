@@ -1,25 +1,29 @@
 const nodemailer = require('nodemailer');
 
 const sendEmail = async(options) => {
-    console.log("Attempting to send email via Gmail Service...");
+    console.log("Attempting to send email via SMTP (Port 587/IPv4)...");
 
     if (!process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
         throw new Error("SMTP Credentials missing in Environment Variables");
     }
 
-    // USE 'service: gmail' which handles the port/host logic automatically
-    // BUT force family: 4 to prevent IPv6 timeouts on Render
+    // FOR REAL ENVIRONMENT: Gmail SMTP Configuration
     const transporter = nodemailer.createTransport({
-        service: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false, // Must be false for Port 587 (STARTTLS)
         auth: {
             user: process.env.SMTP_EMAIL.trim(),
             pass: process.env.SMTP_PASSWORD.trim()
         },
-        // CRITICAL FIX FOR RENDER: Force IPv4
-        family: 4,
-        // Additional settings to prevent hangs
-        logger: true, // Logs SMTP traffic to console for debugging
-        debug: true // Logs SMTP traffic to console for debugging
+        tls: {
+            // Fixes issues with cloud server certificates
+            rejectUnauthorized: false
+        },
+        // CRITICAL FIX FOR RENDER TIMEOUTS:
+        // Render sometimes fails to resolve Gmail via IPv6, causing a hang.
+        // We force IPv4 here.
+        family: 4
     });
 
     const message = {
@@ -30,6 +34,10 @@ const sendEmail = async(options) => {
     };
 
     try {
+        // Verify connection before sending
+        await transporter.verify();
+        console.log("SMTP Connection Verified");
+
         const info = await transporter.sendMail(message);
         console.log('Message sent: %s', info.messageId);
         return info;

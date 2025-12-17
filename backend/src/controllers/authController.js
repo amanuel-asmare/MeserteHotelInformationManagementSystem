@@ -249,12 +249,12 @@ exports.forgotPassword = async(req, res) => {
 
         await user.save({ validateBeforeSave: false });
 
-        // Ensure proper URL formation
-        const clientUrl = process.env.CLIENT_URL ?
-            process.env.CLIENT_URL.replace(/\/$/, "") :
-            "https://meseret-hotel-ims.vercel.app";
+        // Ensure we use the deployed URL
+        const clientUrl = process.env.CLIENT_URL || "https://meseret-hotel-ims.vercel.app";
+        // Remove trailing slash if present
+        const baseUrl = clientUrl.replace(/\/$/, "");
 
-        const resetUrl = `${clientUrl}/reset-password/${resetToken}`;
+        const resetUrl = `${baseUrl}/reset-password/${resetToken}`;
 
         const message = `
             <div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
@@ -276,21 +276,17 @@ exports.forgotPassword = async(req, res) => {
 
             res.status(200).json({ success: true, data: 'Email sent' });
         } catch (err) {
-            console.error("Forgot Password Email Error:", err);
-
+            console.error("EMAIL CONTROLLER ERROR:", err);
             user.resetPasswordToken = undefined;
             user.resetPasswordExpire = undefined;
             await user.save({ validateBeforeSave: false });
-
-            // Send detailed error to frontend to help debugging (you can remove this later for security)
-            return res.status(500).json({ message: err.message });
+            return res.status(500).json({ message: `Email sending failed: ${err.message}` });
         }
     } catch (err) {
-        console.error("Database Error:", err);
+        console.error("DATABASE ERROR:", err);
         res.status(500).json({ message: err.message });
     }
 };
-
 // ... other exports
 
 
