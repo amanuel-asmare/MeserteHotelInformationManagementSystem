@@ -12,10 +12,11 @@ const sendEmail = async(options) => {
 
     try {
         const { data, error } = await resend.emails.send({
-            from: 'Meseret Hotel <onboarding@resend.dev>', // Test sender – works without domain verification
-            to: [options.email],
-            subject: options.subject,
-            html: options.message,
+            from: 'Meseret Hotel <onboarding@resend.dev>',
+            to: ['amanuelasmare18@gmail.com'], // Force to your email only
+            // to: [options.email],  // Comment this out
+            subject: options.subject + ' [TEST]',
+            html: options.message + '<p><strong>This is a test – recipient was: ' + options.email + '</strong></p>',
         });
 
         if (error) {
