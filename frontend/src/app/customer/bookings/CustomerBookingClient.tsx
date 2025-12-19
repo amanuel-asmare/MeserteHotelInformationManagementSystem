@@ -94,7 +94,7 @@ const FireworksDisplay = () => {
 };
 
 export default function CustomerBookingClient() {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const { user } = useAuth();
   
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -113,15 +113,20 @@ export default function CustomerBookingClient() {
   
   // UPDATE MODAL STATE
   const [showUpdateModal, setShowUpdateModal] = useState<Booking | null>(null);
-  const [newRoomId, setNewRoomId] = useState(''); // Track room change in update modal
+  const [newRoomId, setNewRoomId] = useState('');
 
   const [imageCarousel, setImageCarousel] = useState<string[] | null>(null);
   const [tab, setTab] = useState<'rooms' | 'bookings'>('rooms');
   const [bookingStatusTab, setBookingStatusTab] = useState<'all' | 'pending' | 'confirmed' | 'cancelled' | 'completed'>('all');
   const [showAvailableOnly, setShowAvailableOnly] = useState(true);
+  
+  // Confirmation Modals (Cancellation & General Confirm)
   const [cancelConfirmation, setCancelConfirmation] = useState<string | null>(null);
+  
   const [notificationCount, setNotificationCount] = useState(0);
   const [minTimePassed, setMinTimePassed] = useState(false);
+  
+  // SUCCESS STATE (Used for Payments AND Updates)
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
@@ -168,7 +173,7 @@ export default function CustomerBookingClient() {
 
           if (res.data.status === 'success' || res.status === 200) {
             setSuccessMessage(t('paymentConfirmed') || 'Payment Successful! Room Booked.');
-            setShowSuccessModal(true); 
+            setShowSuccessModal(true); // Trigger Fireworks
             await fetchRooms();
             await fetchBookings();
             setTab('bookings'); 
@@ -205,28 +210,24 @@ export default function CustomerBookingClient() {
       return;
     }
     try {
-      // 1. Create Booking (Pending)
       const bookingRes = await axios.post(
         `${API_BASE}/api/bookings/`,
         { roomId, checkIn, checkOut, guests: Number(guests) },
         { withCredentials: true }
       );
       const booking = bookingRes.data;
-
-      // 2. Initiate Payment directly
       await handlePayNow(booking._id);
-
     } catch (err: any) {
       alert(err.response?.data?.message || 'Failed to create booking');
     }
   };
 
-  // --- PAY NOW FOR EXISTING PENDING BOOKING ---
+  // --- PAY NOW ---
   const handlePayNow = async (bookingId: string) => {
     try {
       const paymentRes = await axios.post(
         `${API_BASE}/api/bookings/payment`,
-        { bookingId: bookingId }, // Send the existing booking ID
+        { bookingId: bookingId }, 
         { withCredentials: true }
       );
       
@@ -244,7 +245,7 @@ export default function CustomerBookingClient() {
     setCheckIn(new Date(booking.checkIn).toISOString().split('T')[0]);
     setCheckOut(new Date(booking.checkOut).toISOString().split('T')[0]);
     setGuests(booking.guests.toString());
-    setNewRoomId(booking.room?._id || ''); // Default to current room
+    setNewRoomId(booking.room?._id || ''); 
   };
 
   const handleUpdateBooking = async () => {
@@ -254,18 +255,19 @@ export default function CustomerBookingClient() {
             checkIn,
             checkOut,
             guests: Number(guests),
-            newRoomId: newRoomId // Send selected room ID
+            newRoomId: newRoomId 
         }, { withCredentials: true });
 
         if (res.data.paymentRequired && res.data.checkoutUrl) {
-            // Case A: Price increased, redirect to pay difference
+            // If paying difference, redirect
             alert(`Update requires additional payment of ETB ${res.data.priceDifference}. Redirecting...`);
             window.location.href = res.data.checkoutUrl;
         } else {
-            // Case B: No extra payment
-            alert(t('updateSuccessfully') || "Booking Updated Successfully!");
+            // SUCCESS ANIMATION FOR UPDATE
             setShowUpdateModal(null);
-            fetchBookings(); // Refresh list
+            setSuccessMessage(t('updateSuccessfully') || "Booking Updated Successfully!");
+            setShowSuccessModal(true); // Trigger Fireworks
+            fetchBookings(); 
         }
     } catch (err: any) {
         alert(err.response?.data?.message || 'Failed to update booking');
@@ -275,7 +277,10 @@ export default function CustomerBookingClient() {
   const handleCancelBooking = async (bookingId: string) => {
     try {
       await axios.put(`${API_BASE}/api/bookings/${bookingId}/cancel`, {}, { withCredentials: true });
-      alert(t('bookingCancelled' as any) || "Booking Cancelled");
+      // SUCCESS ANIMATION FOR CANCEL (Instead of alert)
+      setSuccessMessage(t('bookingCancelled' as any) || "Booking Cancelled");
+      setShowSuccessModal(true); // Trigger Fireworks
+      setCancelConfirmation(null);
       fetchBookings();
       fetchRooms();
     } catch (err: any) {
@@ -304,7 +309,6 @@ export default function CustomerBookingClient() {
     return `${API_BASE}${image}`;
   };
 
-  // Helper to format date ranges
   const renderDateRange = (start: string, end: string) => {
     const startDate = parseISO(start);
     const endDate = parseISO(end);
@@ -355,10 +359,12 @@ export default function CustomerBookingClient() {
   return (
     <div className="relative min-h-screen bg-gray-50 pb-20">
       
+      {/* FIREWORKS DISPLAY */}
       <AnimatePresence>
         {showSuccessModal && <FireworksDisplay />}
       </AnimatePresence>
 
+      {/* UNIFIED SUCCESS MODAL (PAYMENT / UPDATE / CANCEL) */}
       <AnimatePresence>
         {showSuccessModal && (
           <motion.div
@@ -377,26 +383,33 @@ export default function CustomerBookingClient() {
               onClick={e => e.stopPropagation()}
             >
               <div className="absolute inset-0 bg-gradient-to-br from-amber-100/50 to-transparent pointer-events-none" />
+              
               <motion.div 
                 initial={{ scale: 0 }} 
                 animate={{ scale: 1, rotate: 360 }} 
                 transition={{ delay: 0.2, duration: 0.8 }}
                 className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner"
               >
-                <PartyPopper size={48} className="text-green-600" />
+                {successMessage.includes('Cancel') ? (
+                   <CheckCircle size={48} className="text-green-600" />
+                ) : (
+                   <PartyPopper size={48} className="text-green-600" />
+                )}
               </motion.div>
+
               <h2 className="text-3xl font-black text-gray-900 mb-2">
-                {t('paymentConfirmed') || "Payment Successful!"}
+                {successMessage.includes('Cancel') ? (t('success') || "Success!") : (t('congratulations') || "Congratulations!")}
               </h2>
               <p className="text-gray-600 mb-8 font-medium">
                 {successMessage}
               </p>
+
               <button 
                 onClick={() => setShowSuccessModal(false)}
                 className="w-full py-4 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
               >
                 <CheckCircle size={20} />
-                {t('continue' as any) || "View My Booking"}
+                {t('continue' as any) || "Continue"}
               </button>
             </motion.div>
           </motion.div>
@@ -771,7 +784,6 @@ export default function CustomerBookingClient() {
     </div>
   );
 }
-
 /*'use client';
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
