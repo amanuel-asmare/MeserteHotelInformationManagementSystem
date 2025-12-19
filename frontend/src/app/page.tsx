@@ -265,7 +265,7 @@ export default function Home() {
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
   const [guests, setGuests] = useState('2');
-  
+  const [showRegister,setShowRegister]=useState(false);
   // QR Code Logic
   const [showQR, setShowQR] = useState(false);
   const [menuUrl, setMenuUrl] = useState('');
@@ -409,7 +409,7 @@ export default function Home() {
               {t('viewRooms')}
             </Link>
             <Link
-              href="/contact"
+              href="/frontend/components/forms/RegisterForm.tsx"
               className="rounded-full border-2 border-white px-8 py-3 font-semibold hover:bg-white hover:text-amber-600 transition-colors"
             >
               {t('contactUsButton')}
