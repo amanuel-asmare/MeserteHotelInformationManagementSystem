@@ -11,7 +11,8 @@ const {
     getAllBookings,
     markBookingAsCompleted,
     updateBooking
-} = ire('../contrllers/bookingController');
+
+} = require('../controllers/bookingController');
 
 router.post('/', protect, authorize('customer', ), createBooking);
 router.post('/payment', protect, authorize('customer', ), initiatePayment);
