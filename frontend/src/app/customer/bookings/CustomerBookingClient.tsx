@@ -763,7 +763,6 @@ export default function CustomerBookingClient() {
                         <input type="number" min="1" value={guests} onChange={e => setGuests(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none font-medium" />
                     </div>
                 </div>
-                
                 <div className="p-4 bg-amber-50 text-amber-800 text-sm rounded-xl border border-amber-100 flex gap-2">
                     <DollarSign size={16} className="shrink-0 mt-0.5" />
                     If the new total is higher, you will be redirected to pay the difference.
