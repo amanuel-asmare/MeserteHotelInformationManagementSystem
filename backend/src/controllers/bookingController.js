@@ -273,7 +273,7 @@ exports.getCustomerBookings = async(req, res) => {
 
 
 
-// Cancel Booking
+// // Cancel Booking
 // exports.cancelBooking = async(req, res) => {
 //     try {
 //         const booking = await Booking.findById(req.params.id);
@@ -311,76 +311,83 @@ exports.getCustomerBookings = async(req, res) => {
 //         res.status(500).json({ message: err.message || 'Cancellation failed' });
 //     }
 // };
-// ... existing imports
-
-// Cancel Booking (Robust Version)
-// ... existing imports
-
-// Cancel Booking (Fixed for older Node versions)
+// 6. Cancel Booking (FIXED SYNTAX ERROR HERE)
 exports.cancelBooking = async(req, res) => {
     try {
         const booking = await Booking.findById(req.params.id);
         if (!booking) return res.status(404).json({ message: 'Booking not found' });
 
-        // Authorization Check
         if (booking.user.toString() !== req.user.id) {
             return res.status(403).json({ message: 'Not authorized' });
         }
 
-        // Status Check
         if (booking.status !== 'pending' && booking.status !== 'confirmed') {
-            return res.status(400).json({ message: 'Cannot cancel this booking (already completed or cancelled)' });
+            return res.status(400).json({ message: 'Cannot cancel this booking' });
         }
 
-        // REFUND LOGIC (If Paid)
         if (booking.paymentStatus === 'completed') {
             try {
-                // In a real production app, you would call Chapa API here.
-                /* 
-                const refundAmount = booking.totalPrice * 0.95; 
-                await axios.post('https://api.chapa.co/v1/refunds', {
-                    tx_ref: booking.paymentId,
-                    amount: refundAmount,
-                    reason: 'Booking cancellation'
-                }, {
-                    headers: { Authorization: `Bearer ${process.env.CHAPA_SECRET_KEY}` }
-                });
-                */
-
-                // Mark as refunded in DB
+                // Refund logic (Optional/Simulated)
                 booking.paymentStatus = 'refunded';
-
             } catch (refundError) {
-                // FIX: Removed optional chaining (?.) for compatibility
+                // FIXED: Removed invalid optional chaining syntax
                 const errorDetails = (refundError.response && refundError.response.data) ?
                     refundError.response.data :
                     refundError.message;
-
                 console.error("Refund API Error:", errorDetails);
-                // We continue to cancel the booking locally even if API refund fails
             }
         }
 
-        // UPDATE STATUS
         booking.status = 'cancelled';
-
-        // FREE UP THE ROOM
         const room = await Room.findById(booking.room);
         if (room) {
             room.availability = true;
             await room.save();
         }
-
         await booking.save();
 
-        res.json({ message: 'Booking cancelled successfully. 95% refund initiated if applicable.' });
-
+        res.json({ message: 'Booking cancelled successfully.' });
     } catch (err) {
         console.error('Cancel Booking Error:', err.message || err);
         res.status(500).json({ message: err.message || 'Cancellation failed' });
     }
 };
 
+// <--- ADD THIS NEW CONTROLLER FUNCTION
+exports.getAllBookings = async(req, res) => {
+    try {
+        // Fetch all bookings and populate user and room details
+        const bookings = await Booking.find()
+            .populate({
+                path: 'user',
+                select: 'firstName lastName email phoneNumber' // Select relevant user fields
+            })
+            .populate({
+                path: 'room',
+                select: 'roomNumber type price images' // Select relevant room fields
+            })
+            .sort({ createdAt: -1 }); // Sort by most recent
+
+        // Format image URLs as done for customer bookings
+        const API_BASE = process.env.API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
+        const formattedBookings = bookings.map(booking => {
+            const b = booking.toObject();
+            if (b.room && b.room.images) {
+                b.room.images = b.room.images.map(img => {
+                    if (img.startsWith('http')) return img;
+                    return `${API_BASE}${img.startsWith('/') ? '' : '/'}${img}`;
+                });
+            }
+            return b;
+        });
+
+        res.json(formattedBookings);
+    } catch (err) {
+        console.error('Error fetching all bookings for receptionist:', err.message);
+        res.status(500).json({ message: err.message || 'Failed to fetch all bookings' });
+    }
+};
+// ... (existing imports and functions) ...
 
 // New: Mark Booking as Completed (Receptionist/Admin only)
 exports.markBookingAsCompleted = async(req, res) => {
