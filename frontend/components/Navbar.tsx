@@ -9,6 +9,7 @@ import LoginForm from './forms/LoginForm';
 import RegisterForm from './forms/RegisterForm';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import HotelLogo from './HotelLogo';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -33,11 +34,11 @@ export default function Navbar() {
     <>
       <nav className="sticky top-0 z-50 bg-black/90 backdrop-blur-xl text-white border-b border-amber-600/20">
         <div className="container mx-auto flex items-center justify-between px-6 py-4">
-          
-          {/* LOGO */}
-          <Link href="/" className="text-3xl font-black tracking-wider">
-            <span className="text-amber-400">Meseret</span> Hotel
-          </Link>
+          {/* Logo & Mobile Toggle */}
+                   <div className="flex items-center gap-3">
+                     <HotelLogo className="scale-90 origin-left" />
+                   </div>
+         
 
           <div className="flex items-center gap-6">
             
