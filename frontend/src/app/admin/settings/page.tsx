@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { useAuth } from '../../../../context/AuthContext';
-import { motion, AnimatePresence, Variants } from 'framer-motion'; // Imported Variants type
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { 
-  CheckCircle, Upload, Lock, User, Mail, LogOut, 
+  CheckCircle, Lock, User, Mail, LogOut, 
   Camera, Eye, EyeOff, ShieldCheck, Sparkles 
 } from 'lucide-react';
 import axios from 'axios';
@@ -94,11 +94,14 @@ export default function SettingsPage() {
       <div className="relative z-10 max-w-4xl mx-auto px-6 pt-8">
         <div className="flex justify-between items-center mb-8">
           <BackButton />
+          
+          {/* Header Logout Button - Visible & Styled */}
           <button 
             onClick={logout} 
-            className="flex items-center gap-2 px-5 py-2 bg-white/20 backdrop-blur-md border border-white/30 text-white rounded-full hover:bg-white/30 transition font-medium shadow-sm"
+            className="flex items-center gap-2 px-5 py-2.5 bg-white/20 backdrop-blur-md border border-white/40 text-white rounded-full hover:bg-white/30 hover:scale-105 transition-all font-bold shadow-md"
           >
-            <LogOut size={18} /> Logout
+            <LogOut size={20} /> 
+            <span>Logout</span>
           </button>
         </div>
 
@@ -140,12 +143,14 @@ export default function SettingsPage() {
               >
                 <ShieldCheck size={20} /> Security & Password
               </button>
-               <button 
-            onClick={logout} 
-            className="flex items-center gap-2 px-5 py-2 bg-white/20 backdrop-blur-md border border-white/30 text-white rounded-full hover:bg-white/30 transition font-medium shadow-sm"
-          >
-            <LogOut size={18} /> Logout
-          </button>
+
+              {/* Mobile Logout Button (Visible only on small screens inside sidebar) */}
+              <button 
+                onClick={logout} 
+                className="md:hidden mt-4 flex items-center gap-3 px-5 py-4 rounded-2xl transition-all font-medium text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40"
+              >
+                <LogOut size={20} /> Logout
+              </button>
             </div>
 
             {/* Form Area */}
