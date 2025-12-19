@@ -94,7 +94,7 @@ const FireworksDisplay = () => {
 };
 
 export default function CustomerBookingClient() {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const { user } = useAuth();
   
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -110,6 +110,8 @@ export default function CustomerBookingClient() {
   
   // Modals
   const [showBookingModal, setShowBookingModal] = useState<Room | null>(null);
+  
+  // UPDATE MODAL STATE
   const [showUpdateModal, setShowUpdateModal] = useState<Booking | null>(null);
   const [newRoomId, setNewRoomId] = useState('');
 
@@ -118,13 +120,13 @@ export default function CustomerBookingClient() {
   const [bookingStatusTab, setBookingStatusTab] = useState<'all' | 'pending' | 'confirmed' | 'cancelled' | 'completed'>('all');
   const [showAvailableOnly, setShowAvailableOnly] = useState(true);
   
-  // Confirmation Modals
+  // Confirmation Modals (Cancellation & General Confirm)
   const [cancelConfirmation, setCancelConfirmation] = useState<string | null>(null);
   
   const [notificationCount, setNotificationCount] = useState(0);
   const [minTimePassed, setMinTimePassed] = useState(false);
   
-  // SUCCESS STATE
+  // SUCCESS STATE (Used for Payments AND Updates)
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
@@ -171,7 +173,7 @@ export default function CustomerBookingClient() {
 
           if (res.data.status === 'success' || res.status === 200) {
             setSuccessMessage(t('paymentConfirmed') || 'Payment Successful! Room Booked.');
-            setShowSuccessModal(true); 
+            setShowSuccessModal(true); // Trigger Fireworks
             await fetchRooms();
             await fetchBookings();
             setTab('bookings'); 
@@ -257,9 +259,11 @@ export default function CustomerBookingClient() {
         }, { withCredentials: true });
 
         if (res.data.paymentRequired && res.data.checkoutUrl) {
+            // If paying difference, redirect
             alert(`Update requires additional payment of ETB ${res.data.priceDifference}. Redirecting...`);
             window.location.href = res.data.checkoutUrl;
         } else {
+            // SUCCESS ANIMATION FOR UPDATE
             setShowUpdateModal(null);
             setSuccessMessage(t('updateSuccessfully') || "Booking Updated Successfully!");
             setShowSuccessModal(true); // Trigger Fireworks
@@ -270,25 +274,17 @@ export default function CustomerBookingClient() {
     }
   };
 
-  // --- CANCEL BOOKING ---
   const handleCancelBooking = async (bookingId: string) => {
-    if (!bookingId) return;
     try {
-      // Using POST for cancellation to avoid 405 Method Not Allowed issues on some servers
-      await axios.post(`${API_BASE}/api/bookings/${bookingId}/cancel`, {}, { 
-          withCredentials: true 
-      });
-
-      setCancelConfirmation(null);
-      setSuccessMessage(t('bookingCancelled' as any) || "Booking Cancelled - 95% Refund Initiated");
+      await axios.put(`${API_BASE}/api/bookings/${bookingId}/cancel`, {}, { withCredentials: true });
+      // SUCCESS ANIMATION FOR CANCEL (Instead of alert)
+      setSuccessMessage(t('bookingCancelled' as any) || "Booking Cancelled");
       setShowSuccessModal(true); // Trigger Fireworks
+      setCancelConfirmation(null);
       fetchBookings();
       fetchRooms();
     } catch (err: any) {
-      console.error("Cancel Error:", err);
-      const msg = err.response?.data?.message || 'Failed to cancel booking';
-      alert(msg);
-      setCancelConfirmation(null);
+      alert(err.response?.data?.message || 'Failed to cancel booking');
     }
   };
 
@@ -363,11 +359,12 @@ export default function CustomerBookingClient() {
   return (
     <div className="relative min-h-screen bg-gray-50 pb-20">
       
+      {/* FIREWORKS DISPLAY */}
       <AnimatePresence>
         {showSuccessModal && <FireworksDisplay />}
       </AnimatePresence>
 
-      {/* UNIFIED SUCCESS MODAL */}
+      {/* UNIFIED SUCCESS MODAL (PAYMENT / UPDATE / CANCEL) */}
       <AnimatePresence>
         {showSuccessModal && (
           <motion.div
@@ -421,10 +418,18 @@ export default function CustomerBookingClient() {
 
       <AnimatePresence>
         {imageCarousel && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4" onClick={() => setImageCarousel(null)}>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4"
+            onClick={() => setImageCarousel(null)}
+          >
             <div className="relative max-w-4xl w-full" onClick={e => e.stopPropagation()}>
               <ImageCarousel images={imageCarousel.map(getImageUrl)} />
-              <button onClick={() => setImageCarousel(null)} className="absolute top-4 right-4 p-2 bg-black/50 rounded-full text-white"><X size={24} /></button>
+              <button onClick={() => setImageCarousel(null)} className="absolute top-4 right-4 p-2 bg-black/50 rounded-full text-white">
+                <X size={24} />
+              </button>
             </div>
           </motion.div>
         )}
@@ -441,14 +446,22 @@ export default function CustomerBookingClient() {
           </div>
         </div>
         <div className="flex p-1 bg-white rounded-xl border border-gray-200 shadow-sm">
-          <button onClick={() => setTab('rooms')} className={`px-6 py-2.5 rounded-lg font-bold transition-all ${tab === 'rooms' ? 'bg-amber-100 text-amber-800' : 'text-gray-500 hover:bg-gray-50'}`}>{t('browseRooms') || "Rooms"}</button>
-          <button onClick={() => setTab('bookings')} className={`px-6 py-2.5 rounded-lg font-bold transition-all relative ${tab === 'bookings' ? 'bg-amber-100 text-amber-800' : 'text-gray-500 hover:bg-gray-50'}`}>{t('myBookings') || "My Bookings"}{notificationCount > 0 && (<span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full border-2 border-white">{notificationCount}</span>)}</button>
+          <button onClick={() => setTab('rooms')} className={`px-6 py-2.5 rounded-lg font-bold transition-all ${tab === 'rooms' ? 'bg-amber-100 text-amber-800' : 'text-gray-500 hover:bg-gray-50'}`}>
+            {t('browseRooms') || "Rooms"}
+          </button>
+          <button onClick={() => setTab('bookings')} className={`px-6 py-2.5 rounded-lg font-bold transition-all relative ${tab === 'bookings' ? 'bg-amber-100 text-amber-800' : 'text-gray-500 hover:bg-gray-50'}`}>
+            {t('myBookings') || "My Bookings"}
+            {notificationCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full border-2 border-white">
+                {notificationCount}
+              </span>
+            )}
+          </button>
         </div>
       </div>
 
       {tab === 'rooms' && (
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }}>
-          {/* ... (Keep filters same as before) ... */}
           <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 mb-8 flex flex-col lg:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
@@ -475,34 +488,63 @@ export default function CustomerBookingClient() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-8">
             {filteredRooms.length > 0 ? (
               filteredRooms.map(room => (
-                <motion.div key={room._id} whileHover={{ y: -5 }} className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 group">
-                   <div className="relative h-64 overflow-hidden">
+                <motion.div 
+                  key={room._id} 
+                  whileHover={{ y: -5 }}
+                  className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 group"
+                >
+                  <div className="relative h-64 overflow-hidden">
                     {room.images?.[0] ? (
                       <img src={getImageUrl(room.images[0])} alt={`Room ${room.roomNumber}`} className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700 cursor-pointer" onClick={() => setImageCarousel(room.images!)} />
                     ) : (
                       <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-300"><ImageIcon size={48} /></div>
                     )}
                     <div className="absolute top-4 left-4 flex gap-2">
-                       <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wide rounded-full backdrop-blur-md shadow-sm ${room.availability ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'}`}>{room.availability ? (t('available') || "Available") : (t('occupied') || "Occupied")}</span>
+                       <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wide rounded-full backdrop-blur-md shadow-sm ${room.availability ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'}`}>
+                        {room.availability ? (t('available') || "Available") : (t('occupied') || "Occupied")}
+                      </span>
                     </div>
                   </div>
+                  
                   <div className="p-6">
-                     <div className="flex justify-between items-start mb-2">
+                    <div className="flex justify-between items-start mb-2">
                         <h3 className="text-xl font-bold text-gray-900">{t('room') || "Room"} {room.roomNumber}</h3>
-                        <div className="text-right"><span className="block text-2xl font-black text-amber-600">ETB {room.price}</span><span className="text-xs text-gray-400">{language === 'am' ? '' : '/night'}</span></div>
+                        <div className="text-right">
+                            <span className="block text-2xl font-black text-amber-600">ETB {room.price}</span>
+                            <span className="text-xs text-gray-400">{language === 'am' ? '' : '/night'}</span>
+                        </div>
                     </div>
+                    
                     <p className="text-gray-500 text-sm mb-6 line-clamp-2 h-10">{room.description}</p>
+                    
                     <div className="flex items-center gap-4 mb-6 text-gray-400 text-sm border-t border-b border-gray-50 py-4">
                       <div className="flex items-center gap-1"><Users size={16} className="text-amber-500" /> {room.capacity}</div>
                       <div className="flex items-center gap-1"><Bed size={16} className="text-amber-500" /> {room.numberOfBeds}</div>
                       <div className="flex items-center gap-1"><Bath size={16} className="text-amber-500" /> {room.bathrooms}</div>
                     </div>
-                    <button onClick={() => { if (!room.availability) { alert(t('alreadyReserved')); return; } setShowBookingModal(room); }} disabled={!room.availability} className={`w-full py-3.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${room.availability ? 'bg-gray-900 text-white hover:bg-amber-600 shadow-lg hover:shadow-amber-200' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>{room.availability ? (t('bookNow') || "Book Now") : (t('notAvailable') || "Unavailable")}</button>
+
+                    <button 
+                      onClick={() => { if (!room.availability) { alert(t('alreadyReserved')); return; } setShowBookingModal(room); }} 
+                      disabled={!room.availability}
+                      className={`w-full py-3.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                        room.availability 
+                        ? 'bg-gray-900 text-white hover:bg-amber-600 shadow-lg hover:shadow-amber-200' 
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      }`}
+                    >
+                      {room.availability ? (t('bookNow') || "Book Now") : (t('notAvailable') || "Unavailable")}
+                    </button>
                   </div>
                 </motion.div>
               ))
             ) : (
-              <div className="col-span-full py-20 text-center"><div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300"><Search size={32} /></div><h3 className="text-xl font-bold text-gray-900">No rooms found</h3><p className="text-gray-500">Try adjusting your search or filters</p></div>
+              <div className="col-span-full py-20 text-center">
+                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300">
+                    <Search size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900">No rooms found</h3>
+                <p className="text-gray-500">Try adjusting your search or filters</p>
+              </div>
             )}
           </div>
         </motion.div>
@@ -510,87 +552,114 @@ export default function CustomerBookingClient() {
 
       {tab === 'bookings' && (
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }} className="max-w-5xl mx-auto">
-          {/* ... (Keep filters) ... */}
+          <div className="flex overflow-x-auto gap-4 pb-4 mb-6 border-b border-gray-200 no-scrollbar">
+            {['all', 'pending', 'confirmed', 'completed', 'cancelled'].map(s => (
+              <button key={s} className={`flex items-center gap-2 px-5 py-2 rounded-full font-bold whitespace-nowrap transition-all ${bookingStatusTab === s ? 'bg-amber-100 text-amber-800 ring-2 ring-amber-500 ring-offset-2' : 'bg-white text-gray-500 hover:bg-gray-50'}`} onClick={() => setBookingStatusTab(s as any)}>
+                 {s === 'all' ? <ListChecks size={18} /> : s === 'pending' ? <Clock size={18} /> : s === 'confirmed' ? <CheckCircle size={18} /> : s === 'completed' ? <History size={18} /> : <X size={18} />} 
+                 <span className="capitalize">{t(s as any) || s}</span>
+              </button>
+            ))}
+          </div>
+
           <div className="space-y-6">
-            {filteredBookings.map(booking => {
+            {filteredBookings.length > 0 ? (
+              filteredBookings.map(booking => {
                 const roomImage = booking.room?.images?.[0] ? getImageUrl(booking.room.images[0]) : null;
                 return (
                   <motion.div key={booking._id} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col md:flex-row gap-6 relative overflow-hidden">
                     <div className="w-full md:w-56 h-40 bg-gray-100 rounded-2xl overflow-hidden shrink-0">
                        {roomImage ? <img src={roomImage} className="w-full h-full object-cover" /> : <div className="flex items-center justify-center h-full"><ImageIcon className="text-gray-300" /></div>}
                     </div>
+                    
                     <div className="flex-1">
-                       <div className="flex justify-between items-start mb-2">
-                        <div><h3 className="text-xl font-bold text-gray-900">{t('room') || "Room"} {booking.room?.roomNumber || 'N/A'}</h3><p className="text-amber-600 font-medium capitalize">{booking.room?.type} Suite</p></div>
-                        <span className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${booking.status === 'confirmed' ? 'bg-green-100 text-green-700' : booking.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : booking.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'}`}>{booking.status}</span>
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                             <h3 className="text-xl font-bold text-gray-900">{t('room') || "Room"} {booking.room?.roomNumber || 'N/A'}</h3>
+                             <p className="text-amber-600 font-medium capitalize">{booking.room?.type} Suite</p>
+                        </div>
+                        <span className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${
+                            booking.status === 'confirmed' ? 'bg-green-100 text-green-700' :
+                            booking.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                            booking.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
+                        }`}>
+                            {booking.status}
+                        </span>
                       </div>
+
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
+                        
                         {renderDateRange(booking.checkIn, booking.checkOut)}
-                         <div className="bg-gray-50 p-3 rounded-xl"><p className="text-xs text-gray-400 uppercase font-bold mb-1">{t('guestsLabel') || "Guests"}</p><p className="font-bold text-gray-700">{booking.guests}</p></div>
-                         <div className="bg-gray-50 p-3 rounded-xl"><p className="text-xs text-gray-400 uppercase font-bold mb-1">{t('total') || "Total"}</p><p className="font-bold text-amber-600">ETB {booking.totalPrice}</p></div>
+
+                         <div className="bg-gray-50 p-3 rounded-xl">
+                            <p className="text-xs text-gray-400 uppercase font-bold mb-1">{t('guestsLabel') || "Guests"}</p>
+                            <p className="font-bold text-gray-700">{booking.guests}</p>
+                        </div>
+                         <div className="bg-gray-50 p-3 rounded-xl">
+                            <p className="text-xs text-gray-400 uppercase font-bold mb-1">{t('total') || "Total"}</p>
+                            <p className="font-bold text-amber-600">ETB {booking.totalPrice}</p>
+                        </div>
                       </div>
 
                       <div className="mt-6 flex justify-end gap-3">
                         {(booking.status === 'pending' || booking.status === 'confirmed') && (
                             <>
-                                <button onClick={() => openUpdateModal(booking)} className="text-amber-600 hover:text-amber-800 font-bold text-sm px-4 py-2 hover:bg-amber-50 rounded-lg transition flex items-center gap-2 border border-amber-200"><Edit3 size={16} />{t('edit' as any) || "Edit"}</button>
-                                <button onClick={() => setCancelConfirmation(booking._id)} className="text-red-500 hover:text-red-700 font-bold text-sm px-4 py-2 hover:bg-red-50 rounded-lg transition border border-red-200">{t('cancelBooking') || "Cancel"}</button>
+                                <button 
+                                    onClick={() => openUpdateModal(booking)}
+                                    className="text-amber-600 hover:text-amber-800 font-bold text-sm px-4 py-2 hover:bg-amber-50 rounded-lg transition flex items-center gap-2 border border-amber-200"
+                                >
+                                    <Edit3 size={16} />
+                                    {t('edit' as any) || "Edit"}
+                                </button>
+
+                                <button onClick={() => setCancelConfirmation(booking._id)} className="text-red-500 hover:text-red-700 font-bold text-sm px-4 py-2 hover:bg-red-50 rounded-lg transition border border-red-200">
+                                    {t('cancelBooking') || "Cancel"}
+                                </button>
                             </>
                         )}
-                        {booking.status === 'pending' && (<button onClick={() => handlePayNow(booking._id)} className="bg-amber-600 text-white px-6 py-2 rounded-lg font-bold shadow-md hover:shadow-lg hover:bg-amber-700 transition flex items-center gap-2"><span>{t('payNow' as any) || "Pay Now"}</span><ArrowRight size={16} /></button>)}
+                        
+                        {/* PAY NOW BUTTON */}
+                        {booking.status === 'pending' && (
+                            <button onClick={() => handlePayNow(booking._id)} className="bg-amber-600 text-white px-6 py-2 rounded-lg font-bold shadow-md hover:shadow-lg hover:bg-amber-700 transition flex items-center gap-2">
+                                <span>{t('payNow' as any) || "Pay Now"}</span>
+                                <ArrowRight size={16} />
+                            </button>
+                        )}
                       </div>
                     </div>
                   </motion.div>
                 );
-            })}
+              })
+            ) : (
+              <div className="text-center py-20">
+                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300">
+                    <ListChecks size={32} />
+                </div>
+                <h3 className="text-gray-900 font-bold text-lg">No bookings found</h3>
+              </div>
+            )}
           </div>
         </motion.div>
       )}
 
-      {/* CONFIRMATION MODAL */}
       <AnimatePresence>
         {cancelConfirmation && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setCancelConfirmation(null)}>
                 <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className="bg-white rounded-3xl p-8 max-w-sm w-full text-center" onClick={e => e.stopPropagation()}>
-                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600"><X size={32} /></div>
+                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
+                        <X size={32} />
+                    </div>
                     <h3 className="text-xl font-bold text-gray-900 mb-2">{t('confirmCancellation') || "Cancel Booking?"}</h3>
                     <p className="text-gray-500 mb-6">{t('refundNotice') || "This action cannot be undone."}</p>
                     <div className="flex gap-3">
                         <button onClick={() => setCancelConfirmation(null)} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition">{t('keepBooking') || "No, Keep"}</button>
-                        <button onClick={() => handleCancelBooking(cancelConfirmation)} className="flex-1 py-3 bg-red-600 text-white hover:bg-red-700 rounded-xl font-bold shadow-lg transition">{t('yesCancel') || "Yes, Cancel"}</button>
+                        <button onClick={() => { handleCancelBooking(cancelConfirmation); setCancelConfirmation(null); }} className="flex-1 py-3 bg-red-600 text-white hover:bg-red-700 rounded-xl font-bold shadow-lg transition">{t('yesCancel') || "Yes, Cancel"}</button>
                     </div>
                 </motion.div>
             </motion.div>
         )}
       </AnimatePresence>
 
-       <AnimatePresence>
-        {showUpdateModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowUpdateModal(null)}>
-            <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-8" onClick={e => e.stopPropagation()}>
-              <div className="flex justify-between items-center mb-8">
-                  <h2 className="text-2xl font-black text-gray-900">{t('update' as any) || "Update Booking"}</h2>
-                  <button onClick={() => setShowUpdateModal(null)} className="p-2 hover:bg-gray-100 rounded-full transition"><X size={20} /></button>
-              </div>
-              <div className="space-y-4">
-                <div className="space-y-2"><label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Change Room (Optional)</label><div className="relative"><Bed className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><select value={newRoomId} onChange={(e) => setNewRoomId(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 outline-none font-medium appearance-none">{rooms.map(room => (<option key={room._id} value={room._id}>{room.roomNumber} - {room.type} (ETB {room.price})</option>))}</select></div></div>
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2"><label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('checkInLabel')}</label><div className="relative"><Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input type="date" value={checkIn} onChange={e => setCheckIn(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none font-medium" /></div></div>
-                    <div className="space-y-2"><label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('checkOutLabel')}</label><div className="relative"><Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input type="date" value={checkOut} onChange={e => setCheckOut(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none font-medium" /></div></div>
-                </div>
-                <div className="space-y-2"><label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('guestsLabel')}</label><div className="relative"><Users className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input type="number" min="1" value={guests} onChange={e => setGuests(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none font-medium" /></div></div>
-                <div className="p-4 bg-amber-50 text-amber-800 text-sm rounded-xl border border-amber-100 flex gap-2"><DollarSign size={16} className="shrink-0 mt-0.5" />If the new total is higher, you will be redirected to pay the difference.</div>
-              </div>
-              <div className="flex gap-4 mt-8 pt-6 border-t border-gray-100">
-                <button onClick={() => setShowUpdateModal(null)} className="flex-1 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition">{t('cancel')}</button>
-                <button onClick={handleUpdateBooking} className="flex-[2] py-3.5 bg-gray-900 text-white rounded-xl font-bold hover:bg-amber-600 shadow-xl hover:shadow-amber-200 transition flex items-center justify-center gap-2"><span>{t('saveChanges' as any) || "Update Booking"}</span></button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-       </AnimatePresence>
-
-       <AnimatePresence>
+      <AnimatePresence>
         {showBookingModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowBookingModal(null)}>
             <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-8" onClick={e => e.stopPropagation()}>
@@ -601,20 +670,117 @@ export default function CustomerBookingClient() {
               
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2"><label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('checkInLabel') || "Check In"}</label><div className="relative"><Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input type="date" value={checkIn} onChange={e => setCheckIn(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none font-medium" /></div></div>
-                    <div className="space-y-2"><label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('checkOutLabel') || "Check Out"}</label><div className="relative"><Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input type="date" value={checkOut} onChange={e => setCheckOut(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none font-medium" /></div></div>
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('checkInLabel') || "Check In"}</label>
+                        <div className="relative">
+                            <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <input type="date" value={checkIn} onChange={e => setCheckIn(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none font-medium" />
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('checkOutLabel') || "Check Out"}</label>
+                        <div className="relative">
+                            <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <input type="date" value={checkOut} onChange={e => setCheckOut(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none font-medium" />
+                        </div>
+                    </div>
                 </div>
-                <div className="space-y-2"><label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('guestsLabel') || "Guests"}</label><div className="relative"><Users className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input type="number" min="1" max={showBookingModal.capacity} value={guests} onChange={e => setGuests(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none font-medium" /></div></div>
+                
+                <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('guestsLabel') || "Guests"}</label>
+                    <div className="relative">
+                        <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <input type="number" min="1" max={showBookingModal.capacity} value={guests} onChange={e => setGuests(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none font-medium" />
+                    </div>
+                </div>
               </div>
 
               <div className="flex gap-4 mt-8 pt-6 border-t border-gray-100">
                 <button onClick={() => setShowBookingModal(null)} className="flex-1 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition">{t('cancel') || "Cancel"}</button>
-                <button onClick={() => handleBooking(showBookingModal._id)} className="flex-[2] py-3.5 bg-gray-900 text-white rounded-xl font-bold hover:bg-amber-600 shadow-xl hover:shadow-amber-200 transition flex items-center justify-center gap-2"><span>{t('proceedPayment' as any) || "Proceed to Payment"}</span><CreditCard size={18} /></button>
+                <button onClick={() => handleBooking(showBookingModal._id)} className="flex-[2] py-3.5 bg-gray-900 text-white rounded-xl font-bold hover:bg-amber-600 shadow-xl hover:shadow-amber-200 transition flex items-center justify-center gap-2">
+                    <span>{t('proceedPayment' as any) || "Proceed to Payment"}</span>
+                    <CreditCard size={18} />
+                </button>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AnimatePresence>
+        {showUpdateModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowUpdateModal(null)}>
+            <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-8" onClick={e => e.stopPropagation()}>
+              <div className="flex justify-between items-center mb-8">
+                  <h2 className="text-2xl font-black text-gray-900">{t('update' as any) || "Update Booking"}</h2>
+                  <button onClick={() => setShowUpdateModal(null)} className="p-2 hover:bg-gray-100 rounded-full transition"><X size={20} /></button>
+              </div>
+              
+              <div className="space-y-4">
+                {/* 1. Room Selection Dropdown */}
+                <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Change Room (Optional)</label>
+                    <div className="relative">
+                        <Bed className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <select 
+                            value={newRoomId} 
+                            onChange={(e) => setNewRoomId(e.target.value)}
+                            className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 outline-none font-medium appearance-none"
+                        >
+                            {/* List all available room types/numbers */}
+                            {rooms.map(room => (
+                                <option key={room._id} value={room._id}>
+                                    {room.roomNumber} - {room.type} (ETB {room.price})
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+
+                {/* 2. Dates */}
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('checkInLabel')}</label>
+                        <div className="relative">
+                            <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <input type="date" value={checkIn} onChange={e => setCheckIn(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none font-medium" />
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('checkOutLabel')}</label>
+                        <div className="relative">
+                            <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <input type="date" value={checkOut} onChange={e => setCheckOut(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none font-medium" />
+                        </div>
+                    </div>
+                </div>
+                
+                {/* 3. Guests */}
+                <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('guestsLabel')}</label>
+                    <div className="relative">
+                        <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <input type="number" min="1" value={guests} onChange={e => setGuests(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none font-medium" />
+                    </div>
+                </div>
+                
+                <div className="p-4 bg-amber-50 text-amber-800 text-sm rounded-xl border border-amber-100 flex gap-2">
+                    <DollarSign size={16} className="shrink-0 mt-0.5" />
+                    If the new total is higher, you will be redirected to pay the difference.
+                </div>
+              </div>
+
+              <div className="flex gap-4 mt-8 pt-6 border-t border-gray-100">
+                <button onClick={() => setShowUpdateModal(null)} className="flex-1 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition">{t('cancel')}</button>
+                <button onClick={handleUpdateBooking} className="flex-[2] py-3.5 bg-gray-900 text-white rounded-xl font-bold hover:bg-amber-600 shadow-xl hover:shadow-amber-200 transition flex items-center justify-center gap-2">
+                    <span>{t('saveChanges' as any) || "Update Booking"}</span>
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+       </AnimatePresence>
+
     </div>
   );
 }
