@@ -274,17 +274,46 @@ export default function CustomerBookingClient() {
     }
   };
 
+  // const handleCancelBooking = async (bookingId: string) => {
+  //   try {
+  //     await axios.put(`${API_BASE}/api/bookings/${bookingId}/cancel`, {}, { withCredentials: true });
+  //     // SUCCESS ANIMATION FOR CANCEL (Instead of alert)
+  //     setSuccessMessage(t('bookingCancelled' as any) || "Booking Cancelled");
+  //     setShowSuccessModal(true); // Trigger Fireworks
+  //     setCancelConfirmation(null);
+  //     fetchBookings();
+  //     fetchRooms();
+  //   } catch (err: any) {
+  //     alert(err.response?.data?.message || 'Failed to cancel booking');
+  //   }
+  // };
+   // --- MODIFIED: Handle Cancel Booking ---
   const handleCancelBooking = async (bookingId: string) => {
+    if (!bookingId) return;
+    
     try {
-      await axios.put(`${API_BASE}/api/bookings/${bookingId}/cancel`, {}, { withCredentials: true });
-      // SUCCESS ANIMATION FOR CANCEL (Instead of alert)
-      setSuccessMessage(t('bookingCancelled' as any) || "Booking Cancelled");
-      setShowSuccessModal(true); // Trigger Fireworks
+      // 1. Send PUT request to cancel
+      // Ensure API_BASE does not have a trailing slash
+      await axios.put(`${API_BASE}/api/bookings/${bookingId}/cancel`, {}, { 
+          withCredentials: true 
+      });
+
+      // 2. Close Confirmation Modal
       setCancelConfirmation(null);
+
+      // 3. Show Success Modal with Fireworks
+      setSuccessMessage(t('bookingCancelled' as any) || "Booking Cancelled - 95% Refund Initiated");
+      setShowSuccessModal(true);
+
+      // 4. Refresh Data
       fetchBookings();
-      fetchRooms();
+      fetchRooms(); // To update room availability display
+
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to cancel booking');
+      console.error("Cancel Error:", err);
+      const msg = err.response?.data?.message || 'Failed to cancel booking';
+      alert(msg);
+      setCancelConfirmation(null);
     }
   };
 
