@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '../../../../context/AuthContext';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Variants } from 'framer-motion'; // Imported Variants type
 import { 
   CheckCircle, Upload, Lock, User, Mail, LogOut, 
   Camera, Eye, EyeOff, ShieldCheck, Sparkles 
@@ -10,8 +10,8 @@ import {
 import axios from 'axios';
 import BackButton from '../../manager/ui/BackButton';
 
-// --- ANIMATION VARIANTS ---
-const containerVariants = {
+// --- ANIMATION VARIANTS (Typed correctly) ---
+const containerVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: { 
     opacity: 1, 
@@ -20,7 +20,7 @@ const containerVariants = {
   }
 };
 
-const inputVariants = {
+const inputVariants: Variants = {
   focus: { scale: 1.02, borderColor: "#F59E0B", boxShadow: "0px 4px 20px rgba(245, 158, 11, 0.1)" },
   blur: { scale: 1, borderColor: "#E5E7EB", boxShadow: "none" }
 };
@@ -198,7 +198,7 @@ export default function SettingsPage() {
                                     onChange={e => setForm({ ...form, firstName: e.target.value })}
                                     className="w-full pl-12 pr-4 py-3.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl outline-none transition-all font-medium"
                                   />
-                               </motion.div>
+                                </motion.div>
                             </div>
                             <div className="space-y-2">
                                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Last Name</label>
@@ -209,7 +209,7 @@ export default function SettingsPage() {
                                     onChange={e => setForm({ ...form, lastName: e.target.value })}
                                     className="w-full pl-12 pr-4 py-3.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl outline-none transition-all font-medium"
                                   />
-                               </motion.div>
+                                </motion.div>
                             </div>
                             <div className="space-y-2 md:col-span-2">
                                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Email Address</label>
@@ -221,7 +221,7 @@ export default function SettingsPage() {
                                     onChange={e => setForm({ ...form, email: e.target.value })}
                                     className="w-full pl-12 pr-4 py-3.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl outline-none transition-all font-medium"
                                   />
-                               </motion.div>
+                                </motion.div>
                             </div>
                          </div>
                       </motion.div>
