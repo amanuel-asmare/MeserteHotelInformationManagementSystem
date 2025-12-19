@@ -95,14 +95,14 @@ export default function SettingsPage() {
         <div className="flex justify-between items-center mb-8">
           <BackButton />
           
-          {/* Header Logout Button - Visible & Styled */}
+          {/* Header Logout Button - Visible & Styled 
           <button 
             onClick={logout} 
             className="flex items-center gap-2 px-5 py-2.5 bg-white/20 backdrop-blur-md border border-white/40 text-white rounded-full hover:bg-white/30 hover:scale-105 transition-all font-bold shadow-md"
           >
             <LogOut size={20} /> 
             <span>Logout</span>
-          </button>
+          </button>*/}
         </div>
 
         <motion.div 
