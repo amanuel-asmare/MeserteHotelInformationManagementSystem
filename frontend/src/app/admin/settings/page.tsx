@@ -147,7 +147,7 @@ export default function SettingsPage() {
               {/* Mobile Logout Button (Visible only on small screens inside sidebar) */}
               <button 
                 onClick={logout} 
-                className="md:hidden mt-4 flex items-center gap-3 px-5 py-4 rounded-2xl transition-all font-medium text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40"
+                className=" mt-4 flex items-center gap-3 px-5 py-4 rounded-2xl transition-all font-medium text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40"
               >
                 <LogOut size={20} /> Logout
               </button>
