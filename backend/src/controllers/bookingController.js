@@ -381,33 +381,36 @@ exports.markBookingAsCompleted = async(req, res) => {
 };
 // backend/src/controllers/bookingController.js
 
-// ... existing imports ...
 
-// --- NEW: Update Booking (Reschedule) ---
+// --- NEW: Update Booking (Reschedule / Upgrade Room / Payment Handling) ---
 exports.updateBooking = async(req, res) => {
     const { id } = req.params;
-    const { checkIn, checkOut, guests } = req.body;
+    const { checkIn, checkOut, guests, newRoomId } = req.body; // Added newRoomId
 
     try {
         const booking = await Booking.findById(id).populate('room');
+        if (!booking) return res.status(404).json({ message: 'Booking not found' });
 
-        if (!booking) {
-            return res.status(404).json({ message: 'Booking not found' });
-        }
-
-        // Only allow update if status is pending or confirmed
+        // 1. Validation
         if (booking.status !== 'pending' && booking.status !== 'confirmed') {
-            return res.status(400).json({ message: 'Cannot update a completed or cancelled booking' });
+            return res.status(400).json({ message: 'Cannot update this booking' });
         }
-
-        // Validate Ownership (Security)
         if (booking.user.toString() !== req.user.id) {
-            return res.status(403).json({ message: 'Not authorized to update this booking' });
+            return res.status(403).json({ message: 'Not authorized' });
         }
 
-        const room = await Room.findById(booking.room._id);
+        // 2. Determine Room (Old vs New)
+        let room = booking.room;
+        let roomIdToUse = booking.room._id;
 
-        // Date Validation
+        if (newRoomId && newRoomId !== booking.room._id.toString()) {
+            const newRoom = await Room.findById(newRoomId);
+            if (!newRoom) return res.status(404).json({ message: 'New room not found' });
+            room = newRoom;
+            roomIdToUse = newRoomId;
+        }
+
+        // 3. Date Validation
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const newCheckIn = new Date(checkIn);
@@ -417,41 +420,92 @@ exports.updateBooking = async(req, res) => {
             return res.status(400).json({ message: 'Invalid dates selected' });
         }
 
-        // Check Availability for NEW dates (excluding current booking ID)
+        // 4. Check Availability (Exclude self)
         const conflictingBooking = await Booking.findOne({
-            _id: { $ne: booking._id }, // Exclude self
-            room: booking.room._id,
+            _id: { $ne: booking._id },
+            room: roomIdToUse,
             $or: [
                 { checkIn: { $lte: newCheckOut, $gte: newCheckIn } },
                 { checkOut: { $lte: newCheckOut, $gte: newCheckIn } },
                 { checkIn: { $lte: newCheckIn }, checkOut: { $gte: newCheckOut } }
             ],
-            status: { $in: ['confirmed', 'pending'] }
+            status: { $in: ['confirmed', 'pending', 'checked-in'] }
         });
 
         if (conflictingBooking) {
-            return res.status(400).json({ message: 'Room is not available for these new dates' });
+            return res.status(400).json({ message: 'Room not available for selected dates' });
         }
 
-        // Recalculate Price
-        // Note: If price increases, you might need extra payment logic.
-        // For simplicity here, we update the price. In a real strict app, you'd trigger a payment difference flow.
-        const totalPrice = calculateTotalPrice(room.price, newCheckIn, newCheckOut);
+        // 5. Calculate Price Difference
+        const oldPrice = booking.totalPrice;
+        const newPrice = calculateTotalPrice(room.price, newCheckIn, newCheckOut);
+        const priceDifference = newPrice - oldPrice;
 
+        // 6. Update Booking Data (Tentative)
         booking.checkIn = newCheckIn;
         booking.checkOut = newCheckOut;
         booking.guests = guests;
-        booking.totalPrice = totalPrice;
+        booking.room = roomIdToUse; // Update room reference
+        booking.totalPrice = newPrice; // Update to new total price
 
-        await booking.save();
+        // 7. Handle Payment Logic
+        if (priceDifference > 0) {
+            // --- ADDITIONAL PAYMENT REQUIRED ---
 
-        res.json({ message: 'Booking updated successfully', booking });
+            // Generate a specialized transaction ref for the update
+            const tx_ref = `UPDATE-${booking._id}-${Date.now()}`;
+
+            // We temporarily mark it as pending payment for the difference
+            // In a real system, you might want a separate 'Transaction' model, 
+            // but here we utilize the existing Chapa flow.
+
+            const user = await User.findById(req.user.id);
+
+            const chapaResponse = await axios.post(
+                'https://api.chapa.co/v1/transaction/initialize', {
+                    amount: priceDifference, // Only charge the difference
+                    currency: 'ETB',
+                    email: user.email,
+                    first_name: user.firstName,
+                    last_name: user.lastName,
+                    tx_ref,
+                    callback_url: `${process.env.API_URL}/api/bookings/verify-payment`,
+                    return_url: `${process.env.CLIENT_URL}/customer/bookings?verify_tx_ref=${tx_ref}`
+                }, { headers: { Authorization: `Bearer ${process.env.CHAPA_SECRET_KEY}` } }
+            );
+
+            // Important: We save the booking updates, but we might want to flag that 
+            // the *extra* payment is pending. 
+            // Since our verifyPayment logic checks 'tx_ref', we update paymentId to the NEW ref.
+            booking.paymentId = tx_ref;
+            booking.paymentStatus = 'pending'; // Revert to pending until extra paid
+            await booking.save();
+
+            return res.json({
+                message: 'Update requires additional payment',
+                paymentRequired: true,
+                priceDifference,
+                checkoutUrl: chapaResponse.data.data.checkout_url
+            });
+
+        } else {
+            // --- NO EXTRA PAYMENT (Equal or Refund scenario) ---
+            // Just save the updates.
+            // Note: Automated partial refunds are complex. For now, we assume no refund or manual handling.
+            await booking.save();
+            return res.json({
+                message: 'Booking updated successfully',
+                paymentRequired: false,
+                booking
+            });
+        }
 
     } catch (err) {
         console.error("Update Booking Error:", err);
         res.status(500).json({ message: err.message });
     }
 };
+// ...
 
 
 /*// backend/src/controllers/bookingController.js

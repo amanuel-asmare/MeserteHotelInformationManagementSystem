@@ -110,7 +110,10 @@ export default function CustomerBookingClient() {
   
   // Modals
   const [showBookingModal, setShowBookingModal] = useState<Room | null>(null);
+  
+  // UPDATE MODAL STATE
   const [showUpdateModal, setShowUpdateModal] = useState<Booking | null>(null);
+  const [newRoomId, setNewRoomId] = useState(''); // Track room change in update modal
 
   const [imageCarousel, setImageCarousel] = useState<string[] | null>(null);
   const [tab, setTab] = useState<'rooms' | 'bookings'>('rooms');
@@ -235,26 +238,35 @@ export default function CustomerBookingClient() {
     }
   };
 
-  // --- UPDATE BOOKING (RESCHEDULE) ---
+  // --- UPDATE BOOKING (RESCHEDULE / CHANGE ROOM) ---
   const openUpdateModal = (booking: Booking) => {
     setShowUpdateModal(booking);
     setCheckIn(new Date(booking.checkIn).toISOString().split('T')[0]);
     setCheckOut(new Date(booking.checkOut).toISOString().split('T')[0]);
     setGuests(booking.guests.toString());
+    setNewRoomId(booking.room?._id || ''); // Default to current room
   };
 
   const handleUpdateBooking = async () => {
     if (!showUpdateModal) return;
     try {
-        await axios.put(`${API_BASE}/api/bookings/${showUpdateModal._id}/update`, {
+        const res = await axios.put(`${API_BASE}/api/bookings/${showUpdateModal._id}/update`, {
             checkIn,
             checkOut,
-            guests: Number(guests)
+            guests: Number(guests),
+            newRoomId: newRoomId // Send selected room ID
         }, { withCredentials: true });
 
-        alert(t('updateSuccessfully') || "Booking Updated Successfully!");
-        setShowUpdateModal(null);
-        fetchBookings(); // Refresh list
+        if (res.data.paymentRequired && res.data.checkoutUrl) {
+            // Case A: Price increased, redirect to pay difference
+            alert(`Update requires additional payment of ETB ${res.data.priceDifference}. Redirecting...`);
+            window.location.href = res.data.checkoutUrl;
+        } else {
+            // Case B: No extra payment
+            alert(t('updateSuccessfully') || "Booking Updated Successfully!");
+            setShowUpdateModal(null);
+            fetchBookings(); // Refresh list
+        }
     } catch (err: any) {
         alert(err.response?.data?.message || 'Failed to update booking');
     }
@@ -308,11 +320,11 @@ export default function CustomerBookingClient() {
       return (
         <>
             <div className="bg-gray-50 p-3 rounded-xl">
-                <p className="text-xs text-gray-400 uppercase font-bold mb-1">{t('checkInLabel' as any) || "Check In"}</p>
+                <p className="text-xs text-gray-400 uppercase font-bold mb-1">{t('checkInLabel') || "Check In"}</p>
                 <p className="font-bold text-gray-700">{format(startDate, 'MMM dd')}</p>
             </div>
             <div className="bg-gray-50 p-3 rounded-xl">
-                <p className="text-xs text-gray-400 uppercase font-bold mb-1">{t('checkOutLabel' as any) || "Check Out"}</p>
+                <p className="text-xs text-gray-400 uppercase font-bold mb-1">{t('checkOutLabel') || "Check Out"}</p>
                 <p className="font-bold text-gray-700">{format(endDate, 'MMM dd')}</p>
             </div>
         </>
@@ -374,7 +386,7 @@ export default function CustomerBookingClient() {
                 <PartyPopper size={48} className="text-green-600" />
               </motion.div>
               <h2 className="text-3xl font-black text-gray-900 mb-2">
-                {t('paymentConfirmed' as any) || "Payment Successful!"}
+                {t('paymentConfirmed') || "Payment Successful!"}
               </h2>
               <p className="text-gray-600 mb-8 font-medium">
                 {successMessage}
@@ -692,6 +704,27 @@ export default function CustomerBookingClient() {
               </div>
               
               <div className="space-y-4">
+                {/* 1. Room Selection Dropdown */}
+                <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Change Room (Optional)</label>
+                    <div className="relative">
+                        <Bed className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <select 
+                            value={newRoomId} 
+                            onChange={(e) => setNewRoomId(e.target.value)}
+                            className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 outline-none font-medium appearance-none"
+                        >
+                            {/* List all available room types/numbers */}
+                            {rooms.map(room => (
+                                <option key={room._id} value={room._id}>
+                                    {room.roomNumber} - {room.type} (ETB {room.price})
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+
+                {/* 2. Dates */}
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('checkInLabel')}</label>
@@ -709,24 +742,25 @@ export default function CustomerBookingClient() {
                     </div>
                 </div>
                 
+                {/* 3. Guests */}
                 <div className="space-y-2">
                     <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('guestsLabel')}</label>
                     <div className="relative">
                         <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                        {/* Assuming room capacity is static or fetched, for update we trust user input or validate on backend */}
                         <input type="number" min="1" value={guests} onChange={e => setGuests(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none font-medium" />
                     </div>
                 </div>
                 
-                <div className="p-4 bg-blue-50 text-blue-700 text-sm rounded-xl">
-                    Note: Changing dates may affect the total price.
+                <div className="p-4 bg-amber-50 text-amber-800 text-sm rounded-xl border border-amber-100 flex gap-2">
+                    <DollarSign size={16} className="shrink-0 mt-0.5" />
+                    If the new total is higher, you will be redirected to pay the difference.
                 </div>
               </div>
 
               <div className="flex gap-4 mt-8 pt-6 border-t border-gray-100">
                 <button onClick={() => setShowUpdateModal(null)} className="flex-1 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition">{t('cancel')}</button>
                 <button onClick={handleUpdateBooking} className="flex-[2] py-3.5 bg-gray-900 text-white rounded-xl font-bold hover:bg-amber-600 shadow-xl hover:shadow-amber-200 transition flex items-center justify-center gap-2">
-                    <span>{t('saveChanges' as any) || "Save Changes"}</span>
+                    <span>{t('saveChanges' as any) || "Update Booking"}</span>
                 </button>
               </div>
             </motion.div>
@@ -737,7 +771,6 @@ export default function CustomerBookingClient() {
     </div>
   );
 }
-  
 
 /*'use client';
 import { useState, useEffect, useMemo } from 'react';
