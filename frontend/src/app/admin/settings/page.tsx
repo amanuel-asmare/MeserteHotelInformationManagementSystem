@@ -140,6 +140,12 @@ export default function SettingsPage() {
               >
                 <ShieldCheck size={20} /> Security & Password
               </button>
+               <button 
+            onClick={logout} 
+            className="flex items-center gap-2 px-5 py-2 bg-white/20 backdrop-blur-md border border-white/30 text-white rounded-full hover:bg-white/30 transition font-medium shadow-sm"
+          >
+            <LogOut size={18} /> Logout
+          </button>
             </div>
 
             {/* Form Area */}
