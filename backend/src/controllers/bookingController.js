@@ -317,42 +317,48 @@ exports.cancelBooking = async(req, res) => {
         const booking = await Booking.findById(req.params.id);
         if (!booking) return res.status(404).json({ message: 'Booking not found' });
 
+        // Authorization
         if (booking.user.toString() !== req.user.id) {
             return res.status(403).json({ message: 'Not authorized' });
         }
 
+        // Status Check
         if (booking.status !== 'pending' && booking.status !== 'confirmed') {
-            return res.status(400).json({ message: 'Cannot cancel this booking' });
+            return res.status(400).json({ message: 'Cannot cancel this booking (already completed or cancelled)' });
         }
 
+        // REFUND SIMULATION (If Paid)
         if (booking.paymentStatus === 'completed') {
             try {
-                // Refund logic (Optional/Simulated)
+                // In production, you would call Chapa API here.
+                // For this project, we SIMULATE the refund by updating the status.
                 booking.paymentStatus = 'refunded';
+                // We assume refund is successful for the simulation
             } catch (refundError) {
-                // FIXED: Removed invalid optional chaining syntax
-                const errorDetails = (refundError.response && refundError.response.data) ?
-                    refundError.response.data :
-                    refundError.message;
-                console.error("Refund API Error:", errorDetails);
+                console.error("Refund Logic Error:", refundError.message);
+                // Continue cancellation even if refund logic warns
             }
         }
 
+        // UPDATE STATUS
         booking.status = 'cancelled';
+
+        // FREE UP THE ROOM
         const room = await Room.findById(booking.room);
         if (room) {
             room.availability = true;
             await room.save();
         }
+
         await booking.save();
 
-        res.json({ message: 'Booking cancelled successfully.' });
+        res.json({ message: 'Booking cancelled successfully. Refund initiated.' });
+
     } catch (err) {
         console.error('Cancel Booking Error:', err.message || err);
         res.status(500).json({ message: err.message || 'Cancellation failed' });
     }
 };
-
 // <--- ADD THIS NEW CONTROLLER FUNCTION
 exports.getAllBookings = async(req, res) => {
     try {

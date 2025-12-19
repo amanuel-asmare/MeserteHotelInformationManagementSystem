@@ -94,7 +94,7 @@ const FireworksDisplay = () => {
 };
 
 export default function CustomerBookingClient() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user } = useAuth();
   
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -113,20 +113,20 @@ export default function CustomerBookingClient() {
   
   // UPDATE MODAL STATE
   const [showUpdateModal, setShowUpdateModal] = useState<Booking | null>(null);
-  const [newRoomId, setNewRoomId] = useState('');
+  const [newRoomId, setNewRoomId] = useState(''); // Track room change in update modal
 
   const [imageCarousel, setImageCarousel] = useState<string[] | null>(null);
   const [tab, setTab] = useState<'rooms' | 'bookings'>('rooms');
   const [bookingStatusTab, setBookingStatusTab] = useState<'all' | 'pending' | 'confirmed' | 'cancelled' | 'completed'>('all');
   const [showAvailableOnly, setShowAvailableOnly] = useState(true);
   
-  // Confirmation Modals (Cancellation & General Confirm)
+  // Confirmation Modals
   const [cancelConfirmation, setCancelConfirmation] = useState<string | null>(null);
   
   const [notificationCount, setNotificationCount] = useState(0);
   const [minTimePassed, setMinTimePassed] = useState(false);
   
-  // SUCCESS STATE (Used for Payments AND Updates)
+  // SUCCESS STATE (Used for Payments, Updates, and Cancellations)
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
@@ -173,7 +173,7 @@ export default function CustomerBookingClient() {
 
           if (res.data.status === 'success' || res.status === 200) {
             setSuccessMessage(t('paymentConfirmed') || 'Payment Successful! Room Booked.');
-            setShowSuccessModal(true); // Trigger Fireworks
+            setShowSuccessModal(true); 
             await fetchRooms();
             await fetchBookings();
             setTab('bookings'); 
@@ -222,12 +222,12 @@ export default function CustomerBookingClient() {
     }
   };
 
-  // --- PAY NOW ---
+  // --- PAY NOW FOR EXISTING PENDING BOOKING ---
   const handlePayNow = async (bookingId: string) => {
     try {
       const paymentRes = await axios.post(
         `${API_BASE}/api/bookings/payment`,
-        { bookingId: bookingId }, 
+        { bookingId: bookingId }, // Send the existing booking ID
         { withCredentials: true }
       );
       
@@ -245,7 +245,7 @@ export default function CustomerBookingClient() {
     setCheckIn(new Date(booking.checkIn).toISOString().split('T')[0]);
     setCheckOut(new Date(booking.checkOut).toISOString().split('T')[0]);
     setGuests(booking.guests.toString());
-    setNewRoomId(booking.room?._id || ''); 
+    setNewRoomId(booking.room?._id || ''); // Default to current room ID
   };
 
   const handleUpdateBooking = async () => {
@@ -255,15 +255,15 @@ export default function CustomerBookingClient() {
             checkIn,
             checkOut,
             guests: Number(guests),
-            newRoomId: newRoomId 
+            newRoomId: newRoomId // Send selected room ID
         }, { withCredentials: true });
 
         if (res.data.paymentRequired && res.data.checkoutUrl) {
-            // If paying difference, redirect
+            // Case A: Price increased, redirect to pay difference
             alert(`Update requires additional payment of ETB ${res.data.priceDifference}. Redirecting...`);
             window.location.href = res.data.checkoutUrl;
         } else {
-            // SUCCESS ANIMATION FOR UPDATE
+            // Case B: No extra payment
             setShowUpdateModal(null);
             setSuccessMessage(t('updateSuccessfully') || "Booking Updated Successfully!");
             setShowSuccessModal(true); // Trigger Fireworks
@@ -274,46 +274,17 @@ export default function CustomerBookingClient() {
     }
   };
 
-  // const handleCancelBooking = async (bookingId: string) => {
-  //   try {
-  //     await axios.put(`${API_BASE}/api/bookings/${bookingId}/cancel`, {}, { withCredentials: true });
-  //     // SUCCESS ANIMATION FOR CANCEL (Instead of alert)
-  //     setSuccessMessage(t('bookingCancelled' as any) || "Booking Cancelled");
-  //     setShowSuccessModal(true); // Trigger Fireworks
-  //     setCancelConfirmation(null);
-  //     fetchBookings();
-  //     fetchRooms();
-  //   } catch (err: any) {
-  //     alert(err.response?.data?.message || 'Failed to cancel booking');
-  //   }
-  // };
-   // --- MODIFIED: Handle Cancel Booking ---
+  // --- CANCEL BOOKING ---
   const handleCancelBooking = async (bookingId: string) => {
-    if (!bookingId) return;
-    
     try {
-      // 1. Send PUT request to cancel
-      // Ensure API_BASE does not have a trailing slash
-      await axios.put(`${API_BASE}/api/bookings/${bookingId}/cancel`, {}, { 
-          withCredentials: true 
-      });
-
-      // 2. Close Confirmation Modal
-      setCancelConfirmation(null);
-
-      // 3. Show Success Modal with Fireworks
+      await axios.post(`${API_BASE}/api/bookings/${bookingId}/cancel`, {}, { withCredentials: true });
       setSuccessMessage(t('bookingCancelled' as any) || "Booking Cancelled - 95% Refund Initiated");
-      setShowSuccessModal(true);
-
-      // 4. Refresh Data
-      fetchBookings();
-      fetchRooms(); // To update room availability display
-
-    } catch (err: any) {
-      console.error("Cancel Error:", err);
-      const msg = err.response?.data?.message || 'Failed to cancel booking';
-      alert(msg);
+      setShowSuccessModal(true); // Trigger Fireworks
       setCancelConfirmation(null);
+      fetchBookings();
+      fetchRooms();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to cancel booking');
     }
   };
 
@@ -338,6 +309,7 @@ export default function CustomerBookingClient() {
     return `${API_BASE}${image}`;
   };
 
+  // Helper to format date ranges
   const renderDateRange = (start: string, end: string) => {
     const startDate = parseISO(start);
     const endDate = parseISO(end);
@@ -491,6 +463,7 @@ export default function CustomerBookingClient() {
 
       {tab === 'rooms' && (
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }}>
+          {/* ... (Filter Bar) ... */}
           <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 mb-8 flex flex-col lg:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
@@ -681,58 +654,10 @@ export default function CustomerBookingClient() {
                     <p className="text-gray-500 mb-6">{t('refundNotice') || "This action cannot be undone."}</p>
                     <div className="flex gap-3">
                         <button onClick={() => setCancelConfirmation(null)} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition">{t('keepBooking') || "No, Keep"}</button>
-                        <button onClick={() => { handleCancelBooking(cancelConfirmation); setCancelConfirmation(null); }} className="flex-1 py-3 bg-red-600 text-white hover:bg-red-700 rounded-xl font-bold shadow-lg transition">{t('yesCancel') || "Yes, Cancel"}</button>
+                        <button onClick={() => handleCancelBooking(cancelConfirmation)} className="flex-1 py-3 bg-red-600 text-white hover:bg-red-700 rounded-xl font-bold shadow-lg transition">{t('yesCancel') || "Yes, Cancel"}</button>
                     </div>
                 </motion.div>
             </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {showBookingModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowBookingModal(null)}>
-            <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-8" onClick={e => e.stopPropagation()}>
-              <div className="flex justify-between items-center mb-8">
-                  <h2 className="text-2xl font-black text-gray-900">{t('bookRoomTitle') || "Book Room"} <span className="text-amber-600">{showBookingModal.roomNumber}</span></h2>
-                  <button onClick={() => setShowBookingModal(null)} className="p-2 hover:bg-gray-100 rounded-full transition"><X size={20} /></button>
-              </div>
-              
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('checkInLabel') || "Check In"}</label>
-                        <div className="relative">
-                            <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                            <input type="date" value={checkIn} onChange={e => setCheckIn(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none font-medium" />
-                        </div>
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('checkOutLabel') || "Check Out"}</label>
-                        <div className="relative">
-                            <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                            <input type="date" value={checkOut} onChange={e => setCheckOut(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none font-medium" />
-                        </div>
-                    </div>
-                </div>
-                
-                <div className="space-y-2">
-                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('guestsLabel') || "Guests"}</label>
-                    <div className="relative">
-                        <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                        <input type="number" min="1" max={showBookingModal.capacity} value={guests} onChange={e => setGuests(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none font-medium" />
-                    </div>
-                </div>
-              </div>
-
-              <div className="flex gap-4 mt-8 pt-6 border-t border-gray-100">
-                <button onClick={() => setShowBookingModal(null)} className="flex-1 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition">{t('cancel') || "Cancel"}</button>
-                <button onClick={() => handleBooking(showBookingModal._id)} className="flex-[2] py-3.5 bg-gray-900 text-white rounded-xl font-bold hover:bg-amber-600 shadow-xl hover:shadow-amber-200 transition flex items-center justify-center gap-2">
-                    <span>{t('proceedPayment' as any) || "Proceed to Payment"}</span>
-                    <CreditCard size={18} />
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
         )}
       </AnimatePresence>
 
@@ -810,6 +735,31 @@ export default function CustomerBookingClient() {
         )}
        </AnimatePresence>
 
+       <AnimatePresence>
+        {showBookingModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowBookingModal(null)}>
+            <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-8" onClick={e => e.stopPropagation()}>
+              <div className="flex justify-between items-center mb-8">
+                  <h2 className="text-2xl font-black text-gray-900">{t('bookRoomTitle') || "Book Room"} <span className="text-amber-600">{showBookingModal.roomNumber}</span></h2>
+                  <button onClick={() => setShowBookingModal(null)} className="p-2 hover:bg-gray-100 rounded-full transition"><X size={20} /></button>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2"><label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('checkInLabel') || "Check In"}</label><div className="relative"><Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input type="date" value={checkIn} onChange={e => setCheckIn(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none font-medium" /></div></div>
+                    <div className="space-y-2"><label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('checkOutLabel') || "Check Out"}</label><div className="relative"><Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input type="date" value={checkOut} onChange={e => setCheckOut(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none font-medium" /></div></div>
+                </div>
+                <div className="space-y-2"><label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('guestsLabel') || "Guests"}</label><div className="relative"><Users className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input type="number" min="1" max={showBookingModal.capacity} value={guests} onChange={e => setGuests(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none font-medium" /></div></div>
+              </div>
+
+              <div className="flex gap-4 mt-8 pt-6 border-t border-gray-100">
+                <button onClick={() => setShowBookingModal(null)} className="flex-1 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition">{t('cancel') || "Cancel"}</button>
+                <button onClick={() => handleBooking(showBookingModal._id)} className="flex-[2] py-3.5 bg-gray-900 text-white rounded-xl font-bold hover:bg-amber-600 shadow-xl hover:shadow-amber-200 transition flex items-center justify-center gap-2"><span>{t('proceedPayment' as any) || "Proceed to Payment"}</span><CreditCard size={18} /></button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
