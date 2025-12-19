@@ -408,12 +408,12 @@ export default function Home() {
             >
               {t('viewRooms')}
             </Link>
-            <Link
-              href="/frontend/components/forms/RegisterForm.tsx"
+            <button
+              onClick={() => setShowRegister(true)}
               className="rounded-full border-2 border-white px-8 py-3 font-semibold hover:bg-white hover:text-amber-600 transition-colors"
             >
               {t('contactUsButton')}
-            </Link>
+            </button>
           </div>
         </div>
       </section>
