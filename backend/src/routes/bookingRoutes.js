@@ -1,3 +1,34 @@
+const express = require('express');
+const router = express.Router();
+const { protect, authorize } = require('../middleware/auth');
+const {
+    createBooking,
+    initiatePayment,
+    verifyPayment,
+    getCustomerBookings,
+    cancelBooking,
+    createBookingByReceptionist,
+    getAllBookings,
+    markBookingAsCompleted,
+    updateBooking
+} = require('../controllers/bookingController');
+
+router.post('/', protect, authorize('customer'), createBooking);
+router.post('/payment', protect, authorize('customer'), initiatePayment);
+router.post('/verify-payment', verifyPayment);
+
+// --- CHANGED TO POST TO FIX 405 ERROR ---
+router.post('/:id/cancel', protect, authorize('customer'), cancelBooking);
+
+router.put('/:id/update', protect, authorize('customer'), updateBooking);
+router.get('/my-bookings', protect, authorize('customer'), getCustomerBookings);
+
+// Receptionist Routes
+router.post('/receptionist', protect, authorize('receptionist', 'admin', 'manager'), createBookingByReceptionist);
+router.get('/receptionist/all-bookings', protect, authorize('receptionist', 'admin', 'manager', 'cahier'), getAllBookings);
+router.put('/receptionist/:id/complete', protect, authorize('receptionist', 'admin', 'manager'), markBookingAsCompleted);
+
+module.exports = router;
 /*const express = require('express');
 const router = express.Router();
 const { protect, authorize } = require('../middleware/auth');
@@ -54,34 +85,3 @@ router.put(
     markBookingAsCompleted
 );
 module.exports = router;*/
-const express = require('express');
-const router = express.Router();
-const { protect, authorize } = require('../middleware/auth');
-const {
-    createBooking,
-    initiatePayment,
-    verifyPayment,
-    getCustomerBookings,
-    cancelBooking,
-    createBookingByReceptionist,
-    getAllBookings,
-    markBookingAsCompleted,
-    updateBooking
-} = require('../controllers/bookingController');
-
-router.post('/', protect, authorize('customer'), createBooking);
-router.post('/payment', protect, authorize('customer'), initiatePayment);
-router.post('/verify-payment', verifyPayment);
-
-// --- CHANGED TO POST TO FIX 405 ERROR ---
-router.post('/:id/cancel', protect, authorize('customer'), cancelBooking);
-
-router.put('/:id/update', protect, authorize('customer'), updateBooking);
-router.get('/my-bookings', protect, authorize('customer'), getCustomerBookings);
-
-// Receptionist Routes
-router.post('/receptionist', protect, authorize('receptionist', 'admin', 'manager'), createBookingByReceptionist);
-router.get('/receptionist/all-bookings', protect, authorize('receptionist', 'admin', 'manager', 'cahier'), getAllBookings);
-router.put('/receptionist/:id/complete', protect, authorize('receptionist', 'admin', 'manager'), markBookingAsCompleted);
-
-module.exports = router;
