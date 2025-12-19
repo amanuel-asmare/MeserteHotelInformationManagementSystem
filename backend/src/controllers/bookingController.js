@@ -385,29 +385,41 @@ exports.markBookingAsCompleted = async(req, res) => {
 // --- NEW: Update Booking (Reschedule / Upgrade Room / Payment Handling) ---
 exports.updateBooking = async(req, res) => {
     const { id } = req.params;
-    const { checkIn, checkOut, guests, newRoomId } = req.body; // Added newRoomId
+    const { checkIn, checkOut, guests, newRoomId } = req.body;
 
     try {
         const booking = await Booking.findById(id).populate('room');
-        if (!booking) return res.status(404).json({ message: 'Booking not found' });
+
+        if (!booking) {
+            return res.status(404).json({ message: 'Booking not found' });
+        }
 
         // 1. Validation
         if (booking.status !== 'pending' && booking.status !== 'confirmed') {
-            return res.status(400).json({ message: 'Cannot update this booking' });
+            return res.status(400).json({ message: 'Cannot update a completed or cancelled booking' });
         }
         if (booking.user.toString() !== req.user.id) {
             return res.status(403).json({ message: 'Not authorized' });
         }
 
-        // 2. Determine Room (Old vs New)
-        let room = booking.room;
-        let roomIdToUse = booking.room._id;
+        // 2. Identify Old and New Rooms
+        const oldRoomId = booking.room._id;
+        let roomIdToUse = oldRoomId;
+        let newRoom = null;
 
-        if (newRoomId && newRoomId !== booking.room._id.toString()) {
-            const newRoom = await Room.findById(newRoomId);
+        // Check if room is changing
+        if (newRoomId && newRoomId !== oldRoomId.toString()) {
+            newRoom = await Room.findById(newRoomId);
             if (!newRoom) return res.status(404).json({ message: 'New room not found' });
-            room = newRoom;
+
+            // Check if new room is marked as available globally (basic check)
+            if (!newRoom.availability) {
+                return res.status(400).json({ message: 'Selected room is currently occupied.' });
+            }
             roomIdToUse = newRoomId;
+        } else {
+            // Even if room isn't changing, we need the room object for price calc
+            newRoom = await Room.findById(oldRoomId);
         }
 
         // 3. Date Validation
@@ -420,9 +432,9 @@ exports.updateBooking = async(req, res) => {
             return res.status(400).json({ message: 'Invalid dates selected' });
         }
 
-        // 4. Check Availability (Exclude self)
+        // 4. Advanced Availability Check (Exclude current booking from check)
         const conflictingBooking = await Booking.findOne({
-            _id: { $ne: booking._id },
+            _id: { $ne: booking._id }, // Exclude this booking itself
             room: roomIdToUse,
             $or: [
                 { checkIn: { $lte: newCheckOut, $gte: newCheckIn } },
@@ -433,37 +445,41 @@ exports.updateBooking = async(req, res) => {
         });
 
         if (conflictingBooking) {
-            return res.status(400).json({ message: 'Room not available for selected dates' });
+            return res.status(400).json({ message: 'Room not available for these dates' });
         }
 
         // 5. Calculate Price Difference
         const oldPrice = booking.totalPrice;
-        const newPrice = calculateTotalPrice(room.price, newCheckIn, newCheckOut);
+        const newPrice = calculateTotalPrice(newRoom.price, newCheckIn, newCheckOut);
         const priceDifference = newPrice - oldPrice;
 
-        // 6. Update Booking Data (Tentative)
+        // 6. Handle Room Status Updates (The Fix)
+        // If room changed, free up the old one and occupy the new one
+        if (newRoomId && newRoomId !== oldRoomId.toString()) {
+            // Free up old room
+            await Room.findByIdAndUpdate(oldRoomId, { availability: true });
+
+            // Occupy new room (if payment is confirmed or just pending logic allows it)
+            // Usually we reserve it immediately to prevent double booking during payment
+            await Room.findByIdAndUpdate(newRoomId, { availability: false });
+        }
+
+        // 7. Update Booking Data in Memory
         booking.checkIn = newCheckIn;
         booking.checkOut = newCheckOut;
         booking.guests = guests;
-        booking.room = roomIdToUse; // Update room reference
-        booking.totalPrice = newPrice; // Update to new total price
+        booking.room = roomIdToUse;
+        booking.totalPrice = newPrice;
 
-        // 7. Handle Payment Logic
+        // 8. Handle Payment Logic
         if (priceDifference > 0) {
-            // --- ADDITIONAL PAYMENT REQUIRED ---
-
-            // Generate a specialized transaction ref for the update
+            // --- PAYMENT REQUIRED ---
             const tx_ref = `UPDATE-${booking._id}-${Date.now()}`;
-
-            // We temporarily mark it as pending payment for the difference
-            // In a real system, you might want a separate 'Transaction' model, 
-            // but here we utilize the existing Chapa flow.
-
             const user = await User.findById(req.user.id);
 
             const chapaResponse = await axios.post(
                 'https://api.chapa.co/v1/transaction/initialize', {
-                    amount: priceDifference, // Only charge the difference
+                    amount: priceDifference,
                     currency: 'ETB',
                     email: user.email,
                     first_name: user.firstName,
@@ -474,11 +490,12 @@ exports.updateBooking = async(req, res) => {
                 }, { headers: { Authorization: `Bearer ${process.env.CHAPA_SECRET_KEY}` } }
             );
 
-            // Important: We save the booking updates, but we might want to flag that 
-            // the *extra* payment is pending. 
-            // Since our verifyPayment logic checks 'tx_ref', we update paymentId to the NEW ref.
             booking.paymentId = tx_ref;
-            booking.paymentStatus = 'pending'; // Revert to pending until extra paid
+            booking.paymentStatus = 'pending'; // Revert to pending
+            // Note: Room is already swapped above. If payment fails later, 
+            // you might need a cleanup job or webhook to revert room status, 
+            // but for now, this secures the new room for the user.
+
             await booking.save();
 
             return res.json({
@@ -489,9 +506,7 @@ exports.updateBooking = async(req, res) => {
             });
 
         } else {
-            // --- NO EXTRA PAYMENT (Equal or Refund scenario) ---
-            // Just save the updates.
-            // Note: Automated partial refunds are complex. For now, we assume no refund or manual handling.
+            // --- NO EXTRA PAYMENT ---
             await booking.save();
             return res.json({
                 message: 'Booking updated successfully',
@@ -505,7 +520,6 @@ exports.updateBooking = async(req, res) => {
         res.status(500).json({ message: err.message });
     }
 };
-// ...
 
 
 /*// backend/src/controllers/bookingController.js
