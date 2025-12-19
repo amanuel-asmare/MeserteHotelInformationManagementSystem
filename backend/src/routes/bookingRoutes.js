@@ -9,8 +9,9 @@ const {
     cancelBooking,
     createBookingByReceptionist,
     getAllBookings,
-    markBookingAsCompleted
-} = require('../controllers/bookingController');
+    markBookingAsCompleted,
+    updateBooking
+} = ire('../contrllers/bookingController');
 
 router.post('/', protect, authorize('customer', ), createBooking);
 router.post('/payment', protect, authorize('customer', ), initiatePayment);
@@ -19,7 +20,7 @@ router.post('/verify-payment', verifyPayment); // Public endpoint for Chapa call
 router.put('/:id/cancel', protect, authorize('customer'), cancelBooking);
 // backend/src/routes/bookings.js
 router.get('/my-bookings', protect, authorize('customer'), getCustomerBookings);
-
+router.put('/:id/update', protect, authorize('customer'), updateBooking); // <--- NEW ROUTE
 // Optional: Allow guest view (remove auth for demo)
 router.get('/guest-bookings', async(req, res) => {
     try {
@@ -51,4 +52,5 @@ router.put(
     authorize('receptionist', 'admin', 'manager'),
     markBookingAsCompleted
 );
+module.exports = router;
 module.exports = router;

@@ -3,6 +3,747 @@ import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Bed, Search, Filter, ChevronDown, CheckCircle, Calendar, Users, DollarSign,
+  Image as ImageIcon, X, Bath, CreditCard, Clock, History, ListChecks, Crown, PartyPopper, ArrowRight, Edit3
+} from 'lucide-react';
+import axios from 'axios';
+import ImageCarousel from '../../../../components/ui/ImageCarousel';
+import { useAuth } from '../../../../context/AuthContext';
+import { format, isPast, parseISO, isSameDay } from 'date-fns';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { useLanguage } from '../../../../context/LanguageContext';
+
+// --- TYPES ---
+interface Room {
+  _id: string;
+  roomNumber: string;
+  type: 'single' | 'double' | 'triple';
+  price: number;
+  availability: boolean;
+  floorNumber: number;
+  description: string;
+  images?: string[];
+  status: 'clean' | 'dirty' | 'maintenance';
+  capacity: number;
+  amenities: string[];
+  numberOfBeds: number;
+  bathrooms: number;
+}
+
+interface Booking {
+  _id: string;
+  room: Room | null;
+  user: {
+    _id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  },
+  checkIn: string;
+  checkOut: string;
+  totalPrice: number;
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  paymentStatus: 'pending' | 'completed' | 'failed' | 'refunded';
+  guests: number;
+  paymentId?: string;
+  createdAt: string;
+}
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
+
+// --- FIREWORKS COMPONENT ---
+const FireworkParticle = ({ delay, x, color }: { delay: number; x: number; color: string }) => (
+  <motion.div
+    initial={{ y: 0, x: x, opacity: 1, scale: 0 }}
+    animate={{
+      y: [0, -window.innerHeight * 0.6],
+      x: [x, x + (Math.random() - 0.5) * 100],
+      opacity: [1, 1, 0],
+      scale: [1, 2, 0],
+    }}
+    transition={{ duration: 1.5, delay, ease: "easeOut" }}
+    className="absolute bottom-0 w-3 h-3 rounded-full"
+    style={{ backgroundColor: color, left: '50%' }}
+  >
+    {[...Array(12)].map((_, i) => (
+      <motion.div
+        key={i}
+        initial={{ scale: 0 }}
+        animate={{ scale: [0, 1, 0], x: (Math.random() - 0.5) * 200, y: (Math.random() - 0.5) * 200 }}
+        transition={{ duration: 0.8, delay: delay + 1, repeat: Infinity }}
+        className="absolute w-2 h-2 rounded-full"
+        style={{ backgroundColor: color }}
+      />
+    ))}
+  </motion.div>
+);
+
+const FireworksDisplay = () => {
+  const colors = ['#FFD700', '#FF4500', '#00FF00', '#00BFFF', '#FF00FF'];
+  return (
+    <div className="fixed inset-0 pointer-events-none z-[60]">
+      {[...Array(15)].map((_, i) => (
+        <FireworkParticle 
+          key={i} 
+          delay={i * 0.3} 
+          x={(Math.random() - 0.5) * window.innerWidth * 0.8} 
+          color={colors[i % colors.length]} 
+        />
+      ))}
+    </div>
+  );
+};
+
+export default function CustomerBookingClient() {
+  const { t, language } = useLanguage();
+  const { user } = useAuth();
+  
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'single' | 'double' | 'triple'>('all');
+  
+  // Booking Form State
+  const [checkIn, setCheckIn] = useState('');
+  const [checkOut, setCheckOut] = useState('');
+  const [guests, setGuests] = useState('1');
+  
+  // Modals
+  const [showBookingModal, setShowBookingModal] = useState<Room | null>(null);
+  const [showUpdateModal, setShowUpdateModal] = useState<Booking | null>(null);
+
+  const [imageCarousel, setImageCarousel] = useState<string[] | null>(null);
+  const [tab, setTab] = useState<'rooms' | 'bookings'>('rooms');
+  const [bookingStatusTab, setBookingStatusTab] = useState<'all' | 'pending' | 'confirmed' | 'cancelled' | 'completed'>('all');
+  const [showAvailableOnly, setShowAvailableOnly] = useState(true);
+  const [cancelConfirmation, setCancelConfirmation] = useState<string | null>(null);
+  const [notificationCount, setNotificationCount] = useState(0);
+  const [minTimePassed, setMinTimePassed] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  // --- ROYAL LOADING DELAY ---
+  useEffect(() => {
+    const timer = setTimeout(() => setMinTimePassed(true), 3500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // --- FETCH DATA ---
+  const fetchRooms = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/api/public/rooms`);
+      setRooms(res.data);
+    } catch (err: any) {
+      console.error("Failed to load rooms", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchBookings = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/api/bookings/my-bookings`, { withCredentials: true });
+      setBookings(res.data);
+    } catch (err: any) {
+      console.warn('Could not load bookings');
+    }
+  };
+
+  // --- PAYMENT VERIFICATION ---
+  useEffect(() => {
+    const tx_ref = searchParams.get('verify_tx_ref');
+    if (tx_ref) {
+      const verify = async () => {
+        try {
+          const res = await axios.post(`${API_BASE}/api/bookings/verify-payment`, 
+            { tx_ref },
+            { withCredentials: true }
+          );
+
+          if (res.data.status === 'success' || res.status === 200) {
+            setSuccessMessage(t('paymentConfirmed') || 'Payment Successful! Room Booked.');
+            setShowSuccessModal(true); 
+            await fetchRooms();
+            await fetchBookings();
+            setTab('bookings'); 
+          }
+        } catch (error: any) {
+          console.error("Failed to verify payment:", error);
+          alert(error.response?.data?.message || 'Payment verification failed. Room might be taken.');
+        } finally {
+          router.replace('/customer/bookings', { scroll: false });
+        }
+      };
+      verify();
+    }
+  }, [searchParams, t]);
+
+  useEffect(() => {
+    fetchRooms();
+    fetchBookings();
+  }, []);
+
+  useEffect(() => {
+    const passedCheckouts = bookings.filter(booking =>
+      isPast(parseISO(booking.checkOut)) &&
+      booking.status !== 'completed' &&
+      booking.status !== 'cancelled'
+    ).length;
+    setNotificationCount(passedCheckouts);
+  }, [bookings]);
+
+  // --- CREATE NEW BOOKING ---
+  const handleBooking = async (roomId: string) => {
+    if (!checkIn || !checkOut || !guests) {
+      alert(t('selectDatesGuests' as any) || "Please select dates");
+      return;
+    }
+    try {
+      // 1. Create Booking (Pending)
+      const bookingRes = await axios.post(
+        `${API_BASE}/api/bookings/`,
+        { roomId, checkIn, checkOut, guests: Number(guests) },
+        { withCredentials: true }
+      );
+      const booking = bookingRes.data;
+
+      // 2. Initiate Payment directly
+      await handlePayNow(booking._id);
+
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to create booking');
+    }
+  };
+
+  // --- PAY NOW FOR EXISTING PENDING BOOKING ---
+  const handlePayNow = async (bookingId: string) => {
+    try {
+      const paymentRes = await axios.post(
+        `${API_BASE}/api/bookings/payment`,
+        { bookingId: bookingId }, // Send the existing booking ID
+        { withCredentials: true }
+      );
+      
+      if(paymentRes.data.checkoutUrl) {
+          window.location.href = paymentRes.data.checkoutUrl;
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to initiate payment');
+    }
+  };
+
+  // --- UPDATE BOOKING (RESCHEDULE) ---
+  const openUpdateModal = (booking: Booking) => {
+    setShowUpdateModal(booking);
+    setCheckIn(new Date(booking.checkIn).toISOString().split('T')[0]);
+    setCheckOut(new Date(booking.checkOut).toISOString().split('T')[0]);
+    setGuests(booking.guests.toString());
+  };
+
+  const handleUpdateBooking = async () => {
+    if (!showUpdateModal) return;
+    try {
+        await axios.put(`${API_BASE}/api/bookings/${showUpdateModal._id}/update`, {
+            checkIn,
+            checkOut,
+            guests: Number(guests)
+        }, { withCredentials: true });
+
+        alert(t('updateSuccessfully') || "Booking Updated Successfully!");
+        setShowUpdateModal(null);
+        fetchBookings(); // Refresh list
+    } catch (err: any) {
+        alert(err.response?.data?.message || 'Failed to update booking');
+    }
+  };
+
+  const handleCancelBooking = async (bookingId: string) => {
+    try {
+      await axios.put(`${API_BASE}/api/bookings/${bookingId}/cancel`, {}, { withCredentials: true });
+      alert(t('bookingCancelled' as any) || "Booking Cancelled");
+      fetchBookings();
+      fetchRooms();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to cancel booking');
+    }
+  };
+
+  const filteredRooms = rooms.filter(room => {
+    const matchesSearch = room.roomNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      room.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = typeFilter === 'all' || room.type === typeFilter;
+    const matchesAvailability = !showAvailableOnly || (room.availability && room.status === 'clean');
+    return matchesSearch && matchesType && matchesAvailability;
+  });
+
+  const filteredBookings = useMemo(() => {
+    return bookings.filter(booking => {
+      if (bookingStatusTab === 'all') return true;
+      return booking.status === bookingStatusTab;
+    });
+  }, [bookings, bookingStatusTab]);
+
+  const getImageUrl = (image: string) => {
+    if (!image) return '/placeholder-room.jpg';
+    if (image.startsWith('http')) return image;
+    return `${API_BASE}${image}`;
+  };
+
+  // Helper to format date ranges
+  const renderDateRange = (start: string, end: string) => {
+    const startDate = parseISO(start);
+    const endDate = parseISO(end);
+
+    if (isSameDay(startDate, endDate)) {
+      return (
+        <div className="bg-gray-50 p-3 rounded-xl col-span-2">
+            <p className="text-xs text-gray-400 uppercase font-bold mb-1">{t('date' as any) || "Date"}</p>
+            <p className="font-bold text-gray-700">{format(startDate, 'MMM dd, yyyy')}</p>
+        </div>
+      );
+    } else {
+      return (
+        <>
+            <div className="bg-gray-50 p-3 rounded-xl">
+                <p className="text-xs text-gray-400 uppercase font-bold mb-1">{t('checkInLabel' as any) || "Check In"}</p>
+                <p className="font-bold text-gray-700">{format(startDate, 'MMM dd')}</p>
+            </div>
+            <div className="bg-gray-50 p-3 rounded-xl">
+                <p className="text-xs text-gray-400 uppercase font-bold mb-1">{t('checkOutLabel' as any) || "Check Out"}</p>
+                <p className="font-bold text-gray-700">{format(endDate, 'MMM dd')}</p>
+            </div>
+        </>
+      );
+    }
+  };
+
+  if (loading || !minTimePassed) {
+    return (
+      <div className="fixed inset-0 bg-gradient-to-br from-amber-950 via-black to-amber-900 flex items-center justify-center overflow-hidden z-[100]">
+        <motion.div initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 1.5 }} className="relative z-10 text-center px-8">
+          <div className="flex justify-center mb-6">
+            <motion.div animate={{ y: [0, -20, 0] }} transition={{ duration: 4, repeat: Infinity }}>
+               <Crown size={80} className="text-yellow-400 drop-shadow-2xl" />
+            </motion.div>
+          </div>
+          <h2 className="text-5xl md:text-7xl font-black text-amber-300 tracking-widest mb-4 font-serif">
+            {t('luxuryHotel' as any) || "MESERET"}
+          </h2>
+          <p className="text-2xl text-amber-100 font-light tracking-widest">
+            {t('preparingSuite' as any) || "Experience Luxury"}
+          </p>
+        </motion.div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative min-h-screen bg-gray-50 pb-20">
+      
+      <AnimatePresence>
+        {showSuccessModal && <FireworksDisplay />}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showSuccessModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 z-[70] flex items-center justify-center p-4 backdrop-blur-sm"
+            onClick={() => setShowSuccessModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.5, y: 100, rotate: -10 }}
+              animate={{ scale: 1, y: 0, rotate: 0 }}
+              exit={{ scale: 0.5, y: 100, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 200, damping: 15 }}
+              className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl relative overflow-hidden"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-amber-100/50 to-transparent pointer-events-none" />
+              <motion.div 
+                initial={{ scale: 0 }} 
+                animate={{ scale: 1, rotate: 360 }} 
+                transition={{ delay: 0.2, duration: 0.8 }}
+                className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner"
+              >
+                <PartyPopper size={48} className="text-green-600" />
+              </motion.div>
+              <h2 className="text-3xl font-black text-gray-900 mb-2">
+                {t('paymentConfirmed' as any) || "Payment Successful!"}
+              </h2>
+              <p className="text-gray-600 mb-8 font-medium">
+                {successMessage}
+              </p>
+              <button 
+                onClick={() => setShowSuccessModal(false)}
+                className="w-full py-4 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
+              >
+                <CheckCircle size={20} />
+                {t('continue' as any) || "View My Booking"}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {imageCarousel && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4"
+            onClick={() => setImageCarousel(null)}
+          >
+            <div className="relative max-w-4xl w-full" onClick={e => e.stopPropagation()}>
+              <ImageCarousel images={imageCarousel.map(getImageUrl)} />
+              <button onClick={() => setImageCarousel(null)} className="absolute top-4 right-4 p-2 bg-black/50 rounded-full text-white">
+                <X size={24} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="mb-8 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl flex items-center justify-center text-white shadow-lg">
+            <Bed size={24} />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">{t('bookRoomTitle') || "Book a Stay"}</h1>
+            <p className="text-gray-600">{t('bookRoomDesc') || "Find your perfect room"}</p>
+          </div>
+        </div>
+        <div className="flex p-1 bg-white rounded-xl border border-gray-200 shadow-sm">
+          <button onClick={() => setTab('rooms')} className={`px-6 py-2.5 rounded-lg font-bold transition-all ${tab === 'rooms' ? 'bg-amber-100 text-amber-800' : 'text-gray-500 hover:bg-gray-50'}`}>
+            {t('browseRooms') || "Rooms"}
+          </button>
+          <button onClick={() => setTab('bookings')} className={`px-6 py-2.5 rounded-lg font-bold transition-all relative ${tab === 'bookings' ? 'bg-amber-100 text-amber-800' : 'text-gray-500 hover:bg-gray-50'}`}>
+            {t('myBookings') || "My Bookings"}
+            {notificationCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full border-2 border-white">
+                {notificationCount}
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {tab === 'rooms' && (
+        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }}>
+          <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 mb-8 flex flex-col lg:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+              <input type="text" placeholder={t('searchRooms') || "Search rooms..."} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-amber-500 rounded-xl transition outline-none" />
+            </div>
+            <div className="flex gap-4">
+               <div className="relative min-w-[180px]">
+                <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                <select value={typeFilter} onChange={e => setTypeFilter(e.target.value as any)} className="w-full pl-12 pr-10 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-amber-500 rounded-xl appearance-none cursor-pointer">
+                  <option value="all">{t('allTypes') || "All Types"}</option>
+                  <option value="single">{t('single') || "Single"}</option>
+                  <option value="double">{t('double') || "Double"}</option>
+                  <option value="triple">{t('triple') || "Triple"}</option>
+                </select>
+                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
+              </div>
+              <label className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition border-2 border-transparent hover:border-gray-200">
+                <input type="checkbox" checked={showAvailableOnly} onChange={e => setShowAvailableOnly(e.target.checked)} className="w-5 h-5 text-amber-600 rounded focus:ring-amber-500" />
+                <span className="font-medium text-gray-700">{t('showAvailableOnly') || "Available Only"}</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-8">
+            {filteredRooms.length > 0 ? (
+              filteredRooms.map(room => (
+                <motion.div 
+                  key={room._id} 
+                  whileHover={{ y: -5 }}
+                  className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 group"
+                >
+                  <div className="relative h-64 overflow-hidden">
+                    {room.images?.[0] ? (
+                      <img src={getImageUrl(room.images[0])} alt={`Room ${room.roomNumber}`} className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700 cursor-pointer" onClick={() => setImageCarousel(room.images!)} />
+                    ) : (
+                      <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-300"><ImageIcon size={48} /></div>
+                    )}
+                    <div className="absolute top-4 left-4 flex gap-2">
+                       <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wide rounded-full backdrop-blur-md shadow-sm ${room.availability ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'}`}>
+                        {room.availability ? (t('available') || "Available") : (t('occupied') || "Occupied")}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="p-6">
+                    <div className="flex justify-between items-start mb-2">
+                        <h3 className="text-xl font-bold text-gray-900">{t('room') || "Room"} {room.roomNumber}</h3>
+                        <div className="text-right">
+                            <span className="block text-2xl font-black text-amber-600">ETB {room.price}</span>
+                            <span className="text-xs text-gray-400">{language === 'am' ? '' : '/night'}</span>
+                        </div>
+                    </div>
+                    
+                    <p className="text-gray-500 text-sm mb-6 line-clamp-2 h-10">{room.description}</p>
+                    
+                    <div className="flex items-center gap-4 mb-6 text-gray-400 text-sm border-t border-b border-gray-50 py-4">
+                      <div className="flex items-center gap-1"><Users size={16} className="text-amber-500" /> {room.capacity}</div>
+                      <div className="flex items-center gap-1"><Bed size={16} className="text-amber-500" /> {room.numberOfBeds}</div>
+                      <div className="flex items-center gap-1"><Bath size={16} className="text-amber-500" /> {room.bathrooms}</div>
+                    </div>
+
+                    <button 
+                      onClick={() => { if (!room.availability) { alert(t('alreadyReserved')); return; } setShowBookingModal(room); }} 
+                      disabled={!room.availability}
+                      className={`w-full py-3.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                        room.availability 
+                        ? 'bg-gray-900 text-white hover:bg-amber-600 shadow-lg hover:shadow-amber-200' 
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      }`}
+                    >
+                      {room.availability ? (t('bookNow') || "Book Now") : (t('notAvailable') || "Unavailable")}
+                    </button>
+                  </div>
+                </motion.div>
+              ))
+            ) : (
+              <div className="col-span-full py-20 text-center">
+                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300">
+                    <Search size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900">No rooms found</h3>
+                <p className="text-gray-500">Try adjusting your search or filters</p>
+              </div>
+            )}
+          </div>
+        </motion.div>
+      )}
+
+      {tab === 'bookings' && (
+        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }} className="max-w-5xl mx-auto">
+          <div className="flex overflow-x-auto gap-4 pb-4 mb-6 border-b border-gray-200 no-scrollbar">
+            {['all', 'pending', 'confirmed', 'completed', 'cancelled'].map(s => (
+              <button key={s} className={`flex items-center gap-2 px-5 py-2 rounded-full font-bold whitespace-nowrap transition-all ${bookingStatusTab === s ? 'bg-amber-100 text-amber-800 ring-2 ring-amber-500 ring-offset-2' : 'bg-white text-gray-500 hover:bg-gray-50'}`} onClick={() => setBookingStatusTab(s as any)}>
+                 {s === 'all' ? <ListChecks size={18} /> : s === 'pending' ? <Clock size={18} /> : s === 'confirmed' ? <CheckCircle size={18} /> : s === 'completed' ? <History size={18} /> : <X size={18} />} 
+                 <span className="capitalize">{t(s as any) || s}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="space-y-6">
+            {filteredBookings.length > 0 ? (
+              filteredBookings.map(booking => {
+                const roomImage = booking.room?.images?.[0] ? getImageUrl(booking.room.images[0]) : null;
+                return (
+                  <motion.div key={booking._id} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col md:flex-row gap-6 relative overflow-hidden">
+                    <div className="w-full md:w-56 h-40 bg-gray-100 rounded-2xl overflow-hidden shrink-0">
+                       {roomImage ? <img src={roomImage} className="w-full h-full object-cover" /> : <div className="flex items-center justify-center h-full"><ImageIcon className="text-gray-300" /></div>}
+                    </div>
+                    
+                    <div className="flex-1">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                             <h3 className="text-xl font-bold text-gray-900">{t('room') || "Room"} {booking.room?.roomNumber || 'N/A'}</h3>
+                             <p className="text-amber-600 font-medium capitalize">{booking.room?.type} Suite</p>
+                        </div>
+                        <span className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${
+                            booking.status === 'confirmed' ? 'bg-green-100 text-green-700' :
+                            booking.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                            booking.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
+                        }`}>
+                            {booking.status}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
+                        
+                        {renderDateRange(booking.checkIn, booking.checkOut)}
+
+                         <div className="bg-gray-50 p-3 rounded-xl">
+                            <p className="text-xs text-gray-400 uppercase font-bold mb-1">{t('guestsLabel') || "Guests"}</p>
+                            <p className="font-bold text-gray-700">{booking.guests}</p>
+                        </div>
+                         <div className="bg-gray-50 p-3 rounded-xl">
+                            <p className="text-xs text-gray-400 uppercase font-bold mb-1">{t('total') || "Total"}</p>
+                            <p className="font-bold text-amber-600">ETB {booking.totalPrice}</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-6 flex justify-end gap-3">
+                        {(booking.status === 'pending' || booking.status === 'confirmed') && (
+                            <>
+                                <button 
+                                    onClick={() => openUpdateModal(booking)}
+                                    className="text-amber-600 hover:text-amber-800 font-bold text-sm px-4 py-2 hover:bg-amber-50 rounded-lg transition flex items-center gap-2 border border-amber-200"
+                                >
+                                    <Edit3 size={16} />
+                                    {t('edit' as any) || "Edit"}
+                                </button>
+
+                                <button onClick={() => setCancelConfirmation(booking._id)} className="text-red-500 hover:text-red-700 font-bold text-sm px-4 py-2 hover:bg-red-50 rounded-lg transition border border-red-200">
+                                    {t('cancelBooking') || "Cancel"}
+                                </button>
+                            </>
+                        )}
+                        
+                        {/* PAY NOW BUTTON */}
+                        {booking.status === 'pending' && (
+                            <button onClick={() => handlePayNow(booking._id)} className="bg-amber-600 text-white px-6 py-2 rounded-lg font-bold shadow-md hover:shadow-lg hover:bg-amber-700 transition flex items-center gap-2">
+                                <span>{t('payNow' as any) || "Pay Now"}</span>
+                                <ArrowRight size={16} />
+                            </button>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })
+            ) : (
+              <div className="text-center py-20">
+                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300">
+                    <ListChecks size={32} />
+                </div>
+                <h3 className="text-gray-900 font-bold text-lg">No bookings found</h3>
+              </div>
+            )}
+          </div>
+        </motion.div>
+      )}
+
+      <AnimatePresence>
+        {cancelConfirmation && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setCancelConfirmation(null)}>
+                <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className="bg-white rounded-3xl p-8 max-w-sm w-full text-center" onClick={e => e.stopPropagation()}>
+                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
+                        <X size={32} />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">{t('confirmCancellation') || "Cancel Booking?"}</h3>
+                    <p className="text-gray-500 mb-6">{t('refundNotice') || "This action cannot be undone."}</p>
+                    <div className="flex gap-3">
+                        <button onClick={() => setCancelConfirmation(null)} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition">{t('keepBooking') || "No, Keep"}</button>
+                        <button onClick={() => { handleCancelBooking(cancelConfirmation); setCancelConfirmation(null); }} className="flex-1 py-3 bg-red-600 text-white hover:bg-red-700 rounded-xl font-bold shadow-lg transition">{t('yesCancel') || "Yes, Cancel"}</button>
+                    </div>
+                </motion.div>
+            </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showBookingModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowBookingModal(null)}>
+            <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-8" onClick={e => e.stopPropagation()}>
+              <div className="flex justify-between items-center mb-8">
+                  <h2 className="text-2xl font-black text-gray-900">{t('bookRoomTitle') || "Book Room"} <span className="text-amber-600">{showBookingModal.roomNumber}</span></h2>
+                  <button onClick={() => setShowBookingModal(null)} className="p-2 hover:bg-gray-100 rounded-full transition"><X size={20} /></button>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('checkInLabel') || "Check In"}</label>
+                        <div className="relative">
+                            <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <input type="date" value={checkIn} onChange={e => setCheckIn(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none font-medium" />
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('checkOutLabel') || "Check Out"}</label>
+                        <div className="relative">
+                            <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <input type="date" value={checkOut} onChange={e => setCheckOut(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none font-medium" />
+                        </div>
+                    </div>
+                </div>
+                
+                <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('guestsLabel') || "Guests"}</label>
+                    <div className="relative">
+                        <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <input type="number" min="1" max={showBookingModal.capacity} value={guests} onChange={e => setGuests(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none font-medium" />
+                    </div>
+                </div>
+              </div>
+
+              <div className="flex gap-4 mt-8 pt-6 border-t border-gray-100">
+                <button onClick={() => setShowBookingModal(null)} className="flex-1 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition">{t('cancel') || "Cancel"}</button>
+                <button onClick={() => handleBooking(showBookingModal._id)} className="flex-[2] py-3.5 bg-gray-900 text-white rounded-xl font-bold hover:bg-amber-600 shadow-xl hover:shadow-amber-200 transition flex items-center justify-center gap-2">
+                    <span>{t('proceedPayment' as any) || "Proceed to Payment"}</span>
+                    <CreditCard size={18} />
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showUpdateModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowUpdateModal(null)}>
+            <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-8" onClick={e => e.stopPropagation()}>
+              <div className="flex justify-between items-center mb-8">
+                  <h2 className="text-2xl font-black text-gray-900">{t('update' as any) || "Update Booking"}</h2>
+                  <button onClick={() => setShowUpdateModal(null)} className="p-2 hover:bg-gray-100 rounded-full transition"><X size={20} /></button>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('checkInLabel')}</label>
+                        <div className="relative">
+                            <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <input type="date" value={checkIn} onChange={e => setCheckIn(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none font-medium" />
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('checkOutLabel')}</label>
+                        <div className="relative">
+                            <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <input type="date" value={checkOut} onChange={e => setCheckOut(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none font-medium" />
+                        </div>
+                    </div>
+                </div>
+                
+                <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('guestsLabel')}</label>
+                    <div className="relative">
+                        <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        {/* Assuming room capacity is static or fetched, for update we trust user input or validate on backend */}
+                        <input type="number" min="1" value={guests} onChange={e => setGuests(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none font-medium" />
+                    </div>
+                </div>
+                
+                <div className="p-4 bg-blue-50 text-blue-700 text-sm rounded-xl">
+                    Note: Changing dates may affect the total price.
+                </div>
+              </div>
+
+              <div className="flex gap-4 mt-8 pt-6 border-t border-gray-100">
+                <button onClick={() => setShowUpdateModal(null)} className="flex-1 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition">{t('cancel')}</button>
+                <button onClick={handleUpdateBooking} className="flex-[2] py-3.5 bg-gray-900 text-white rounded-xl font-bold hover:bg-amber-600 shadow-xl hover:shadow-amber-200 transition flex items-center justify-center gap-2">
+                    <span>{t('saveChanges' as any) || "Save Changes"}</span>
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+       </AnimatePresence>
+
+    </div>
+  );
+}
+  
+
+/*'use client';
+import { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Bed, Search, Filter, ChevronDown, CheckCircle, Calendar, Users, DollarSign,
   Image as ImageIcon, X, Bath, CreditCard, Clock, History, ListChecks, Crown, PartyPopper, ArrowRight
 } from 'lucide-react';
 import axios from 'axios';
@@ -530,7 +1271,7 @@ export default function CustomerBookingClient() {
                       </div>
 
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
-                        {/* Dynamic Date Rendering */}
+                        
                         {renderDateRange(booking.checkIn, booking.checkOut)}
 
                          <div className="bg-gray-50 p-3 rounded-xl">
@@ -550,7 +1291,7 @@ export default function CustomerBookingClient() {
                             </button>
                         )}
                         
-                        {/* PAY NOW BUTTON FOR PENDING BOOKINGS */}
+                 
                         {booking.status === 'pending' && (
                             <button 
                               onClick={() => handlePayNow(booking._id)}
@@ -645,7 +1386,7 @@ export default function CustomerBookingClient() {
     </div>
   );
 }
-  
+  */
 
 
 

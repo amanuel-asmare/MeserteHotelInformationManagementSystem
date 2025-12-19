@@ -379,6 +379,81 @@ exports.markBookingAsCompleted = async(req, res) => {
         res.status(500).json({ message: err.message || 'Failed to mark booking as completed' });
     }
 };
+// backend/src/controllers/bookingController.js
+
+// ... existing imports ...
+
+// --- NEW: Update Booking (Reschedule) ---
+exports.updateBooking = async(req, res) => {
+    const { id } = req.params;
+    const { checkIn, checkOut, guests } = req.body;
+
+    try {
+        const booking = await Booking.findById(id).populate('room');
+
+        if (!booking) {
+            return res.status(404).json({ message: 'Booking not found' });
+        }
+
+        // Only allow update if status is pending or confirmed
+        if (booking.status !== 'pending' && booking.status !== 'confirmed') {
+            return res.status(400).json({ message: 'Cannot update a completed or cancelled booking' });
+        }
+
+        // Validate Ownership (Security)
+        if (booking.user.toString() !== req.user.id) {
+            return res.status(403).json({ message: 'Not authorized to update this booking' });
+        }
+
+        const room = await Room.findById(booking.room._id);
+
+        // Date Validation
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const newCheckIn = new Date(checkIn);
+        const newCheckOut = new Date(checkOut);
+
+        if (newCheckIn < today || newCheckOut <= newCheckIn) {
+            return res.status(400).json({ message: 'Invalid dates selected' });
+        }
+
+        // Check Availability for NEW dates (excluding current booking ID)
+        const conflictingBooking = await Booking.findOne({
+            _id: { $ne: booking._id }, // Exclude self
+            room: booking.room._id,
+            $or: [
+                { checkIn: { $lte: newCheckOut, $gte: newCheckIn } },
+                { checkOut: { $lte: newCheckOut, $gte: newCheckIn } },
+                { checkIn: { $lte: newCheckIn }, checkOut: { $gte: newCheckOut } }
+            ],
+            status: { $in: ['confirmed', 'pending'] }
+        });
+
+        if (conflictingBooking) {
+            return res.status(400).json({ message: 'Room is not available for these new dates' });
+        }
+
+        // Recalculate Price
+        // Note: If price increases, you might need extra payment logic.
+        // For simplicity here, we update the price. In a real strict app, you'd trigger a payment difference flow.
+        const totalPrice = calculateTotalPrice(room.price, newCheckIn, newCheckOut);
+
+        booking.checkIn = newCheckIn;
+        booking.checkOut = newCheckOut;
+        booking.guests = guests;
+        booking.totalPrice = totalPrice;
+
+        await booking.save();
+
+        res.json({ message: 'Booking updated successfully', booking });
+
+    } catch (err) {
+        console.error("Update Booking Error:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+
 /*// backend/src/controllers/bookingController.js
 const Booking = require('../models/Booking');
 const Room = require('../models/Room');
