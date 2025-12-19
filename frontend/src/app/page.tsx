@@ -211,8 +211,11 @@ import { Search, Calendar, Users, Wifi, Waves, Utensils, Car, ScanLine, X, Smart
 import { QRCodeSVG } from 'qrcode.react'; 
 import { AnimatePresence, motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { useLanguage } from '../../context/LanguageContext'; // Import Language Hook
+import { useLanguage } from '../context/LanguageContext'; // Import Language Hook
+import RegisterForm from '../components/forms/RegisterForm'; // Import Register Modal
+import LoginForm from '../components/forms/LoginForm'; // Import Login Modal just in case switching is needed
 
+// Pass translation function 't' to the modal
 const QRModal = ({ onClose, url, t }: { onClose: () => void; url: string; t: any }) => (
   <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={onClose}>
     <motion.div 
@@ -261,22 +264,20 @@ const QRModal = ({ onClose, url, t }: { onClose: () => void; url: string; t: any
 );
 
 export default function Home() {
-  const { t } = useLanguage(); // Use Translation Hook
+  const { t } = useLanguage(); 
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
   const [guests, setGuests] = useState('2');
-  const [showRegister,setShowRegister]=useState(false);
-  // QR Code Logic
+  
+  // Modal States
   const [showQR, setShowQR] = useState(false);
+  const [showRegister, setShowRegister] = useState(false); // State for Register Modal
+  const [showLogin, setShowLogin] = useState(false); // State for Login Modal (needed for switching)
+  
   const [menuUrl, setMenuUrl] = useState('');
 
   useEffect(() => {
-    // API URL Logic
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
-    // For QR Menu, we usually point to Frontend Menu Page, not Backend API directly if it's a view page
-    // Assuming customer menu is at /customer/menu on frontend
     if (typeof window !== 'undefined') {
-       // Use window.location.origin to point to current frontend domain
        setMenuUrl(`${window.location.origin}/customer/menu`);
     }
   }, []);
@@ -387,7 +388,6 @@ export default function Home() {
                 className="flex flex-col items-center rounded-lg bg-white p-6 text-center shadow-md hover:shadow-lg transition-shadow"
               >
                 <f.icon className="mb-3 text-amber-600" size={32} />
-                {/* FIX: Cast string keys to any to avoid TS error if keys are strictly typed */}
                 <h3 className="mb-2 text-lg font-semibold text-gray-900">{t(f.title as any)}</h3>
                 <p className="text-sm text-gray-600">{t(f.desc as any)}</p>
               </div>
@@ -408,11 +408,13 @@ export default function Home() {
             >
               {t('viewRooms')}
             </Link>
+            
+            {/* CHANGED: This button now opens the Register Modal */}
             <button
               onClick={() => setShowRegister(true)}
               className="rounded-full border-2 border-white px-8 py-3 font-semibold hover:bg-white hover:text-amber-600 transition-colors"
             >
-              {t('contactUsButton')}
+              {t('register')} 
             </button>
           </div>
         </div>
@@ -424,12 +426,35 @@ export default function Home() {
         </div>
       </footer>
 
-      {/* === QR CODE MODAL DISPLAY === */}
+      {/* === MODALS === */}
       <AnimatePresence>
         {showQR && (
           <QRModal onClose={() => setShowQR(false)} url={menuUrl} t={t} />
         )}
       </AnimatePresence>
+
+      {/* Register Modal */}
+      {showRegister && (
+        <RegisterForm 
+          onClose={() => setShowRegister(false)} 
+          onSwitchToLogin={() => {
+             setShowRegister(false);
+             setShowLogin(true);
+          }} 
+        />
+      )}
+
+      {/* Login Modal (Required for switching from Register) */}
+      {showLogin && (
+        <LoginForm 
+          onClose={() => setShowLogin(false)}
+          onSwitchToRegister={() => {
+            setShowLogin(false);
+            setShowRegister(true);
+          }}
+        />
+      )}
+
     </>
   );
 }
