@@ -211,9 +211,9 @@ import { Search, Calendar, Users, Wifi, Waves, Utensils, Car, ScanLine, X, Smart
 import { QRCodeSVG } from 'qrcode.react'; 
 import { AnimatePresence, motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { useLanguage } from '../context/LanguageContext'; // Import Language Hook
-import RegisterForm from '../components/forms/RegisterForm'; // Import Register Modal
-import LoginForm from '../components/forms/LoginForm'; // Import Login Modal just in case switching is needed
+import { useLanguage } from '../../context/LanguageContext'; // Import Language Hook
+import RegisterForm from '../../components/forms/RegisterForm'; // Import Register Modal
+import LoginForm from '../../components/forms/LoginForm'; // Import Login Modal just in case switching is needed
 
 // Pass translation function 't' to the modal
 const QRModal = ({ onClose, url, t }: { onClose: () => void; url: string; t: any }) => (
