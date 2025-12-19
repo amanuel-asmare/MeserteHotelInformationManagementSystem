@@ -314,6 +314,9 @@ exports.getCustomerBookings = async(req, res) => {
 // ... existing imports
 
 // Cancel Booking (Robust Version)
+// ... existing imports
+
+// Cancel Booking (Fixed for older Node versions)
 exports.cancelBooking = async(req, res) => {
     try {
         const booking = await Booking.findById(req.params.id);
@@ -333,11 +336,7 @@ exports.cancelBooking = async(req, res) => {
         if (booking.paymentStatus === 'completed') {
             try {
                 // In a real production app, you would call Chapa API here.
-                // NOTE: Chapa Test Mode often doesn't support real programmatic refunds fully via API in some tiers.
-                // We will wrap this in try/catch so booking cancellation still proceeds locally.
-
                 /* 
-                // Uncomment this if you have a valid Merchant API for refunds enabled
                 const refundAmount = booking.totalPrice * 0.95; 
                 await axios.post('https://api.chapa.co/v1/refunds', {
                     tx_ref: booking.paymentId,
@@ -348,13 +347,17 @@ exports.cancelBooking = async(req, res) => {
                 });
                 */
 
-                // For this project/demo, we mark it refunded in DB
+                // Mark as refunded in DB
                 booking.paymentStatus = 'refunded';
 
             } catch (refundError) {
-                console.error("Refund API Error:", refundError.response ? .data || refundError.message);
+                // FIX: Removed optional chaining (?.) for compatibility
+                const errorDetails = (refundError.response && refundError.response.data) ?
+                    refundError.response.data :
+                    refundError.message;
+
+                console.error("Refund API Error:", errorDetails);
                 // We continue to cancel the booking locally even if API refund fails
-                // You might want to flag this for admin review in a real app
             }
         }
 
@@ -378,42 +381,6 @@ exports.cancelBooking = async(req, res) => {
     }
 };
 
-
-// <--- ADD THIS NEW CONTROLLER FUNCTION
-exports.getAllBookings = async(req, res) => {
-    try {
-        // Fetch all bookings and populate user and room details
-        const bookings = await Booking.find()
-            .populate({
-                path: 'user',
-                select: 'firstName lastName email phoneNumber' // Select relevant user fields
-            })
-            .populate({
-                path: 'room',
-                select: 'roomNumber type price images' // Select relevant room fields
-            })
-            .sort({ createdAt: -1 }); // Sort by most recent
-
-        // Format image URLs as done for customer bookings
-        const API_BASE = process.env.API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
-        const formattedBookings = bookings.map(booking => {
-            const b = booking.toObject();
-            if (b.room && b.room.images) {
-                b.room.images = b.room.images.map(img => {
-                    if (img.startsWith('http')) return img;
-                    return `${API_BASE}${img.startsWith('/') ? '' : '/'}${img}`;
-                });
-            }
-            return b;
-        });
-
-        res.json(formattedBookings);
-    } catch (err) {
-        console.error('Error fetching all bookings for receptionist:', err.message);
-        res.status(500).json({ message: err.message || 'Failed to fetch all bookings' });
-    }
-};
-// ... (existing imports and functions) ...
 
 // New: Mark Booking as Completed (Receptionist/Admin only)
 exports.markBookingAsCompleted = async(req, res) => {
