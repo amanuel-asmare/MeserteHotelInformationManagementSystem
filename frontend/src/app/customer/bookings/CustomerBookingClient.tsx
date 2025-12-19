@@ -94,7 +94,7 @@ const FireworksDisplay = () => {
 };
 
 export default function CustomerBookingClient() {
-  const { t } = useLanguage();
+  const { t,language } = useLanguage();
   const { user } = useAuth();
   
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -120,13 +120,13 @@ export default function CustomerBookingClient() {
   const [bookingStatusTab, setBookingStatusTab] = useState<'all' | 'pending' | 'confirmed' | 'cancelled' | 'completed'>('all');
   const [showAvailableOnly, setShowAvailableOnly] = useState(true);
   
-  // Confirmation Modals (Cancellation & General Confirm)
+  // Confirmation Modals
   const [cancelConfirmation, setCancelConfirmation] = useState<string | null>(null);
   
   const [notificationCount, setNotificationCount] = useState(0);
   const [minTimePassed, setMinTimePassed] = useState(false);
   
-  // SUCCESS STATE (Used for Payments AND Updates)
+  // SUCCESS STATE
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
@@ -173,7 +173,7 @@ export default function CustomerBookingClient() {
 
           if (res.data.status === 'success' || res.status === 200) {
             setSuccessMessage(t('paymentConfirmed') || 'Payment Successful! Room Booked.');
-            setShowSuccessModal(true); // Trigger Fireworks
+            setShowSuccessModal(true); 
             await fetchRooms();
             await fetchBookings();
             setTab('bookings'); 
@@ -206,6 +206,7 @@ export default function CustomerBookingClient() {
   // --- CREATE NEW BOOKING ---
   const handleBooking = async (roomId: string) => {
     if (!checkIn || !checkOut || !guests) {
+      // FIX: Cast keys to any to prevent TS build errors if key is missing
       alert(t('selectDatesGuests' as any) || "Please select dates");
       return;
     }
@@ -259,14 +260,13 @@ export default function CustomerBookingClient() {
         }, { withCredentials: true });
 
         if (res.data.paymentRequired && res.data.checkoutUrl) {
-            // If paying difference, redirect
             alert(`Update requires additional payment of ETB ${res.data.priceDifference}. Redirecting...`);
             window.location.href = res.data.checkoutUrl;
         } else {
-            // SUCCESS ANIMATION FOR UPDATE
             setShowUpdateModal(null);
-            setSuccessMessage(t('updateSuccessfully') || "Booking Updated Successfully!");
-            setShowSuccessModal(true); // Trigger Fireworks
+            // FIX: Cast to any
+            setSuccessMessage(t('updateSuccessfully' as any) || "Booking Updated Successfully!");
+            setShowSuccessModal(true); 
             fetchBookings(); 
         }
     } catch (err: any) {
@@ -275,16 +275,24 @@ export default function CustomerBookingClient() {
   };
 
   const handleCancelBooking = async (bookingId: string) => {
+    if (!bookingId) return;
     try {
-      await axios.put(`${API_BASE}/api/bookings/${bookingId}/cancel`, {}, { withCredentials: true });
-      // SUCCESS ANIMATION FOR CANCEL (Instead of alert)
-      setSuccessMessage(t('bookingCancelled' as any) || "Booking Cancelled");
-      setShowSuccessModal(true); // Trigger Fireworks
+      await axios.post(`${API_BASE}/api/bookings/${bookingId}/cancel`, {}, { 
+          withCredentials: true 
+      });
+
       setCancelConfirmation(null);
+      // FIX: Cast to any
+      setSuccessMessage(t('bookingCancelled' as any) || "Booking Cancelled - 95% Refund Initiated");
+      setShowSuccessModal(true); 
+
       fetchBookings();
       fetchRooms();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to cancel booking');
+      console.error("Cancel Error:", err);
+      const msg = err.response?.data?.message || 'Failed to cancel booking';
+      alert(msg);
+      setCancelConfirmation(null);
     }
   };
 
@@ -324,11 +332,11 @@ export default function CustomerBookingClient() {
       return (
         <>
             <div className="bg-gray-50 p-3 rounded-xl">
-                <p className="text-xs text-gray-400 uppercase font-bold mb-1">{t('checkInLabel') || "Check In"}</p>
+                <p className="text-xs text-gray-400 uppercase font-bold mb-1">{t('checkInLabel' as any) || "Check In"}</p>
                 <p className="font-bold text-gray-700">{format(startDate, 'MMM dd')}</p>
             </div>
             <div className="bg-gray-50 p-3 rounded-xl">
-                <p className="text-xs text-gray-400 uppercase font-bold mb-1">{t('checkOutLabel') || "Check Out"}</p>
+                <p className="text-xs text-gray-400 uppercase font-bold mb-1">{t('checkOutLabel' as any) || "Check Out"}</p>
                 <p className="font-bold text-gray-700">{format(endDate, 'MMM dd')}</p>
             </div>
         </>
@@ -359,12 +367,10 @@ export default function CustomerBookingClient() {
   return (
     <div className="relative min-h-screen bg-gray-50 pb-20">
       
-      {/* FIREWORKS DISPLAY */}
       <AnimatePresence>
         {showSuccessModal && <FireworksDisplay />}
       </AnimatePresence>
 
-      {/* UNIFIED SUCCESS MODAL (PAYMENT / UPDATE / CANCEL) */}
       <AnimatePresence>
         {showSuccessModal && (
           <motion.div
@@ -398,7 +404,8 @@ export default function CustomerBookingClient() {
               </motion.div>
 
               <h2 className="text-3xl font-black text-gray-900 mb-2">
-                {successMessage.includes('Cancel') ? (t('success') || "Success!") : (t('congratulations') || "Congratulations!")}
+                {/* FIX: Cast keys to any to resolve TS build error */}
+                {successMessage.includes('Cancel') ? (t('success' as any) || "Success!") : (t('congratulations' as any) || "Congratulations!")}
               </h2>
               <p className="text-gray-600 mb-8 font-medium">
                 {successMessage}
@@ -441,16 +448,16 @@ export default function CustomerBookingClient() {
             <Bed size={24} />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">{t('bookRoomTitle') || "Book a Stay"}</h1>
-            <p className="text-gray-600">{t('bookRoomDesc') || "Find your perfect room"}</p>
+            <h1 className="text-3xl font-bold text-gray-900">{t('bookRoomTitle' as any) || "Book a Stay"}</h1>
+            <p className="text-gray-600">{t('bookRoomDesc' as any) || "Find your perfect room"}</p>
           </div>
         </div>
         <div className="flex p-1 bg-white rounded-xl border border-gray-200 shadow-sm">
           <button onClick={() => setTab('rooms')} className={`px-6 py-2.5 rounded-lg font-bold transition-all ${tab === 'rooms' ? 'bg-amber-100 text-amber-800' : 'text-gray-500 hover:bg-gray-50'}`}>
-            {t('browseRooms') || "Rooms"}
+            {t('browseRooms' as any) || "Rooms"}
           </button>
           <button onClick={() => setTab('bookings')} className={`px-6 py-2.5 rounded-lg font-bold transition-all relative ${tab === 'bookings' ? 'bg-amber-100 text-amber-800' : 'text-gray-500 hover:bg-gray-50'}`}>
-            {t('myBookings') || "My Bookings"}
+            {t('myBookings' as any) || "My Bookings"}
             {notificationCount > 0 && (
               <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full border-2 border-white">
                 {notificationCount}
@@ -465,22 +472,22 @@ export default function CustomerBookingClient() {
           <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 mb-8 flex flex-col lg:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-              <input type="text" placeholder={t('searchRooms') || "Search rooms..."} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-amber-500 rounded-xl transition outline-none" />
+              <input type="text" placeholder={t('searchRooms' as any) || "Search rooms..."} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-amber-500 rounded-xl transition outline-none" />
             </div>
             <div className="flex gap-4">
                <div className="relative min-w-[180px]">
                 <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                 <select value={typeFilter} onChange={e => setTypeFilter(e.target.value as any)} className="w-full pl-12 pr-10 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-amber-500 rounded-xl appearance-none cursor-pointer">
-                  <option value="all">{t('allTypes') || "All Types"}</option>
-                  <option value="single">{t('single') || "Single"}</option>
-                  <option value="double">{t('double') || "Double"}</option>
-                  <option value="triple">{t('triple') || "Triple"}</option>
+                  <option value="all">{t('allTypes' as any) || "All Types"}</option>
+                  <option value="single">{t('single' as any) || "Single"}</option>
+                  <option value="double">{t('double' as any) || "Double"}</option>
+                  <option value="triple">{t('triple' as any) || "Triple"}</option>
                 </select>
                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
               </div>
               <label className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition border-2 border-transparent hover:border-gray-200">
                 <input type="checkbox" checked={showAvailableOnly} onChange={e => setShowAvailableOnly(e.target.checked)} className="w-5 h-5 text-amber-600 rounded focus:ring-amber-500" />
-                <span className="font-medium text-gray-700">{t('showAvailableOnly') || "Available Only"}</span>
+                <span className="font-medium text-gray-700">{t('showAvailableOnly' as any) || "Available Only"}</span>
               </label>
             </div>
           </div>
@@ -501,14 +508,14 @@ export default function CustomerBookingClient() {
                     )}
                     <div className="absolute top-4 left-4 flex gap-2">
                        <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wide rounded-full backdrop-blur-md shadow-sm ${room.availability ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'}`}>
-                        {room.availability ? (t('available') || "Available") : (t('occupied') || "Occupied")}
+                        {room.availability ? (t('available' as any) || "Available") : (t('occupied' as any) || "Occupied")}
                       </span>
                     </div>
                   </div>
                   
                   <div className="p-6">
                     <div className="flex justify-between items-start mb-2">
-                        <h3 className="text-xl font-bold text-gray-900">{t('room') || "Room"} {room.roomNumber}</h3>
+                        <h3 className="text-xl font-bold text-gray-900">{t('room' as any) || "Room"} {room.roomNumber}</h3>
                         <div className="text-right">
                             <span className="block text-2xl font-black text-amber-600">ETB {room.price}</span>
                             <span className="text-xs text-gray-400">{language === 'am' ? '' : '/night'}</span>
@@ -524,7 +531,7 @@ export default function CustomerBookingClient() {
                     </div>
 
                     <button 
-                      onClick={() => { if (!room.availability) { alert(t('alreadyReserved')); return; } setShowBookingModal(room); }} 
+                      onClick={() => { if (!room.availability) { alert(t('alreadyReserved' as any)); return; } setShowBookingModal(room); }} 
                       disabled={!room.availability}
                       className={`w-full py-3.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
                         room.availability 
@@ -532,7 +539,7 @@ export default function CustomerBookingClient() {
                         : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                       }`}
                     >
-                      {room.availability ? (t('bookNow') || "Book Now") : (t('notAvailable') || "Unavailable")}
+                      {room.availability ? (t('bookNow' as any) || "Book Now") : (t('notAvailable' as any) || "Unavailable")}
                     </button>
                   </div>
                 </motion.div>
@@ -574,7 +581,7 @@ export default function CustomerBookingClient() {
                     <div className="flex-1">
                       <div className="flex justify-between items-start mb-2">
                         <div>
-                             <h3 className="text-xl font-bold text-gray-900">{t('room') || "Room"} {booking.room?.roomNumber || 'N/A'}</h3>
+                             <h3 className="text-xl font-bold text-gray-900">{t('room' as any) || "Room"} {booking.room?.roomNumber || 'N/A'}</h3>
                              <p className="text-amber-600 font-medium capitalize">{booking.room?.type} Suite</p>
                         </div>
                         <span className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${
@@ -591,11 +598,11 @@ export default function CustomerBookingClient() {
                         {renderDateRange(booking.checkIn, booking.checkOut)}
 
                          <div className="bg-gray-50 p-3 rounded-xl">
-                            <p className="text-xs text-gray-400 uppercase font-bold mb-1">{t('guestsLabel') || "Guests"}</p>
+                            <p className="text-xs text-gray-400 uppercase font-bold mb-1">{t('guestsLabel' as any) || "Guests"}</p>
                             <p className="font-bold text-gray-700">{booking.guests}</p>
                         </div>
                          <div className="bg-gray-50 p-3 rounded-xl">
-                            <p className="text-xs text-gray-400 uppercase font-bold mb-1">{t('total') || "Total"}</p>
+                            <p className="text-xs text-gray-400 uppercase font-bold mb-1">{t('total' as any) || "Total"}</p>
                             <p className="font-bold text-amber-600">ETB {booking.totalPrice}</p>
                         </div>
                       </div>
@@ -612,7 +619,7 @@ export default function CustomerBookingClient() {
                                 </button>
 
                                 <button onClick={() => setCancelConfirmation(booking._id)} className="text-red-500 hover:text-red-700 font-bold text-sm px-4 py-2 hover:bg-red-50 rounded-lg transition border border-red-200">
-                                    {t('cancelBooking') || "Cancel"}
+                                    {t('cancelBooking' as any) || "Cancel"}
                                 </button>
                             </>
                         )}
@@ -620,7 +627,7 @@ export default function CustomerBookingClient() {
                         {/* PAY NOW BUTTON */}
                         {booking.status === 'pending' && (
                             <button onClick={() => handlePayNow(booking._id)} className="bg-amber-600 text-white px-6 py-2 rounded-lg font-bold shadow-md hover:shadow-lg hover:bg-amber-700 transition flex items-center gap-2">
-                                <span>{t('payNow' as any) || "Pay Now"}</span>
+                                <span>{t('payWithChapa' as any) || "Pay Now"}</span>
                                 <ArrowRight size={16} />
                             </button>
                         )}
@@ -648,11 +655,11 @@ export default function CustomerBookingClient() {
                     <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
                         <X size={32} />
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">{t('confirmCancellation') || "Cancel Booking?"}</h3>
-                    <p className="text-gray-500 mb-6">{t('refundNotice') || "This action cannot be undone."}</p>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">{t('confirmCancellation' as any) || "Cancel Booking?"}</h3>
+                    <p className="text-gray-500 mb-6">{t('refundNotice' as any) || "This action cannot be undone."}</p>
                     <div className="flex gap-3">
-                        <button onClick={() => setCancelConfirmation(null)} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition">{t('keepBooking') || "No, Keep"}</button>
-                        <button onClick={() => { handleCancelBooking(cancelConfirmation); setCancelConfirmation(null); }} className="flex-1 py-3 bg-red-600 text-white hover:bg-red-700 rounded-xl font-bold shadow-lg transition">{t('yesCancel') || "Yes, Cancel"}</button>
+                        <button onClick={() => setCancelConfirmation(null)} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition">{t('keepBooking' as any) || "No, Keep"}</button>
+                        <button onClick={() => handleCancelBooking(cancelConfirmation)} className="flex-1 py-3 bg-red-600 text-white hover:bg-red-700 rounded-xl font-bold shadow-lg transition">{t('yesCancel' as any) || "Yes, Cancel"}</button>
                     </div>
                 </motion.div>
             </motion.div>
@@ -664,21 +671,21 @@ export default function CustomerBookingClient() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowBookingModal(null)}>
             <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-8" onClick={e => e.stopPropagation()}>
               <div className="flex justify-between items-center mb-8">
-                  <h2 className="text-2xl font-black text-gray-900">{t('bookRoomTitle') || "Book Room"} <span className="text-amber-600">{showBookingModal.roomNumber}</span></h2>
+                  <h2 className="text-2xl font-black text-gray-900">{t('bookRoomTitle' as any) || "Book Room"} <span className="text-amber-600">{showBookingModal.roomNumber}</span></h2>
                   <button onClick={() => setShowBookingModal(null)} className="p-2 hover:bg-gray-100 rounded-full transition"><X size={20} /></button>
               </div>
               
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('checkInLabel') || "Check In"}</label>
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('checkInLabel' as any) || "Check In"}</label>
                         <div className="relative">
                             <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                             <input type="date" value={checkIn} onChange={e => setCheckIn(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none font-medium" />
                         </div>
                     </div>
                     <div className="space-y-2">
-                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('checkOutLabel') || "Check Out"}</label>
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('checkOutLabel' as any) || "Check Out"}</label>
                         <div className="relative">
                             <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                             <input type="date" value={checkOut} onChange={e => setCheckOut(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none font-medium" />
@@ -687,7 +694,7 @@ export default function CustomerBookingClient() {
                 </div>
                 
                 <div className="space-y-2">
-                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('guestsLabel') || "Guests"}</label>
+                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('guestsLabel' as any) || "Guests"}</label>
                     <div className="relative">
                         <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                         <input type="number" min="1" max={showBookingModal.capacity} value={guests} onChange={e => setGuests(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none font-medium" />
@@ -696,7 +703,7 @@ export default function CustomerBookingClient() {
               </div>
 
               <div className="flex gap-4 mt-8 pt-6 border-t border-gray-100">
-                <button onClick={() => setShowBookingModal(null)} className="flex-1 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition">{t('cancel') || "Cancel"}</button>
+                <button onClick={() => setShowBookingModal(null)} className="flex-1 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition">{t('cancel' as any) || "Cancel"}</button>
                 <button onClick={() => handleBooking(showBookingModal._id)} className="flex-[2] py-3.5 bg-gray-900 text-white rounded-xl font-bold hover:bg-amber-600 shadow-xl hover:shadow-amber-200 transition flex items-center justify-center gap-2">
                     <span>{t('proceedPayment' as any) || "Proceed to Payment"}</span>
                     <CreditCard size={18} />
@@ -740,14 +747,14 @@ export default function CustomerBookingClient() {
                 {/* 2. Dates */}
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('checkInLabel')}</label>
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('checkInLabel' as any)}</label>
                         <div className="relative">
                             <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                             <input type="date" value={checkIn} onChange={e => setCheckIn(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none font-medium" />
                         </div>
                     </div>
                     <div className="space-y-2">
-                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('checkOutLabel')}</label>
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('checkOutLabel' as any)}</label>
                         <div className="relative">
                             <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                             <input type="date" value={checkOut} onChange={e => setCheckOut(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none font-medium" />
@@ -757,12 +764,13 @@ export default function CustomerBookingClient() {
                 
                 {/* 3. Guests */}
                 <div className="space-y-2">
-                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('guestsLabel')}</label>
+                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('guestsLabel' as any)}</label>
                     <div className="relative">
                         <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                         <input type="number" min="1" value={guests} onChange={e => setGuests(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none font-medium" />
                     </div>
                 </div>
+                
                 <div className="p-4 bg-amber-50 text-amber-800 text-sm rounded-xl border border-amber-100 flex gap-2">
                     <DollarSign size={16} className="shrink-0 mt-0.5" />
                     If the new total is higher, you will be redirected to pay the difference.
@@ -770,7 +778,7 @@ export default function CustomerBookingClient() {
               </div>
 
               <div className="flex gap-4 mt-8 pt-6 border-t border-gray-100">
-                <button onClick={() => setShowUpdateModal(null)} className="flex-1 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition">{t('cancel')}</button>
+                <button onClick={() => setShowUpdateModal(null)} className="flex-1 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition">{t('cancel' as any)}</button>
                 <button onClick={handleUpdateBooking} className="flex-[2] py-3.5 bg-gray-900 text-white rounded-xl font-bold hover:bg-amber-600 shadow-xl hover:shadow-amber-200 transition flex items-center justify-center gap-2">
                     <span>{t('saveChanges' as any) || "Update Booking"}</span>
                 </button>
@@ -779,6 +787,7 @@ export default function CustomerBookingClient() {
           </motion.div>
         )}
        </AnimatePresence>
+
     </div>
   );
 }
