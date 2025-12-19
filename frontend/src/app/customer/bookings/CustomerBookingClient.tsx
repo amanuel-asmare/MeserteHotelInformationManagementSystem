@@ -780,7 +780,6 @@ export default function CustomerBookingClient() {
           </motion.div>
         )}
        </AnimatePresence>
-
     </div>
   );
 }
