@@ -15,7 +15,7 @@ import { format } from 'date-fns';
 import toast, { Toaster } from 'react-hot-toast';
 import { useLanguage } from '../../../../context/LanguageContext';
 
-// Import your existing Modal Forms
+// Import Auth Modals
 import LoginForm from '../../../../components/forms/LoginForm';
 import RegisterForm from '../../../../components/forms/RegisterForm';
 
@@ -62,7 +62,7 @@ type FilterType = 'active' | 'today' | 'week' | 'month' | 'all';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
 
-// --- LOADING COMPONENT (Unchanged Style) ---
+// --- LOADING COMPONENT ---
 const CulinaryLoader = () => {
   const [currentIcon, setCurrentIcon] = useState(0);
   const icons = [Utensils, Pizza, Coffee, Soup, Sandwich, IceCream];
@@ -119,9 +119,9 @@ export default function CustomerMenuPage() {
   const { t } = useLanguage(); 
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user } = useAuth(); // Removed loading: authLoading to prevent guest blockage
+  const { user } = useAuth();
 
-  // --- NEW MODAL STATES FOR QR GUEST FLOW ---
+  // AUTH MODAL STATES
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
 
@@ -145,60 +145,81 @@ export default function CustomerMenuPage() {
 
   const socketRef = useRef<any>(null);
 
+  // Initialize delivery phone if user is logged in
   useEffect(() => {
     if (user?.phone) {
         setDeliveryDetails(prev => ({ ...prev, phone: user.phone || '' }));
     }
   }, [user]);
 
-  // SOCKET CONNECTION (Only if user is logged in)
+  // SOCKET.IO CONNECTION
   useEffect(() => {
-    if (typeof window === 'undefined' || !user?._id) return;
+    if (typeof window === 'undefined' || !(user as any)?._id) return;
     const socket = io(API_BASE, { withCredentials: true });
     socketRef.current = socket;
     
     socket.on('orderUpdate', (updatedOrder: Order) => {
       setAllOrders(prev => {
         const exists = prev.find(o => o._id === updatedOrder._id);
-        return exists ? prev.map(o => o._id === updatedOrder._id ? updatedOrder : o) : [updatedOrder, ...prev];
+        if (exists) {
+            return prev.map(o => o._id === updatedOrder._id ? updatedOrder : o);
+        } else {
+            return [updatedOrder, ...prev];
+        }
       });
+
       if (updatedOrder.status !== 'pending') {
           const statusText = t(updatedOrder.status as any) || updatedOrder.status;
-          toast.success(`${t('order')} ${updatedOrder.orderNumber} ${t('orderMarkedAs')} ${statusText}!`);
+          // FIXED: Added 'as any' to translation keys to fix build error
+          toast.success(`${t('order' as any)} ${updatedOrder.orderNumber} ${t('orderMarkedAs' as any)} ${statusText}!`, {
+            style: { background: '#10b981', color: 'white' }
+          });
       }
     });
+
     return () => socket.disconnect();
-  }, [user?._id, t]);
+  }, [user, t]);
 
   useEffect(() => { applyFilter(allOrders, activeFilter); }, [allOrders, activeFilter]);
 
-  // Handle Payment Redirects
+  // Handle payment success
   useEffect(() => {
     const paid = searchParams.get('paid');
     if (paid === '1') {
-      toast.success(t('paymentSuccess'), { duration: 6000 });
+      toast.success(t('paymentSuccess' as any) || 'Payment Successful', { duration: 6000 });
       setCart([]);
       localStorage.removeItem('customerCart');
       if (user) fetchOrderHistory();
     } else if (paid === '0') {
-      toast.error(t('paymentFailed'));
+      toast.error(t('paymentFailed' as any) || 'Payment Failed');
     }
-  }, [searchParams, user]);
+    if (paid) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('paid');
+      router.replace(url.pathname + url.search, { scroll: false });
+    }
+  }, [searchParams, router, t, user]);
 
-  // Load Menu for everyone (Guest or Logged In)
+  // Load Menu for Guest and Auth History for Logged In
   useEffect(() => {
     fetchMenu();
     loadCart();
     if (user) fetchOrderHistory();
   }, [user]);
 
-  useEffect(() => { localStorage.setItem('customerCart', JSON.stringify(cart)); }, [cart]);
+  useEffect(() => {
+    localStorage.setItem('customerCart', JSON.stringify(cart));
+  }, [cart]);
 
   const fetchMenu = async () => {
     try {
       const r = await api.get('/api/menu');
       setMenu(r.data);
-    } catch { toast.error(t('failedLoadMenu')); } finally { setLoading(false); }
+    } catch {
+      toast.error(t('failedLoadMenu' as any) || 'Failed to load menu');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const loadCart = () => {
@@ -211,15 +232,20 @@ export default function CustomerMenuPage() {
       const r = await api.get('/api/orders/my');
       setAllOrders(r.data);
       applyFilter(r.data, 'active'); 
-    } catch { console.error("Failed history"); }
+    } catch {
+      console.error("History fetch failed");
+    }
   };
 
   const getImageUrl = (path: string) => path?.startsWith('http') ? path : `${API_BASE}${path}` || '/default-menu.jpg';
 
   const applyFilter = (orders: Order[], filter: FilterType) => {
-    const now = new Date();
-    let filtered = orders;
-    if (filter === 'active') filtered = orders.filter(o => !['delivered', 'cancelled'].includes(o.status));
+    let filtered: Order[] = [];
+    if (filter === 'active') {
+        filtered = orders.filter(o => !['delivered', 'cancelled'].includes(o.status));
+    } else {
+        filtered = orders; 
+    }
     filtered.sort((a, b) => new Date(b.orderedAt).getTime() - new Date(a.orderedAt).getTime());
     setFilteredOrders(filtered);
   };
@@ -230,28 +256,25 @@ export default function CustomerMenuPage() {
       if (existing) return prev.map(i => i.menuItem === item._id ? { ...i, quantity: i.quantity + 1 } : i);
       return [...prev, { menuItem: item._id, name: item.name, price: item.price, quantity: 1, notes: '', image: getImageUrl(item.image) }];
     });
-    toast.success(`${item.name} ${t('itemAdded')}`);
+    toast.success(`${item.name} ${t('itemAdded' as any)}`, { icon: '🛒' });
   };
 
   const updateQuantity = (id: string, delta: number) => {
     setCart(prev => prev.map(i => i.menuItem === id ? { ...i, quantity: Math.max(0, i.quantity + delta) } : i).filter(i => i.quantity > 0));
   };
 
-  // --- MODIFIED: PLACE ORDER (The Guest Flow Trigger) ---
+  // --- PLACE ORDER (Supports Guest Flow via QR) ---
   const placeOrder = async () => {
-    // 1. Check Auth - If scanning QR as Guest, open login modal
-    if (!user) {
-        toast.error(t('loginToPlaceOrder' as any) || "Please login to complete your order");
+    if (!user) { 
+        toast.error(t('loginToOrder' as any) || "Please Login to Place your Order");
         setShowLoginModal(true);
-        return;
+        return; 
     }
-
-    if (cart.length === 0) { toast.error(t('cartEmpty')); return; }
+    if (cart.length === 0) { toast.error(t('cartEmpty' as any) || 'Cart is empty'); return; }
     
-    // 2. Existing Validations
-    if (orderType === 'room' && !user.roomNumber) { toast.error(t('setRoomNumber')); return; }
-    if (orderType === 'table' && !tableNumber.trim()) { toast.error(t('enterTableNumber')); return; }
-    if (orderType === 'delivery' && (!deliveryDetails.phone || !deliveryDetails.street)) { toast.error(t('fillDeliveryDetails')); return; }
+    if (orderType === 'room' && !user.roomNumber) { toast.error(t('setRoomNumber' as any) || 'Set room number'); return; }
+    if (orderType === 'table' && !tableNumber.trim()) { toast.error(t('enterTableNumber' as any) || 'Enter table number'); return; }
+    if (orderType === 'delivery' && (!deliveryDetails.phone || !deliveryDetails.street)) { toast.error(t('fillDeliveryDetails' as any) || 'Fill delivery details'); return; }
 
     setPlacingOrder(true);
     try {
@@ -271,11 +294,22 @@ export default function CustomerMenuPage() {
       const res = await api.post('/api/orders/chapa', payload);
       if (res.data.checkout_url) window.location.href = res.data.checkout_url;
     } catch (e: any) {
-      toast.error(t('paymentSetupFailed'));
-    } finally { setPlacingOrder(false); }
+      toast.error(t('paymentSetupFailed' as any) || 'Payment setup failed');
+    } finally {
+      setPlacingOrder(false);
+    }
   };
 
-  // --- UI RENDER ---
+  const openReceipt = (orderId: string) => router.push(`/customer/receipt/${orderId}`);
+
+  const getStatusColor = (status: string) => {
+    switch(status) {
+        case 'pending': return 'bg-orange-100 text-orange-600 border-orange-200';
+        case 'delivered': return 'bg-green-100 text-green-600 border-green-200';
+        default: return 'bg-blue-100 text-blue-600 border-blue-200';
+    }
+  };
+
   const [minTimePassed, setMinTimePassed] = useState(false);
   useEffect(() => { const timer = setTimeout(() => setMinTimePassed(true), 2500); return () => clearTimeout(timer); }, []);
 
@@ -285,7 +319,7 @@ export default function CustomerMenuPage() {
     <>
       <Toaster position="top-right" />
 
-      {/* --- AUTH MODALS FOR GUEST SCANNERS --- */}
+      {/* AUTH MODALS FOR GUEST SCANNER */}
       <AnimatePresence>
         {showLoginModal && (
           <LoginForm 
@@ -302,10 +336,10 @@ export default function CustomerMenuPage() {
       </AnimatePresence>
 
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        {/* Header Updated for Guest Mode */}
+        {/* Header Responsive */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{t('orderFoodDrinks')}</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{t('orderFoodDrinks' as any) || 'Order Food & Drinks'}</h1>
             <div className="text-gray-600 dark:text-gray-400 mt-1">
               {user ? (
                 <p className="flex items-center gap-2">
@@ -324,7 +358,7 @@ export default function CustomerMenuPage() {
             {user && (
                 <button onClick={() => setShowHistory(true)} className="p-3 bg-gray-100 dark:bg-gray-700 rounded-xl hover:bg-gray-200 transition flex items-center gap-2">
                     <History size={22} />
-                    <span className="hidden md:inline font-medium">{t('history')}</span>
+                    <span className="hidden md:inline font-medium">{t('history' as any) || 'History'}</span>
                 </button>
             )}
             <button onClick={() => setShowCart(true)} className="relative p-4 bg-amber-600 text-white rounded-xl hover:bg-amber-700 shadow-lg transition">
@@ -362,7 +396,7 @@ export default function CustomerMenuPage() {
             <div className="absolute inset-0 bg-black/50" onClick={() => setShowCart(false)} />
             <motion.div className="relative w-full max-w-md bg-white dark:bg-gray-800 shadow-2xl flex flex-col h-full">
               <div className="p-6 border-b flex items-center justify-between">
-                <h2 className="text-2xl font-bold">{t('yourOrder')}</h2>
+                <h2 className="text-2xl font-bold">{t('yourOrder' as any) || 'Your Order'}</h2>
                 <button onClick={() => setShowCart(false)} className="p-2 hover:bg-gray-100 rounded-full"><X size={24} /></button>
               </div>
               
@@ -370,27 +404,27 @@ export default function CustomerMenuPage() {
                 {cart.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-4">
                       <ShoppingCart size={64} opacity={0.3} />
-                      <p>{t('cartEmpty')}</p>
+                      <p>{t('cartEmpty' as any) || 'Cart is empty'}</p>
                   </div>
                 ) : (
                   <>
                     <div className="p-4 bg-amber-50 dark:bg-gray-700 rounded-xl space-y-3">
-                        <p className="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-widest">{t('selectService')}</p>
+                        <p className="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-widest">{t('selectService' as any) || 'Select Service'}</p>
                         <div className="flex justify-around">
                             <button onClick={() => setOrderType('room')} className={`flex flex-col items-center p-2 rounded-lg transition-all ${orderType === 'room' ? 'bg-amber-600 text-white shadow-md' : 'text-gray-400'}`}>
-                                <Hotel size={20} /> <span className="text-[10px] mt-1 font-bold">ROOM</span>
+                                <Hotel size={20} /> <span className="text-[10px] mt-1 font-bold uppercase">{t('room' as any) || 'Room'}</span>
                             </button>
                             <button onClick={() => setOrderType('table')} className={`flex flex-col items-center p-2 rounded-lg transition-all ${orderType === 'table' ? 'bg-amber-600 text-white shadow-md' : 'text-gray-400'}`}>
-                                <Utensils size={20} /> <span className="text-[10px] mt-1 font-bold">TABLE</span>
+                                <Utensils size={20} /> <span className="text-[10px] mt-1 font-bold uppercase">{t('table' as any) || 'Table'}</span>
                             </button>
                             <button onClick={() => setOrderType('delivery')} className={`flex flex-col items-center p-2 rounded-lg transition-all ${orderType === 'delivery' ? 'bg-amber-600 text-white shadow-md' : 'text-gray-400'}`}>
-                                <Bike size={20} /> <span className="text-[10px] mt-1 font-bold">DELIVERY</span>
+                                <Bike size={20} /> <span className="text-[10px] mt-1 font-bold uppercase">{t('deliveryService' as any) || 'Delivery'}</span>
                             </button>
                         </div>
                     </div>
 
                     {orderType === 'table' && (
-                        <input type="text" placeholder={t('tableNumber')} value={tableNumber} onChange={e => setTableNumber(e.target.value)} className="w-full px-4 py-2 border rounded-lg bg-gray-50 dark:bg-gray-700" />
+                        <input type="text" placeholder={t('tableNumber' as any) || 'Table Number'} value={tableNumber} onChange={e => setTableNumber(e.target.value)} className="w-full px-4 py-2 border rounded-lg bg-gray-50 dark:bg-gray-700" />
                     )}
 
                     {cart.map(item => (
@@ -414,13 +448,13 @@ export default function CustomerMenuPage() {
               </div>
 
               {cart.length > 0 && (
-                <div className="p-6 border-t bg-white dark:bg-gray-900">
+                <div className="p-6 border-t bg-white dark:bg-gray-900 shadow-inner">
                   <div className="flex justify-between text-2xl font-black mb-4">
-                      <span>{t('total')}</span>
+                      <span>{t('total' as any) || 'Total'}</span>
                       <span>ETB {(cart.reduce((s, i) => s + i.price * i.quantity, 0) + (orderType === 'delivery' ? 50 : 0)).toFixed(2)}</span>
                   </div>
                   <button onClick={placeOrder} disabled={placingOrder} className="w-full py-4 bg-amber-600 text-white rounded-xl font-bold text-lg hover:bg-amber-700 transition shadow-lg disabled:opacity-50">
-                    {placingOrder ? t('processing') : user ? t('payWithChapa') : (t('loginToOrder' as any) || "Login to Place Order")}
+                    {placingOrder ? (t('processing' as any) || 'Processing...') : user ? (t('payWithChapa' as any) || 'Pay with Chapa') : (t('loginToOrder' as any) || "Login to Place Order")}
                   </button>
                 </div>
               )}
@@ -435,23 +469,27 @@ export default function CustomerMenuPage() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
             <motion.div className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
               <div className="p-6 border-b flex justify-between items-center">
-                <h2 className="text-2xl font-bold flex items-center gap-2"><History className="text-amber-600" /> {t('orderHistory')}</h2>
-                <button onClick={() => setShowHistory(false)}><X size={24} /></button>
+                <h2 className="text-2xl font-bold flex items-center gap-2 tracking-tight"><History className="text-amber-600" /> {t('orderHistory' as any) || 'Order History'}</h2>
+                <button onClick={() => setShowHistory(false)} className="hover:text-red-500 transition"><X size={24} /></button>
               </div>
               <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50 dark:bg-gray-900">
-                {filteredOrders.map(order => (
-                  <div key={order._id} className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex justify-between items-center">
-                    <div>
-                        <p className="font-bold">{t('order')} {order.orderNumber}</p>
-                        <p className="text-xs text-gray-500">{format(new Date(order.orderedAt), "MMM d, h:mm a")}</p>
-                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${getStatusColor(order.status)}`}>{t(order.status as any)}</span>
+                {filteredOrders.length === 0 ? (
+                   <p className="text-center text-gray-500 py-10">{t('noOrdersFoundCategory' as any) || 'No orders found'}</p>
+                ) : (
+                  filteredOrders.map(order => (
+                    <div key={order._id} className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex justify-between items-center">
+                      <div>
+                          <p className="font-bold">{t('order' as any)} {order.orderNumber}</p>
+                          <p className="text-xs text-gray-500 mb-2">{format(new Date(order.orderedAt), "MMM d, h:mm a")}</p>
+                          <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${getStatusColor(order.status)}`}>{t(order.status as any)}</span>
+                      </div>
+                      <div className="text-right">
+                          <p className="font-black text-lg">ETB {order.totalAmount}</p>
+                          <button onClick={() => openReceipt(order._id)} className="text-xs text-amber-600 font-bold underline mt-1">{t('viewReceipt' as any) || 'View Receipt'}</button>
+                      </div>
                     </div>
-                    <div className="text-right">
-                        <p className="font-black">ETB {order.totalAmount}</p>
-                        <button onClick={() => openReceipt(order._id)} className="text-xs text-amber-600 font-bold underline mt-1">{t('viewReceipt')}</button>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </motion.div>
           </motion.div>
