@@ -67,7 +67,7 @@ const CulinaryLoader = () => {
   useEffect(() => {
     const timer = setInterval(() => setIconIdx((p) => (p + 1) % icons.length), 600);
     return () => clearInterval(timer);
-  }, [icons.length]);
+  }, []);
 
   const Icon = icons[iconIdx];
 
@@ -81,6 +81,7 @@ const CulinaryLoader = () => {
         <Icon size={40} className="text-white" />
       </motion.div>
       <h2 className="text-amber-500 font-bold tracking-widest animate-pulse uppercase">Meseret Dining</h2>
+      <p className="text-gray-500 text-xs mt-2">Loading Delicious Menu...</p>
     </div>
   );
 };
@@ -89,12 +90,11 @@ export default function CustomerMenuPage() {
   const { t } = useLanguage(); 
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user } = useAuth(); // Decoupled from authLoading to allow guest access
+  const { user } = useAuth(); 
 
-  // AUTH MODAL STATES
+  // UI States
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
-
   const [loading, setLoading] = useState(true);
   const [menu, setMenu] = useState<MenuItem[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -102,53 +102,50 @@ export default function CustomerMenuPage() {
   const [placingOrder, setPlacingOrder] = useState(false);
   const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  
+  // Order States
   const [orderType, setOrderType] = useState<'room' | 'table' | 'delivery'>('room');
   const [tableNumber, setTableNumber] = useState<string>('');
   const [deliveryDetails, setDeliveryDetails] = useState({ phone: '', street: '', landmark: '', city: 'Woldia' });
 
   const socketRef = useRef<any>(null);
 
-  // 1. Initial Data Fetch (Menu for guests, History for members)
+  // 1. FETCH MENU IMMEDIATELY ON MOUNT (FIX FOR QR SCAN)
   useEffect(() => {
-    fetchMenu();
+    const init = async () => {
+      await fetchMenu();
+      
+      // Stop loading screen after data is fetched OR after 3 seconds failsafe
+      setTimeout(() => setLoading(false), 800);
+    };
+    init();
+
+    // Load cart from local storage
     const savedCart = localStorage.getItem('customerCart');
     if (savedCart) setCart(JSON.parse(savedCart));
-    
+  }, []);
+
+  // 2. FETCH USER SPECIFIC DATA (Only when user object is available)
+  useEffect(() => {
     if (user) {
         fetchOrderHistory();
         setDeliveryDetails(prev => ({ ...prev, phone: user.phone || '' }));
     }
   }, [user]);
 
-  // 2. Local Storage Sync
+  // Sync Cart to LocalStorage
   useEffect(() => {
     localStorage.setItem('customerCart', JSON.stringify(cart));
   }, [cart]);
 
-  // 3. Socket Connection (Casting user as any to fix Build Error)
-  useEffect(() => {
-    if (typeof window === 'undefined' || !(user as any)?._id) return;
-    const socket = io(API_BASE, { withCredentials: true });
-    socketRef.current = socket;
-    socket.on('orderUpdate', (updatedOrder: Order) => {
-      if (updatedOrder.status !== 'pending') {
-        const statusText = t(updatedOrder.status as any) || updatedOrder.status;
-        toast.success(`${t('order' as any)} ${updatedOrder.orderNumber} is ${statusText}`);
-        fetchOrderHistory();
-      }
-    });
-    return () => socket.disconnect();
-  }, [user, t]);
-
   const fetchMenu = async () => {
     try {
-      const r = await api.get('/api/menu');
-      setMenu(r.data);
+      // Use a timestamp to prevent browser caching during the demo
+      const r = await api.get(`/api/menu?t=${Date.now()}`);
+      if (r.data) setMenu(r.data);
     } catch (err) {
-      console.error("Menu fetch failed", err);
-    } finally {
-      // Failsafe: stop loading even if backend fails
-      setTimeout(() => setLoading(false), 1000); 
+      console.error("Menu fetch error:", err);
+      toast.error("Failed to load menu. Please refresh.");
     }
   };
 
@@ -166,7 +163,7 @@ export default function CustomerMenuPage() {
       const img = item.image.startsWith('http') ? item.image : `${API_BASE}${item.image}`;
       return [...prev, { menuItem: item._id, name: item.name, price: item.price, quantity: 1, notes: '', image: img }];
     });
-    toast.success(`${item.name} ${t('itemAdded' as any) || 'added'}`);
+    toast.success(`${item.name} added to cart`);
   };
 
   const updateQuantity = (id: string, delta: number) => {
@@ -175,7 +172,7 @@ export default function CustomerMenuPage() {
 
   const placeOrder = async () => {
     if (!user) {
-      toast.error(t('loginToOrder' as any) || "Please login to place order");
+      toast.error("Please login to place your order");
       setShowLoginModal(true);
       return;
     }
@@ -197,19 +194,19 @@ export default function CustomerMenuPage() {
       const res = await api.post('/api/orders/chapa', payload);
       if (res.data.checkout_url) window.location.href = res.data.checkout_url;
     } catch (e) {
-      toast.error("Payment initialization failed");
+      toast.error("Order processing failed");
     } finally {
       setPlacingOrder(false);
     }
   };
 
+  // --- UI RENDER ---
   if (loading) return <CulinaryLoader />;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-24">
       <Toaster position="top-right" />
 
-      {/* Auth Modals for QR Guest Flow */}
       <AnimatePresence>
         {showLoginModal && (
           <LoginForm onClose={() => setShowLoginModal(false)} onSwitchToRegister={() => { setShowLoginModal(false); setShowRegisterModal(true); }} />
@@ -220,22 +217,22 @@ export default function CustomerMenuPage() {
       </AnimatePresence>
 
       <div className="max-w-7xl mx-auto px-4 pt-8">
-        <header className="flex justify-between items-center mb-8 bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm">
+        <header className="flex justify-between items-center mb-8 bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('orderFoodDrinks' as any) || 'Order Menu'}</h1>
-            <p className="text-xs font-semibold mt-1">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('orderFoodDrinks' as any) || 'Meseret Dining'}</h1>
+            <div className="text-xs font-semibold mt-1">
               {user ? (
-                <span className="text-green-600 uppercase tracking-tighter">● {t('loggedInAs' as any) || 'Logged In'}: {user.firstName}</span>
+                <span className="text-green-600">● Welcome, {user.firstName}</span>
               ) : (
-                <span className="text-amber-600 uppercase tracking-tighter">● {t('browsingAsGuest' as any) || 'Browsing as Guest'}</span>
+                <span className="text-amber-600">● Browsing as Guest</span>
               )}
-            </p>
+            </div>
           </div>
           <div className="flex gap-2">
             {user && (
-              <button onClick={() => setShowHistory(true)} className="p-3 bg-gray-100 dark:bg-gray-700 rounded-2xl hover:bg-amber-500 hover:text-white transition"><History size={20} /></button>
+              <button onClick={() => setShowHistory(true)} className="p-3 bg-gray-100 dark:bg-gray-700 rounded-2xl hover:bg-amber-500 transition"><History size={20} /></button>
             )}
-            <button onClick={() => setShowCart(true)} className="p-3 bg-amber-600 text-white rounded-2xl shadow-lg relative transform hover:scale-105 active:scale-95 transition">
+            <button onClick={() => setShowCart(true)} className="p-3 bg-amber-600 text-white rounded-2xl shadow-lg relative transform active:scale-90 transition">
               <ShoppingCart size={20} />
               {cart.length > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold">{cart.length}</span>}
             </button>
@@ -244,24 +241,28 @@ export default function CustomerMenuPage() {
 
         {/* Menu Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {menu.map((item) => (
-            <motion.div key={item._id} whileHover={{ y: -5 }} className="bg-white dark:bg-gray-800 rounded-3xl shadow-md overflow-hidden border border-gray-100 dark:border-gray-700">
-              <div className="h-44 bg-gray-100">
-                <img src={item.image.startsWith('http') ? item.image : `${API_BASE}${item.image}`} className="w-full h-full object-cover" alt={item.name} />
-              </div>
-              <div className="p-5">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-bold text-lg">{item.name}</h3>
-                  <span className="text-[10px] bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full font-bold uppercase">{t(item.category as any)}</span>
+          {menu.length === 0 ? (
+             <p className="col-span-full text-center text-gray-400 py-20">Menu is currently being updated...</p>
+          ) : (
+            menu.map((item) => (
+              <motion.div key={item._id} whileHover={{ y: -5 }} className="bg-white dark:bg-gray-800 rounded-3xl shadow-md overflow-hidden border border-gray-100 dark:border-gray-700">
+                <div className="h-44 bg-gray-100">
+                  <img src={item.image.startsWith('http') ? item.image : `${API_BASE}${item.image}`} className="w-full h-full object-cover" alt={item.name} />
                 </div>
-                <p className="text-xs text-gray-500 line-clamp-2 h-8">{item.description}</p>
-                <div className="mt-4 flex justify-between items-center">
-                  <span className="font-black text-amber-600">ETB {item.price}</span>
-                  <button onClick={() => addToCart(item)} className="p-2 bg-amber-100 text-amber-600 rounded-xl hover:bg-amber-600 hover:text-white transition shadow-sm"><Plus size={18} /></button>
+                <div className="p-5">
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-bold text-lg">{item.name}</h3>
+                    <span className="text-[10px] bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full font-bold uppercase">{t(item.category as any)}</span>
+                  </div>
+                  <p className="text-xs text-gray-500 line-clamp-2 h-8">{item.description}</p>
+                  <div className="mt-4 flex justify-between items-center">
+                    <span className="font-black text-amber-600 text-lg">ETB {item.price}</span>
+                    <button onClick={() => addToCart(item)} className="p-2 bg-amber-100 text-amber-600 rounded-xl hover:bg-amber-600 hover:text-white transition shadow-sm"><Plus size={18} /></button>
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            ))
+          )}
         </div>
       </div>
 
@@ -269,16 +270,16 @@ export default function CustomerMenuPage() {
       <AnimatePresence>
         {showCart && (
           <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed inset-y-0 right-0 w-full max-w-md bg-white dark:bg-gray-800 z-[60] shadow-2xl flex flex-col">
-            <div className="p-6 border-b flex justify-between items-center">
-              <h2 className="text-xl font-bold">Your Order</h2>
-              <button onClick={() => setShowCart(false)} className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full"><X size={20}/></button>
+            <div className="p-6 border-b flex justify-between items-center bg-gray-50 dark:bg-gray-900">
+              <h2 className="text-xl font-bold">Checkout</h2>
+              <button onClick={() => setShowCart(false)} className="p-2 bg-white dark:bg-gray-800 rounded-full shadow-sm"><X size={20}/></button>
             </div>
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {cart.length === 0 ? <div className="text-center text-gray-400 mt-20 flex flex-col items-center gap-4"><ShoppingCart size={48} opacity={0.2} /><p>Your cart is empty</p></div> : 
                 cart.map(item => (
                   <div key={item.menuItem} className="flex justify-between items-center bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl border border-gray-100 dark:border-gray-700">
                     <div className="flex gap-4 items-center">
-                      <img src={item.image} className="w-12 h-12 rounded-lg object-cover" />
+                      <img src={item.image} className="w-12 h-12 rounded-lg object-cover" alt={item.name} />
                       <div>
                         <p className="font-bold text-sm">{item.name}</p>
                         <p className="text-xs text-amber-600 font-bold">ETB {item.price}</p>
@@ -294,22 +295,22 @@ export default function CustomerMenuPage() {
               }
             </div>
             {cart.length > 0 && (
-              <div className="p-6 border-t bg-white dark:bg-gray-800 space-y-4">
-                <div className="flex justify-between items-center">
-                   <span className="text-gray-500 font-medium">Service Type</span>
+              <div className="p-6 border-t bg-white dark:bg-gray-800 space-y-4 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
+                <div className="flex justify-between items-center bg-gray-50 dark:bg-gray-900 p-3 rounded-2xl">
+                   <span className="text-gray-500 text-sm font-medium">Service</span>
                    <div className="flex gap-2">
-                      <button onClick={() => setOrderType('room')} className={`px-3 py-1 text-[10px] font-bold rounded-lg border transition ${orderType === 'room' ? 'bg-amber-600 text-white border-amber-600' : 'border-gray-200'}`}>ROOM</button>
-                      <button onClick={() => setOrderType('table')} className={`px-3 py-1 text-[10px] font-bold rounded-lg border transition ${orderType === 'table' ? 'bg-amber-600 text-white border-amber-600' : 'border-gray-200'}`}>TABLE</button>
+                      <button onClick={() => setOrderType('room')} className={`px-4 py-1 text-xs font-bold rounded-xl border transition ${orderType === 'room' ? 'bg-amber-600 text-white border-amber-600' : 'border-gray-200 dark:border-gray-700'}`}>ROOM</button>
+                      <button onClick={() => setOrderType('table')} className={`px-4 py-1 text-xs font-bold rounded-xl border transition ${orderType === 'table' ? 'bg-amber-600 text-white border-amber-600' : 'border-gray-200 dark:border-gray-700'}`}>TABLE</button>
                    </div>
                 </div>
-                {orderType === 'table' && <input type="text" placeholder="Table Number (e.g. T4)" value={tableNumber} onChange={(e)=>setTableNumber(e.target.value)} className="w-full p-3 bg-gray-50 border rounded-xl text-sm" />}
+                {orderType === 'table' && <input type="text" placeholder="Table Number (e.g. T4)" value={tableNumber} onChange={(e)=>setTableNumber(e.target.value)} className="w-full p-4 bg-gray-50 dark:bg-gray-900 border dark:border-gray-700 rounded-2xl text-sm" />}
                 
-                <div className="flex justify-between font-black text-xl pt-2">
+                <div className="flex justify-between font-black text-xl pt-2 px-2">
                   <span>Total</span>
                   <span className="text-amber-600">ETB {cart.reduce((s, i) => s + i.price * i.quantity, 0) + (orderType === 'delivery' ? 50 : 0)}</span>
                 </div>
                 <button onClick={placeOrder} disabled={placingOrder} className="w-full py-4 bg-amber-600 text-white rounded-2xl font-bold hover:bg-amber-700 shadow-lg transition disabled:opacity-50">
-                  {placingOrder ? 'Processing...' : user ? 'Pay with Chapa' : 'Login to Place Order'}
+                  {placingOrder ? 'Processing Order...' : user ? 'Pay with Chapa' : 'Login to Order'}
                 </button>
               </div>
             )}
@@ -323,11 +324,11 @@ export default function CustomerMenuPage() {
           <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4 backdrop-blur-sm">
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-xl max-h-[80vh] overflow-hidden flex flex-col">
               <div className="p-6 border-b flex justify-between items-center">
-                <h2 className="font-bold text-xl flex items-center gap-2"><History className="text-amber-600"/> {t('orderHistory' as any) || 'History'}</h2>
+                <h2 className="font-bold text-xl flex items-center gap-2"><History className="text-amber-600"/> Order History</h2>
                 <button onClick={() => setShowHistory(false)}><X /></button>
               </div>
               <div className="flex-1 overflow-y-auto p-6 space-y-3 bg-gray-50 dark:bg-gray-900">
-                {allOrders.length === 0 ? <p className="text-center text-gray-400 py-20">No orders yet</p> : 
+                {allOrders.length === 0 ? <p className="text-center text-gray-400 py-20">No orders found</p> : 
                   allOrders.map(order => (
                     <div key={order._id} className="p-4 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-2xl flex justify-between items-center shadow-sm">
                       <div>
