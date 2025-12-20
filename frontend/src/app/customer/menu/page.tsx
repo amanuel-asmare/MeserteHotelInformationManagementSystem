@@ -3,14 +3,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
-  Coffee, Plus, Minus, ShoppingCart, X, History, 
-  Hotel, Utensils, Receipt, Calendar, Clock, 
+  Plus, Minus, ShoppingCart, X, History, 
+  Hotel, Utensils, Receipt, Clock, 
   Bike, MapPin, Pizza, Sandwich, Soup, IceCream 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '@/lib/api';
 import { useAuth } from '../../../../context/AuthContext';
-import Link from 'next/link';
 import { format } from 'date-fns';
 import toast, { Toaster } from 'react-hot-toast';
 import { useLanguage } from '../../../../context/LanguageContext';
@@ -58,59 +57,30 @@ interface Order {
   };
 }
 
-type FilterType = 'active' | 'today' | 'week' | 'month' | 'all';
-
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
 
-// --- LOADING COMPONENT ---
+// --- ROBUST LOADING COMPONENT ---
 const CulinaryLoader = () => {
-  const [currentIcon, setCurrentIcon] = useState(0);
-  const icons = [Utensils, Pizza, Coffee, Soup, Sandwich, IceCream];
-  
+  const icons = [Utensils, Pizza, Soup, Sandwich, IceCream];
+  const [iconIdx, setIconIdx] = useState(0);
+
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentIcon((prev) => (prev + 1) % icons.length);
-    }, 600);
+    const timer = setInterval(() => setIconIdx((p) => (p + 1) % icons.length), 600);
     return () => clearInterval(timer);
   }, [icons.length]);
 
-  const CurrentIconComponent = icons[currentIcon];
+  const Icon = icons[iconIdx];
 
   return (
-    <div className="fixed inset-0 z-[100] bg-[#1a1a1a] flex flex-col items-center justify-center overflow-hidden">
-      <div className="absolute inset-0 overflow-hidden opacity-20 pointer-events-none">
-        {[...Array(20)].map((_, i) => (
-          <motion.div
-            key={i}
-            initial={{ y: "110vh", x: Math.random() * 100 + "vw", opacity: 0 }}
-            animate={{ y: "-10vh", opacity: [0, 0.8, 0] }}
-            transition={{ duration: 5 + Math.random() * 5, repeat: Infinity, delay: Math.random() * 5, ease: "linear" }}
-            className="absolute text-amber-500/30"
-          >
-             <div className="w-2 h-2 rounded-full bg-amber-500" />
-          </motion.div>
-        ))}
-      </div>
-      <div className="relative z-10 flex flex-col items-center">
-        <motion.div 
-          className="w-32 h-32 rounded-full bg-gradient-to-br from-amber-500 to-orange-700 flex items-center justify-center mb-8 shadow-[0_0_40px_rgba(245,158,11,0.4)] border-4 border-[#2a2a2a]"
-          animate={{ scale: [1, 1.05, 1], rotate: [0, 5, -5, 0] }}
-          transition={{ duration: 4, repeat: Infinity }}
-        >
-          <AnimatePresence mode="wait">
-            <motion.div key={currentIcon} initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.5 }} transition={{ duration: 0.3 }}>
-              <CurrentIconComponent size={56} className="text-white drop-shadow-lg" />
-            </motion.div>
-          </AnimatePresence>
-        </motion.div>
-        <div className="text-center space-y-2">
-            <h1 className="text-4xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-600 font-serif">MESERET DINING</h1>
-            <p className="text-gray-400 text-sm tracking-[0.3em] uppercase font-light animate-pulse">Preparing Your Experience</p>
-        </div>
-        <div className="w-64 h-1.5 bg-gray-800 rounded-full mt-8 overflow-hidden relative">
-            <motion.div className="absolute top-0 left-0 h-full bg-gradient-to-r from-amber-500 to-orange-600" initial={{ width: "0%" }} animate={{ width: "100%" }} transition={{ duration: 3.5, ease: "easeInOut" }} />
-        </div>
-      </div>
+    <div className="fixed inset-0 z-[100] bg-[#1a1a1a] flex flex-col items-center justify-center">
+      <motion.div 
+        animate={{ scale: [1, 1.1, 1] }} 
+        transition={{ repeat: Infinity, duration: 2 }}
+        className="w-24 h-24 rounded-full bg-amber-500 flex items-center justify-center mb-6 shadow-2xl shadow-amber-500/20"
+      >
+        <Icon size={40} className="text-white" />
+      </motion.div>
+      <h2 className="text-amber-500 font-bold tracking-widest animate-pulse">MESERET DINING</h2>
     </div>
   );
 };
@@ -121,180 +91,123 @@ export default function CustomerMenuPage() {
   const searchParams = useSearchParams();
   const { user } = useAuth();
 
-  // AUTH MODAL STATES
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
-
   const [loading, setLoading] = useState(true);
   const [menu, setMenu] = useState<MenuItem[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showCart, setShowCart] = useState(false);
   const [placingOrder, setPlacingOrder] = useState(false);
-  
   const [allOrders, setAllOrders] = useState<Order[]>([]);
-  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [showHistory, setShowHistory] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<FilterType>('active');
-  
   const [orderType, setOrderType] = useState<'room' | 'table' | 'delivery'>('room');
   const [tableNumber, setTableNumber] = useState<string>('');
-  
-  const [deliveryDetails, setDeliveryDetails] = useState({
-    phone: '', street: '', houseNumber: '', landmark: '', city: 'Woldia'
-  });
+  const [deliveryDetails, setDeliveryDetails] = useState({ phone: '', street: '', landmark: '', city: 'Woldia' });
 
   const socketRef = useRef<any>(null);
 
-  // Initialize delivery phone if user is logged in
-  useEffect(() => {
-    if (user?.phone) {
-        setDeliveryDetails(prev => ({ ...prev, phone: user.phone || '' }));
-    }
-  }, [user]);
-
-  // SOCKET.IO CONNECTION
-  useEffect(() => {
-    if (typeof window === 'undefined' || !(user as any)?._id) return;
-    const socket = io(API_BASE, { withCredentials: true });
-    socketRef.current = socket;
-    
-    socket.on('orderUpdate', (updatedOrder: Order) => {
-      setAllOrders(prev => {
-        const exists = prev.find(o => o._id === updatedOrder._id);
-        if (exists) {
-            return prev.map(o => o._id === updatedOrder._id ? updatedOrder : o);
-        } else {
-            return [updatedOrder, ...prev];
-        }
-      });
-
-      if (updatedOrder.status !== 'pending') {
-          const statusText = t(updatedOrder.status as any) || updatedOrder.status;
-          // FIXED: Added 'as any' to translation keys to fix build error
-          toast.success(`${t('order' as any)} ${updatedOrder.orderNumber} ${t('orderMarkedAs' as any)} ${statusText}!`, {
-            style: { background: '#10b981', color: 'white' }
-          });
-      }
-    });
-
-    return () => socket.disconnect();
-  }, [user, t]);
-
-  useEffect(() => { applyFilter(allOrders, activeFilter); }, [allOrders, activeFilter]);
-
-  // Handle payment success
-  useEffect(() => {
-    const paid = searchParams.get('paid');
-    if (paid === '1') {
-      toast.success(t('paymentSuccess' as any) || 'Payment Successful', { duration: 6000 });
-      setCart([]);
-      localStorage.removeItem('customerCart');
-      if (user) fetchOrderHistory();
-    } else if (paid === '0') {
-      toast.error(t('paymentFailed' as any) || 'Payment Failed');
-    }
-    if (paid) {
-      const url = new URL(window.location.href);
-      url.searchParams.delete('paid');
-      router.replace(url.pathname + url.search, { scroll: false });
-    }
-  }, [searchParams, router, t, user]);
-
-  // Load Menu for Guest and Auth History for Logged In
+  // Initialize data
   useEffect(() => {
     fetchMenu();
-    loadCart();
-    if (user) fetchOrderHistory();
+    const savedCart = localStorage.getItem('customerCart');
+    if (savedCart) setCart(JSON.parse(savedCart));
+    if (user) {
+        fetchOrderHistory();
+        setDeliveryDetails(prev => ({ ...prev, phone: user.phone || '' }));
+    }
   }, [user]);
 
   useEffect(() => {
     localStorage.setItem('customerCart', JSON.stringify(cart));
   }, [cart]);
 
+  // Handle URL Payment Success
+  useEffect(() => {
+    if (searchParams.get('paid') === '1') {
+      toast.success(t('paymentSuccess' as any) || "Order Placed Successfully!");
+      setCart([]);
+      localStorage.removeItem('customerCart');
+      router.replace('/customer/menu');
+    }
+  }, [searchParams, router, t]);
+
   const fetchMenu = async () => {
     try {
       const r = await api.get('/api/menu');
       setMenu(r.data);
-    } catch {
-      toast.error(t('failedLoadMenu' as any) || 'Failed to load menu');
+    } catch (err) {
+      console.error("Menu fetch failed", err);
     } finally {
-      setLoading(false);
+      setLoading(false); 
     }
-  };
-
-  const loadCart = () => {
-    const saved = localStorage.getItem('customerCart');
-    if (saved) setCart(JSON.parse(saved));
   };
 
   const fetchOrderHistory = async () => {
     try {
       const r = await api.get('/api/orders/my');
       setAllOrders(r.data);
-      applyFilter(r.data, 'active'); 
-    } catch {
-      console.error("History fetch failed");
-    }
+    } catch (err) {}
   };
 
-  const getImageUrl = (path: string) => path?.startsWith('http') ? path : `${API_BASE}${path}` || '/default-menu.jpg';
-
-  const applyFilter = (orders: Order[], filter: FilterType) => {
-    let filtered: Order[] = [];
-    if (filter === 'active') {
-        filtered = orders.filter(o => !['delivered', 'cancelled'].includes(o.status));
-    } else {
-        filtered = orders; 
-    }
-    filtered.sort((a, b) => new Date(b.orderedAt).getTime() - new Date(a.orderedAt).getTime());
-    setFilteredOrders(filtered);
-  };
+  // Socket connection
+  useEffect(() => {
+    if (typeof window === 'undefined' || !(user as any)?._id) return;
+    const socket = io(API_BASE, { withCredentials: true });
+    socketRef.current = socket;
+    socket.on('orderUpdate', (updatedOrder: Order) => {
+      if (updatedOrder.status !== 'pending') {
+        toast.success(`${t('order' as any)} ${updatedOrder.orderNumber} is ${t(updatedOrder.status as any)}`);
+        fetchOrderHistory();
+      }
+    });
+    return () => socket.disconnect();
+  }, [user, t]);
 
   const addToCart = (item: MenuItem) => {
     setCart(prev => {
-      const existing = prev.find(i => i.menuItem === item._id);
-      if (existing) return prev.map(i => i.menuItem === item._id ? { ...i, quantity: i.quantity + 1 } : i);
-      return [...prev, { menuItem: item._id, name: item.name, price: item.price, quantity: 1, notes: '', image: getImageUrl(item.image) }];
+      const exists = prev.find(i => i.menuItem === item._id);
+      if (exists) return prev.map(i => i.menuItem === item._id ? { ...i, quantity: i.quantity + 1 } : i);
+      return [...prev, { menuItem: item._id, name: item.name, price: item.price, quantity: 1, notes: '', image: item.image }];
     });
-    toast.success(`${item.name} ${t('itemAdded' as any)}`, { icon: '🛒' });
+    toast.success(`${item.name} added to cart`);
   };
 
+  // --- ADDED MISSING FUNCTION ---
   const updateQuantity = (id: string, delta: number) => {
-    setCart(prev => prev.map(i => i.menuItem === id ? { ...i, quantity: Math.max(0, i.quantity + delta) } : i).filter(i => i.quantity > 0));
+    setCart(prev =>
+      prev.map(i => i.menuItem === id ? { ...i, quantity: Math.max(0, i.quantity + delta) } : i)
+        .filter(i => i.quantity > 0)
+    );
   };
 
-  // --- PLACE ORDER (Supports Guest Flow via QR) ---
   const placeOrder = async () => {
-    if (!user) { 
-        toast.error(t('loginToOrder' as any) || "Please Login to Place your Order");
-        setShowLoginModal(true);
-        return; 
+    if (!user) {
+      setShowLoginModal(true);
+      return;
     }
-    if (cart.length === 0) { toast.error(t('cartEmpty' as any) || 'Cart is empty'); return; }
-    
-    if (orderType === 'room' && !user.roomNumber) { toast.error(t('setRoomNumber' as any) || 'Set room number'); return; }
-    if (orderType === 'table' && !tableNumber.trim()) { toast.error(t('enterTableNumber' as any) || 'Enter table number'); return; }
-    if (orderType === 'delivery' && (!deliveryDetails.phone || !deliveryDetails.street)) { toast.error(t('fillDeliveryDetails' as any) || 'Fill delivery details'); return; }
+    if (cart.length === 0) return;
 
     setPlacingOrder(true);
     try {
-      const totalPrice = (cart.reduce((sum, i) => sum + i.price * i.quantity, 0) + (orderType === 'delivery' ? 50 : 0)).toFixed(2);
+      const itemsTotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
+      const deliveryFee = orderType === 'delivery' ? 50 : 0;
+      
       const payload = {
         items: cart.map(i => ({ menuItem: i.menuItem, quantity: i.quantity, notes: i.notes })),
-        totalAmount: parseFloat(totalPrice),
+        totalAmount: itemsTotal + deliveryFee,
         customerName: `${user.firstName} ${user.lastName}`,
         email: user.email,
         phone: orderType === 'delivery' ? deliveryDetails.phone : (user.phone || '0912345678'),
-        orderType, 
+        orderType,
         roomNumber: user.roomNumber,
-        tableNumber: tableNumber,
+        tableNumber,
         deliveryAddress: deliveryDetails
       };
 
       const res = await api.post('/api/orders/chapa', payload);
       if (res.data.checkout_url) window.location.href = res.data.checkout_url;
-    } catch (e: any) {
-      toast.error(t('paymentSetupFailed' as any) || 'Payment setup failed');
+    } catch (e) {
+      toast.error("Payment failed to start");
     } finally {
       setPlacingOrder(false);
     }
@@ -302,200 +215,133 @@ export default function CustomerMenuPage() {
 
   const openReceipt = (orderId: string) => router.push(`/customer/receipt/${orderId}`);
 
-  const getStatusColor = (status: string) => {
-    switch(status) {
-        case 'pending': return 'bg-orange-100 text-orange-600 border-orange-200';
-        case 'delivered': return 'bg-green-100 text-green-600 border-green-200';
-        default: return 'bg-blue-100 text-blue-600 border-blue-200';
-    }
-  };
-
-  const [minTimePassed, setMinTimePassed] = useState(false);
-  useEffect(() => { const timer = setTimeout(() => setMinTimePassed(true), 2500); return () => clearTimeout(timer); }, []);
-
-  if (loading || !minTimePassed) return <CulinaryLoader />;
+  if (loading) return <CulinaryLoader />;
 
   return (
-    <>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20">
       <Toaster position="top-right" />
 
-      {/* AUTH MODALS FOR GUEST SCANNER */}
+      {/* Auth Modals */}
       <AnimatePresence>
         {showLoginModal && (
-          <LoginForm 
-            onClose={() => setShowLoginModal(false)}
-            onSwitchToRegister={() => { setShowLoginModal(false); setShowRegisterModal(true); }}
-          />
+          <LoginForm onClose={() => setShowLoginModal(false)} onSwitchToRegister={() => { setShowLoginModal(false); setShowRegisterModal(true); }} />
         )}
         {showRegisterModal && (
-          <RegisterForm 
-            onClose={() => setShowRegisterModal(false)}
-            onSwitchToLogin={() => { setShowRegisterModal(false); setShowLoginModal(true); }}
-          />
+          <RegisterForm onClose={() => setShowRegisterModal(false)} onSwitchToLogin={() => { setShowRegisterModal(false); setShowLoginModal(true); }} />
         )}
       </AnimatePresence>
 
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        {/* Header Responsive */}
-        <div className="flex items-center justify-between mb-8">
+      <div className="max-w-7xl mx-auto px-4 pt-8">
+        <header className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{t('orderFoodDrinks' as any) || 'Order Food & Drinks'}</h1>
-            <div className="text-gray-600 dark:text-gray-400 mt-1">
+            <h1 className="text-3xl font-bold">{t('orderFoodDrinks' as any) || 'Meseret Menu'}</h1>
+            <p className="text-sm font-medium">
               {user ? (
-                <p className="flex items-center gap-2">
-                   <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                   {t('loggedInAs' as any) || "Logged in as"} <span className="font-bold text-amber-600">{user.firstName}</span>
-                </p>
+                <span className="text-green-600">● {t('loggedInAs' as any)} {user.firstName}</span>
               ) : (
-                <p className="flex items-center gap-2">
-                   <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
-                   <span className="font-semibold text-amber-600 uppercase text-xs tracking-wider">{t('browsingAsGuest' as any) || "Guest Mode"}</span>
-                </p>
+                <span className="text-amber-600">● {t('browsingAsGuest' as any) || 'Guest Mode'}</span>
               )}
-            </div>
+            </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-2">
             {user && (
-                <button onClick={() => setShowHistory(true)} className="p-3 bg-gray-100 dark:bg-gray-700 rounded-xl hover:bg-gray-200 transition flex items-center gap-2">
-                    <History size={22} />
-                    <span className="hidden md:inline font-medium">{t('history' as any) || 'History'}</span>
-                </button>
+              <button onClick={() => setShowHistory(true)} className="p-3 bg-white dark:bg-gray-800 rounded-xl shadow-sm"><History size={20} /></button>
             )}
-            <button onClick={() => setShowCart(true)} className="relative p-4 bg-amber-600 text-white rounded-xl hover:bg-amber-700 shadow-lg transition">
-              <ShoppingCart size={24} />
-              {cart.length > 0 && <span className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">{cart.length}</span>}
+            <button onClick={() => setShowCart(true)} className="p-3 bg-amber-600 text-white rounded-xl shadow-lg relative">
+              <ShoppingCart size={20} />
+              {cart.length > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold">{cart.length}</span>}
             </button>
           </div>
-        </div>
+        </header>
 
         {/* Menu Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {menu.map(item => (
-            <motion.div key={item._id} whileHover={{ y: -5 }} className="bg-white dark:bg-gray-800 rounded-2xl shadow-md overflow-hidden border border-gray-100 dark:border-gray-700 cursor-pointer" onClick={() => addToCart(item)}>
-              <div className="h-48 relative overflow-hidden">
-                <img src={getImageUrl(item.image)} alt={item.name} className="w-full h-full object-cover" />
-                <span className="absolute top-3 right-3 px-3 py-1 text-xs font-bold rounded-full bg-white/90 text-black shadow-md capitalize">{t(item.category as any)}</span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {menu.map((item) => (
+            <div key={item._id} className="bg-white dark:bg-gray-800 rounded-3xl shadow-md overflow-hidden border border-gray-100 dark:border-gray-700">
+              <div className="h-48 bg-gray-200">
+                <img src={item.image.startsWith('http') ? item.image : `${API_BASE}${item.image}`} className="w-full h-full object-cover" alt={item.name} />
               </div>
               <div className="p-5">
-                <h3 className="text-lg font-bold line-clamp-1">{item.name}</h3>
-                <p className="text-sm text-gray-500 line-clamp-2 mt-1 min-h-[40px]">{item.description}</p>
-                <div className="flex items-center justify-between mt-4">
-                  <span className="text-xl font-bold text-amber-600">ETB {item.price}</span>
-                  <div className="p-2 bg-amber-100 text-amber-700 rounded-lg"><Plus size={20} /></div>
+                <h3 className="font-bold text-lg">{item.name}</h3>
+                <p className="text-sm text-gray-500 line-clamp-1">{item.description}</p>
+                <div className="mt-4 flex justify-between items-center">
+                  <span className="font-black text-amber-600">ETB {item.price}</span>
+                  <button onClick={() => addToCart(item)} className="p-2 bg-amber-100 text-amber-600 rounded-lg hover:bg-amber-600 hover:text-white transition"><Plus size={18} /></button>
                 </div>
               </div>
-            </motion.div>
+            </div>
           ))}
         </div>
-      </motion.div>
+      </div>
 
-      {/* CART DRAWER */}
+      {/* Cart Drawer */}
       <AnimatePresence>
         {showCart && (
-          <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed inset-0 z-50 flex justify-end">
-            <div className="absolute inset-0 bg-black/50" onClick={() => setShowCart(false)} />
-            <motion.div className="relative w-full max-w-md bg-white dark:bg-gray-800 shadow-2xl flex flex-col h-full">
-              <div className="p-6 border-b flex items-center justify-between">
-                <h2 className="text-2xl font-bold">{t('yourOrder' as any) || 'Your Order'}</h2>
-                <button onClick={() => setShowCart(false)} className="p-2 hover:bg-gray-100 rounded-full"><X size={24} /></button>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                {cart.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-4">
-                      <ShoppingCart size={64} opacity={0.3} />
-                      <p>{t('cartEmpty' as any) || 'Cart is empty'}</p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="p-4 bg-amber-50 dark:bg-gray-700 rounded-xl space-y-3">
-                        <p className="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-widest">{t('selectService' as any) || 'Select Service'}</p>
-                        <div className="flex justify-around">
-                            <button onClick={() => setOrderType('room')} className={`flex flex-col items-center p-2 rounded-lg transition-all ${orderType === 'room' ? 'bg-amber-600 text-white shadow-md' : 'text-gray-400'}`}>
-                                <Hotel size={20} /> <span className="text-[10px] mt-1 font-bold uppercase">{t('room' as any) || 'Room'}</span>
-                            </button>
-                            <button onClick={() => setOrderType('table')} className={`flex flex-col items-center p-2 rounded-lg transition-all ${orderType === 'table' ? 'bg-amber-600 text-white shadow-md' : 'text-gray-400'}`}>
-                                <Utensils size={20} /> <span className="text-[10px] mt-1 font-bold uppercase">{t('table' as any) || 'Table'}</span>
-                            </button>
-                            <button onClick={() => setOrderType('delivery')} className={`flex flex-col items-center p-2 rounded-lg transition-all ${orderType === 'delivery' ? 'bg-amber-600 text-white shadow-md' : 'text-gray-400'}`}>
-                                <Bike size={20} /> <span className="text-[10px] mt-1 font-bold uppercase">{t('deliveryService' as any) || 'Delivery'}</span>
-                            </button>
-                        </div>
+          <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed inset-y-0 right-0 w-full max-w-md bg-white dark:bg-gray-800 z-[60] shadow-2xl flex flex-col">
+            <div className="p-6 border-b flex justify-between items-center">
+              <h2 className="text-xl font-bold">Your Order</h2>
+              <button onClick={() => setShowCart(false)}><X /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {cart.length === 0 ? <p className="text-center text-gray-400 mt-20">Your cart is empty</p> : 
+                cart.map(item => (
+                  <div key={item.menuItem} className="flex justify-between items-center bg-gray-50 dark:bg-gray-900 p-3 rounded-xl">
+                    <div>
+                      <p className="font-bold text-sm">{item.name}</p>
+                      <p className="text-xs text-amber-600">ETB {item.price}</p>
                     </div>
-
-                    {orderType === 'table' && (
-                        <input type="text" placeholder={t('tableNumber' as any) || 'Table Number'} value={tableNumber} onChange={e => setTableNumber(e.target.value)} className="w-full px-4 py-2 border rounded-lg bg-gray-50 dark:bg-gray-700" />
-                    )}
-
-                    {cart.map(item => (
-                      <div key={item.menuItem} className="flex gap-4 p-3 bg-white dark:bg-gray-700 border border-gray-100 dark:border-gray-600 rounded-xl">
-                          <img src={item.image} className="w-16 h-16 object-cover rounded-lg" />
-                          <div className="flex-1">
-                            <div className="flex justify-between font-bold text-sm"><span>{item.name}</span><span>ETB {item.price}</span></div>
-                            <div className="flex items-center justify-between mt-3">
-                                <div className="flex items-center gap-3 bg-gray-100 dark:bg-gray-600 rounded-lg px-2 py-1">
-                                    <button onClick={() => updateQuantity(item.menuItem, -1)}><Minus size={14} /></button>
-                                    <span className="text-xs font-bold">{item.quantity}</span>
-                                    <button onClick={() => updateQuantity(item.menuItem, 1)}><Plus size={14} /></button>
-                                </div>
-                                <span className="text-amber-600 font-bold">ETB {item.price * item.quantity}</span>
-                            </div>
-                          </div>
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
-
-              {cart.length > 0 && (
-                <div className="p-6 border-t bg-white dark:bg-gray-900 shadow-inner">
-                  <div className="flex justify-between text-2xl font-black mb-4">
-                      <span>{t('total' as any) || 'Total'}</span>
-                      <span>ETB {(cart.reduce((s, i) => s + i.price * i.quantity, 0) + (orderType === 'delivery' ? 50 : 0)).toFixed(2)}</span>
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => updateQuantity(item.menuItem, -1)} className="p-1 bg-white rounded border"><Minus size={14} /></button>
+                      <span className="text-sm font-bold">{item.quantity}</span>
+                      <button onClick={() => updateQuantity(item.menuItem, 1)} className="p-1 bg-white rounded border"><Plus size={14} /></button>
+                    </div>
                   </div>
-                  <button onClick={placeOrder} disabled={placingOrder} className="w-full py-4 bg-amber-600 text-white rounded-xl font-bold text-lg hover:bg-amber-700 transition shadow-lg disabled:opacity-50">
-                    {placingOrder ? (t('processing' as any) || 'Processing...') : user ? (t('payWithChapa' as any) || 'Pay with Chapa') : (t('loginToOrder' as any) || "Login to Place Order")}
-                  </button>
+                ))
+              }
+            </div>
+            {cart.length > 0 && (
+              <div className="p-6 border-t bg-white dark:bg-gray-800">
+                <div className="flex justify-between font-black text-lg mb-4">
+                  <span>Total</span>
+                  <span>ETB {cart.reduce((s, i) => s + i.price * i.quantity, 0) + (orderType === 'delivery' ? 50 : 0)}</span>
                 </div>
-              )}
-            </motion.div>
+                <button onClick={placeOrder} disabled={placingOrder} className="w-full py-4 bg-amber-600 text-white rounded-2xl font-bold">
+                  {user ? 'Pay with Chapa' : 'Login to Place Order'}
+                </button>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* HISTORY MODAL (Only for Logged in) */}
+      {/* History Modal */}
       <AnimatePresence>
-        {showHistory && user && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-            <motion.div className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
-              <div className="p-6 border-b flex justify-between items-center">
-                <h2 className="text-2xl font-bold flex items-center gap-2 tracking-tight"><History className="text-amber-600" /> {t('orderHistory' as any) || 'Order History'}</h2>
-                <button onClick={() => setShowHistory(false)} className="hover:text-red-500 transition"><X size={24} /></button>
+        {showHistory && (
+          <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4">
+            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-xl max-h-[80vh] overflow-hidden flex flex-col">
+              <div className="p-6 border-b flex justify-between">
+                <h2 className="font-bold text-xl">Order History</h2>
+                <button onClick={() => setShowHistory(false)}><X /></button>
               </div>
-              <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50 dark:bg-gray-900">
-                {filteredOrders.length === 0 ? (
-                   <p className="text-center text-gray-500 py-10">{t('noOrdersFoundCategory' as any) || 'No orders found'}</p>
-                ) : (
-                  filteredOrders.map(order => (
-                    <div key={order._id} className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex justify-between items-center">
-                      <div>
-                          <p className="font-bold">{t('order' as any)} {order.orderNumber}</p>
-                          <p className="text-xs text-gray-500 mb-2">{format(new Date(order.orderedAt), "MMM d, h:mm a")}</p>
-                          <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${getStatusColor(order.status)}`}>{t(order.status as any)}</span>
-                      </div>
-                      <div className="text-right">
-                          <p className="font-black text-lg">ETB {order.totalAmount}</p>
-                          <button onClick={() => openReceipt(order._id)} className="text-xs text-amber-600 font-bold underline mt-1">{t('viewReceipt' as any) || 'View Receipt'}</button>
-                      </div>
+              <div className="flex-1 overflow-y-auto p-6 space-y-3">
+                {allOrders.map(order => (
+                  <div key={order._id} className="p-4 border rounded-2xl flex justify-between items-center">
+                    <div>
+                      <p className="font-bold">ORD {order.orderNumber}</p>
+                      <p className="text-xs text-gray-400">{format(new Date(order.orderedAt), 'MMM d, p')}</p>
                     </div>
-                  ))
-                )}
+                    <div className="text-right">
+                        <p className="font-black">ETB {order.totalAmount}</p>
+                        <button onClick={() => openReceipt(order._id)} className="text-[10px] text-amber-600 font-bold underline">Receipt</button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </motion.div>
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
-    </>
+    </div>
   );
 }/*'use client';
 
