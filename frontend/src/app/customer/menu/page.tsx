@@ -4,6 +4,467 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   Coffee, Plus, Minus, ShoppingCart, X, History, 
+  Hotel, Utensils, Receipt, Calendar, Clock, 
+  Bike, MapPin, Pizza, Sandwich, Soup, IceCream 
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import api from '@/lib/api';
+import { useAuth } from '../../../../context/AuthContext';
+import Link from 'next/link';
+import { format } from 'date-fns';
+import toast, { Toaster } from 'react-hot-toast';
+import { useLanguage } from '../../../../context/LanguageContext';
+
+// Import your existing Modal Forms
+import LoginForm from '../../../../components/forms/LoginForm';
+import RegisterForm from '../../../../components/forms/RegisterForm';
+
+let io: any;
+if (typeof window !== 'undefined') {
+  io = require('socket.io-client');
+}
+
+interface MenuItem {
+  _id: string;
+  name: string;
+  description: string;
+  price: number;
+  category: string;
+  image: string;
+}
+
+interface CartItem {
+  menuItem: string;
+  name: string;
+  price: number;
+  quantity: number;
+  notes: string;
+  image: string;
+}
+
+interface Order {
+  _id: string;
+  orderNumber: string;
+  items: any[];
+  totalAmount: number;
+  status: string;
+  orderedAt: string;
+  orderType: string;
+  customer: {
+      name: string;
+      roomNumber?: string;
+      tableNumber?: string;
+      deliveryAddress?: any;
+  };
+}
+
+type FilterType = 'active' | 'today' | 'week' | 'month' | 'all';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
+
+// --- LOADING COMPONENT (Unchanged Style) ---
+const CulinaryLoader = () => {
+  const [currentIcon, setCurrentIcon] = useState(0);
+  const icons = [Utensils, Pizza, Coffee, Soup, Sandwich, IceCream];
+  
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentIcon((prev) => (prev + 1) % icons.length);
+    }, 600);
+    return () => clearInterval(timer);
+  }, [icons.length]);
+
+  const CurrentIconComponent = icons[currentIcon];
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-[#1a1a1a] flex flex-col items-center justify-center overflow-hidden">
+      <div className="absolute inset-0 overflow-hidden opacity-20 pointer-events-none">
+        {[...Array(20)].map((_, i) => (
+          <motion.div
+            key={i}
+            initial={{ y: "110vh", x: Math.random() * 100 + "vw", opacity: 0 }}
+            animate={{ y: "-10vh", opacity: [0, 0.8, 0] }}
+            transition={{ duration: 5 + Math.random() * 5, repeat: Infinity, delay: Math.random() * 5, ease: "linear" }}
+            className="absolute text-amber-500/30"
+          >
+             <div className="w-2 h-2 rounded-full bg-amber-500" />
+          </motion.div>
+        ))}
+      </div>
+      <div className="relative z-10 flex flex-col items-center">
+        <motion.div 
+          className="w-32 h-32 rounded-full bg-gradient-to-br from-amber-500 to-orange-700 flex items-center justify-center mb-8 shadow-[0_0_40px_rgba(245,158,11,0.4)] border-4 border-[#2a2a2a]"
+          animate={{ scale: [1, 1.05, 1], rotate: [0, 5, -5, 0] }}
+          transition={{ duration: 4, repeat: Infinity }}
+        >
+          <AnimatePresence mode="wait">
+            <motion.div key={currentIcon} initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.5 }} transition={{ duration: 0.3 }}>
+              <CurrentIconComponent size={56} className="text-white drop-shadow-lg" />
+            </motion.div>
+          </AnimatePresence>
+        </motion.div>
+        <div className="text-center space-y-2">
+            <h1 className="text-4xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-600 font-serif">MESERET DINING</h1>
+            <p className="text-gray-400 text-sm tracking-[0.3em] uppercase font-light animate-pulse">Preparing Your Experience</p>
+        </div>
+        <div className="w-64 h-1.5 bg-gray-800 rounded-full mt-8 overflow-hidden relative">
+            <motion.div className="absolute top-0 left-0 h-full bg-gradient-to-r from-amber-500 to-orange-600" initial={{ width: "0%" }} animate={{ width: "100%" }} transition={{ duration: 3.5, ease: "easeInOut" }} />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default function CustomerMenuPage() {
+  const { t } = useLanguage(); 
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { user } = useAuth(); // Removed loading: authLoading to prevent guest blockage
+
+  // --- NEW MODAL STATES FOR QR GUEST FLOW ---
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
+
+  const [loading, setLoading] = useState(true);
+  const [menu, setMenu] = useState<MenuItem[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [showCart, setShowCart] = useState(false);
+  const [placingOrder, setPlacingOrder] = useState(false);
+  
+  const [allOrders, setAllOrders] = useState<Order[]>([]);
+  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<FilterType>('active');
+  
+  const [orderType, setOrderType] = useState<'room' | 'table' | 'delivery'>('room');
+  const [tableNumber, setTableNumber] = useState<string>('');
+  
+  const [deliveryDetails, setDeliveryDetails] = useState({
+    phone: '', street: '', houseNumber: '', landmark: '', city: 'Woldia'
+  });
+
+  const socketRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (user?.phone) {
+        setDeliveryDetails(prev => ({ ...prev, phone: user.phone || '' }));
+    }
+  }, [user]);
+
+  // SOCKET CONNECTION (Only if user is logged in)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !user?._id) return;
+    const socket = io(API_BASE, { withCredentials: true });
+    socketRef.current = socket;
+    
+    socket.on('orderUpdate', (updatedOrder: Order) => {
+      setAllOrders(prev => {
+        const exists = prev.find(o => o._id === updatedOrder._id);
+        return exists ? prev.map(o => o._id === updatedOrder._id ? updatedOrder : o) : [updatedOrder, ...prev];
+      });
+      if (updatedOrder.status !== 'pending') {
+          const statusText = t(updatedOrder.status as any) || updatedOrder.status;
+          toast.success(`${t('order')} ${updatedOrder.orderNumber} ${t('orderMarkedAs')} ${statusText}!`);
+      }
+    });
+    return () => socket.disconnect();
+  }, [user?._id, t]);
+
+  useEffect(() => { applyFilter(allOrders, activeFilter); }, [allOrders, activeFilter]);
+
+  // Handle Payment Redirects
+  useEffect(() => {
+    const paid = searchParams.get('paid');
+    if (paid === '1') {
+      toast.success(t('paymentSuccess'), { duration: 6000 });
+      setCart([]);
+      localStorage.removeItem('customerCart');
+      if (user) fetchOrderHistory();
+    } else if (paid === '0') {
+      toast.error(t('paymentFailed'));
+    }
+  }, [searchParams, user]);
+
+  // Load Menu for everyone (Guest or Logged In)
+  useEffect(() => {
+    fetchMenu();
+    loadCart();
+    if (user) fetchOrderHistory();
+  }, [user]);
+
+  useEffect(() => { localStorage.setItem('customerCart', JSON.stringify(cart)); }, [cart]);
+
+  const fetchMenu = async () => {
+    try {
+      const r = await api.get('/api/menu');
+      setMenu(r.data);
+    } catch { toast.error(t('failedLoadMenu')); } finally { setLoading(false); }
+  };
+
+  const loadCart = () => {
+    const saved = localStorage.getItem('customerCart');
+    if (saved) setCart(JSON.parse(saved));
+  };
+
+  const fetchOrderHistory = async () => {
+    try {
+      const r = await api.get('/api/orders/my');
+      setAllOrders(r.data);
+      applyFilter(r.data, 'active'); 
+    } catch { console.error("Failed history"); }
+  };
+
+  const getImageUrl = (path: string) => path?.startsWith('http') ? path : `${API_BASE}${path}` || '/default-menu.jpg';
+
+  const applyFilter = (orders: Order[], filter: FilterType) => {
+    const now = new Date();
+    let filtered = orders;
+    if (filter === 'active') filtered = orders.filter(o => !['delivered', 'cancelled'].includes(o.status));
+    filtered.sort((a, b) => new Date(b.orderedAt).getTime() - new Date(a.orderedAt).getTime());
+    setFilteredOrders(filtered);
+  };
+
+  const addToCart = (item: MenuItem) => {
+    setCart(prev => {
+      const existing = prev.find(i => i.menuItem === item._id);
+      if (existing) return prev.map(i => i.menuItem === item._id ? { ...i, quantity: i.quantity + 1 } : i);
+      return [...prev, { menuItem: item._id, name: item.name, price: item.price, quantity: 1, notes: '', image: getImageUrl(item.image) }];
+    });
+    toast.success(`${item.name} ${t('itemAdded')}`);
+  };
+
+  const updateQuantity = (id: string, delta: number) => {
+    setCart(prev => prev.map(i => i.menuItem === id ? { ...i, quantity: Math.max(0, i.quantity + delta) } : i).filter(i => i.quantity > 0));
+  };
+
+  // --- MODIFIED: PLACE ORDER (The Guest Flow Trigger) ---
+  const placeOrder = async () => {
+    // 1. Check Auth - If scanning QR as Guest, open login modal
+    if (!user) {
+        toast.error(t('loginToPlaceOrder' as any) || "Please login to complete your order");
+        setShowLoginModal(true);
+        return;
+    }
+
+    if (cart.length === 0) { toast.error(t('cartEmpty')); return; }
+    
+    // 2. Existing Validations
+    if (orderType === 'room' && !user.roomNumber) { toast.error(t('setRoomNumber')); return; }
+    if (orderType === 'table' && !tableNumber.trim()) { toast.error(t('enterTableNumber')); return; }
+    if (orderType === 'delivery' && (!deliveryDetails.phone || !deliveryDetails.street)) { toast.error(t('fillDeliveryDetails')); return; }
+
+    setPlacingOrder(true);
+    try {
+      const totalPrice = (cart.reduce((sum, i) => sum + i.price * i.quantity, 0) + (orderType === 'delivery' ? 50 : 0)).toFixed(2);
+      const payload = {
+        items: cart.map(i => ({ menuItem: i.menuItem, quantity: i.quantity, notes: i.notes })),
+        totalAmount: parseFloat(totalPrice),
+        customerName: `${user.firstName} ${user.lastName}`,
+        email: user.email,
+        phone: orderType === 'delivery' ? deliveryDetails.phone : (user.phone || '0912345678'),
+        orderType, 
+        roomNumber: user.roomNumber,
+        tableNumber: tableNumber,
+        deliveryAddress: deliveryDetails
+      };
+
+      const res = await api.post('/api/orders/chapa', payload);
+      if (res.data.checkout_url) window.location.href = res.data.checkout_url;
+    } catch (e: any) {
+      toast.error(t('paymentSetupFailed'));
+    } finally { setPlacingOrder(false); }
+  };
+
+  // --- UI RENDER ---
+  const [minTimePassed, setMinTimePassed] = useState(false);
+  useEffect(() => { const timer = setTimeout(() => setMinTimePassed(true), 2500); return () => clearTimeout(timer); }, []);
+
+  if (loading || !minTimePassed) return <CulinaryLoader />;
+
+  return (
+    <>
+      <Toaster position="top-right" />
+
+      {/* --- AUTH MODALS FOR GUEST SCANNERS --- */}
+      <AnimatePresence>
+        {showLoginModal && (
+          <LoginForm 
+            onClose={() => setShowLoginModal(false)}
+            onSwitchToRegister={() => { setShowLoginModal(false); setShowRegisterModal(true); }}
+          />
+        )}
+        {showRegisterModal && (
+          <RegisterForm 
+            onClose={() => setShowRegisterModal(false)}
+            onSwitchToLogin={() => { setShowRegisterModal(false); setShowLoginModal(true); }}
+          />
+        )}
+      </AnimatePresence>
+
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        {/* Header Updated for Guest Mode */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{t('orderFoodDrinks')}</h1>
+            <div className="text-gray-600 dark:text-gray-400 mt-1">
+              {user ? (
+                <p className="flex items-center gap-2">
+                   <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                   {t('loggedInAs' as any) || "Logged in as"} <span className="font-bold text-amber-600">{user.firstName}</span>
+                </p>
+              ) : (
+                <p className="flex items-center gap-2">
+                   <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
+                   <span className="font-semibold text-amber-600 uppercase text-xs tracking-wider">{t('browsingAsGuest' as any) || "Guest Mode"}</span>
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex gap-3">
+            {user && (
+                <button onClick={() => setShowHistory(true)} className="p-3 bg-gray-100 dark:bg-gray-700 rounded-xl hover:bg-gray-200 transition flex items-center gap-2">
+                    <History size={22} />
+                    <span className="hidden md:inline font-medium">{t('history')}</span>
+                </button>
+            )}
+            <button onClick={() => setShowCart(true)} className="relative p-4 bg-amber-600 text-white rounded-xl hover:bg-amber-700 shadow-lg transition">
+              <ShoppingCart size={24} />
+              {cart.length > 0 && <span className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">{cart.length}</span>}
+            </button>
+          </div>
+        </div>
+
+        {/* Menu Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {menu.map(item => (
+            <motion.div key={item._id} whileHover={{ y: -5 }} className="bg-white dark:bg-gray-800 rounded-2xl shadow-md overflow-hidden border border-gray-100 dark:border-gray-700 cursor-pointer" onClick={() => addToCart(item)}>
+              <div className="h-48 relative overflow-hidden">
+                <img src={getImageUrl(item.image)} alt={item.name} className="w-full h-full object-cover" />
+                <span className="absolute top-3 right-3 px-3 py-1 text-xs font-bold rounded-full bg-white/90 text-black shadow-md capitalize">{t(item.category as any)}</span>
+              </div>
+              <div className="p-5">
+                <h3 className="text-lg font-bold line-clamp-1">{item.name}</h3>
+                <p className="text-sm text-gray-500 line-clamp-2 mt-1 min-h-[40px]">{item.description}</p>
+                <div className="flex items-center justify-between mt-4">
+                  <span className="text-xl font-bold text-amber-600">ETB {item.price}</span>
+                  <div className="p-2 bg-amber-100 text-amber-700 rounded-lg"><Plus size={20} /></div>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </motion.div>
+
+      {/* CART DRAWER */}
+      <AnimatePresence>
+        {showCart && (
+          <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed inset-0 z-50 flex justify-end">
+            <div className="absolute inset-0 bg-black/50" onClick={() => setShowCart(false)} />
+            <motion.div className="relative w-full max-w-md bg-white dark:bg-gray-800 shadow-2xl flex flex-col h-full">
+              <div className="p-6 border-b flex items-center justify-between">
+                <h2 className="text-2xl font-bold">{t('yourOrder')}</h2>
+                <button onClick={() => setShowCart(false)} className="p-2 hover:bg-gray-100 rounded-full"><X size={24} /></button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                {cart.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-4">
+                      <ShoppingCart size={64} opacity={0.3} />
+                      <p>{t('cartEmpty')}</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="p-4 bg-amber-50 dark:bg-gray-700 rounded-xl space-y-3">
+                        <p className="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-widest">{t('selectService')}</p>
+                        <div className="flex justify-around">
+                            <button onClick={() => setOrderType('room')} className={`flex flex-col items-center p-2 rounded-lg transition-all ${orderType === 'room' ? 'bg-amber-600 text-white shadow-md' : 'text-gray-400'}`}>
+                                <Hotel size={20} /> <span className="text-[10px] mt-1 font-bold">ROOM</span>
+                            </button>
+                            <button onClick={() => setOrderType('table')} className={`flex flex-col items-center p-2 rounded-lg transition-all ${orderType === 'table' ? 'bg-amber-600 text-white shadow-md' : 'text-gray-400'}`}>
+                                <Utensils size={20} /> <span className="text-[10px] mt-1 font-bold">TABLE</span>
+                            </button>
+                            <button onClick={() => setOrderType('delivery')} className={`flex flex-col items-center p-2 rounded-lg transition-all ${orderType === 'delivery' ? 'bg-amber-600 text-white shadow-md' : 'text-gray-400'}`}>
+                                <Bike size={20} /> <span className="text-[10px] mt-1 font-bold">DELIVERY</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {orderType === 'table' && (
+                        <input type="text" placeholder={t('tableNumber')} value={tableNumber} onChange={e => setTableNumber(e.target.value)} className="w-full px-4 py-2 border rounded-lg bg-gray-50 dark:bg-gray-700" />
+                    )}
+
+                    {cart.map(item => (
+                      <div key={item.menuItem} className="flex gap-4 p-3 bg-white dark:bg-gray-700 border border-gray-100 dark:border-gray-600 rounded-xl">
+                          <img src={item.image} className="w-16 h-16 object-cover rounded-lg" />
+                          <div className="flex-1">
+                            <div className="flex justify-between font-bold text-sm"><span>{item.name}</span><span>ETB {item.price}</span></div>
+                            <div className="flex items-center justify-between mt-3">
+                                <div className="flex items-center gap-3 bg-gray-100 dark:bg-gray-600 rounded-lg px-2 py-1">
+                                    <button onClick={() => updateQuantity(item.menuItem, -1)}><Minus size={14} /></button>
+                                    <span className="text-xs font-bold">{item.quantity}</span>
+                                    <button onClick={() => updateQuantity(item.menuItem, 1)}><Plus size={14} /></button>
+                                </div>
+                                <span className="text-amber-600 font-bold">ETB {item.price * item.quantity}</span>
+                            </div>
+                          </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+
+              {cart.length > 0 && (
+                <div className="p-6 border-t bg-white dark:bg-gray-900">
+                  <div className="flex justify-between text-2xl font-black mb-4">
+                      <span>{t('total')}</span>
+                      <span>ETB {(cart.reduce((s, i) => s + i.price * i.quantity, 0) + (orderType === 'delivery' ? 50 : 0)).toFixed(2)}</span>
+                  </div>
+                  <button onClick={placeOrder} disabled={placingOrder} className="w-full py-4 bg-amber-600 text-white rounded-xl font-bold text-lg hover:bg-amber-700 transition shadow-lg disabled:opacity-50">
+                    {placingOrder ? t('processing') : user ? t('payWithChapa') : (t('loginToOrder' as any) || "Login to Place Order")}
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* HISTORY MODAL (Only for Logged in) */}
+      <AnimatePresence>
+        {showHistory && user && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+            <motion.div className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+              <div className="p-6 border-b flex justify-between items-center">
+                <h2 className="text-2xl font-bold flex items-center gap-2"><History className="text-amber-600" /> {t('orderHistory')}</h2>
+                <button onClick={() => setShowHistory(false)}><X size={24} /></button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50 dark:bg-gray-900">
+                {filteredOrders.map(order => (
+                  <div key={order._id} className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex justify-between items-center">
+                    <div>
+                        <p className="font-bold">{t('order')} {order.orderNumber}</p>
+                        <p className="text-xs text-gray-500">{format(new Date(order.orderedAt), "MMM d, h:mm a")}</p>
+                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${getStatusColor(order.status)}`}>{t(order.status as any)}</span>
+                    </div>
+                    <div className="text-right">
+                        <p className="font-black">ETB {order.totalAmount}</p>
+                        <button onClick={() => openReceipt(order._id)} className="text-xs text-amber-600 font-bold underline mt-1">{t('viewReceipt')}</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}/*'use client';
+
+import { useState, useEffect, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { 
+  Coffee, Plus, Minus, ShoppingCart, X, History, 
   Loader2, Hotel, Utensils, Receipt, Calendar, Clock, 
   Bike, MapPin, Pizza, Sandwich, Soup, IceCream // Added icons for loading animation
 } from 'lucide-react';
@@ -74,7 +535,7 @@ const CulinaryLoader = () => {
 
   return (
     <div className="fixed inset-0 z-[100] bg-[#1a1a1a] flex flex-col items-center justify-center overflow-hidden">
-      {/* Dynamic Background Particles */}
+     
       <div className="absolute inset-0 overflow-hidden opacity-20 pointer-events-none">
         {[...Array(20)].map((_, i) => (
           <motion.div
@@ -95,7 +556,7 @@ const CulinaryLoader = () => {
       </div>
 
       <div className="relative z-10 flex flex-col items-center">
-        {/* Animated Icon Circle */}
+     
         <motion.div 
           className="w-32 h-32 rounded-full bg-gradient-to-br from-amber-500 to-orange-700 flex items-center justify-center mb-8 shadow-[0_0_40px_rgba(245,158,11,0.4)] border-4 border-[#2a2a2a]"
           animate={{ scale: [1, 1.05, 1], rotate: [0, 5, -5, 0] }}
@@ -114,7 +575,7 @@ const CulinaryLoader = () => {
           </AnimatePresence>
         </motion.div>
 
-        {/* Text Animation */}
+        
         <div className="text-center space-y-2">
             <h1 className="text-4xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-600 font-serif">
                MESERET DINING
@@ -124,7 +585,7 @@ const CulinaryLoader = () => {
             </p>
         </div>
 
-        {/* Progress Bar */}
+       
         <div className="w-64 h-1.5 bg-gray-800 rounded-full mt-8 overflow-hidden relative">
             <motion.div 
                 className="absolute top-0 left-0 h-full bg-gradient-to-r from-amber-500 to-orange-600"
@@ -448,7 +909,7 @@ export default function CustomerMenuPage() {
       <Toaster position="top-right" />
 
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        {/* Header */}
+     
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{t('orderFoodDrinks')}</h1>
@@ -481,7 +942,7 @@ export default function CustomerMenuPage() {
           </div>
         </div>
 
-        {/* Menu Grid */}
+        
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {menu.map(item => (
             <motion.div
@@ -515,7 +976,7 @@ export default function CustomerMenuPage() {
         </div>
       </motion.div>
 
-      {/* CART DRAWER */}
+     
       <AnimatePresence>
         {showCart && (
           <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed inset-0 z-50 flex justify-end">
@@ -534,7 +995,7 @@ export default function CustomerMenuPage() {
                   </div>
                 ) : (
                   <div className="space-y-6">
-                    {/* Order Type Selection */}
+                    
                     <div className="p-4 bg-amber-50 dark:bg-gray-700 rounded-xl flex flex-col gap-3">
                         <p className="text-sm font-bold text-amber-800 dark:text-amber-300 uppercase">{t('selectService')}</p>
                         <div className="flex items-center justify-between">
@@ -562,7 +1023,7 @@ export default function CustomerMenuPage() {
                         </div>
                     </div>
 
-                    {/* Table Number Input */}
+
                     {orderType === 'table' && (
                       <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-lg animate-in slide-in-from-top-2">
                         <label className="block text-sm font-bold mb-1">{t('tableNumber' as any)}</label>
@@ -576,7 +1037,7 @@ export default function CustomerMenuPage() {
                       </div>
                     )}
 
-                    {/* Delivery Address Form */}
+                   
                     {orderType === 'delivery' && (
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 bg-gray-50 border border-gray-200 rounded-xl space-y-3">
                             <h4 className="font-bold text-gray-800 flex items-center gap-2 text-sm">
@@ -608,7 +1069,7 @@ export default function CustomerMenuPage() {
                         </motion.div>
                     )}
 
-                    {/* CART ITEMS */}
+                   
                     {cart.map(item => (
                       <div key={item.menuItem} className="flex gap-4 p-3 bg-white border border-gray-100 rounded-xl shadow-sm">
                           <img src={getImageUrl(item.image)} className="w-16 h-16 object-cover rounded-lg bg-gray-200" />
@@ -671,7 +1132,7 @@ export default function CustomerMenuPage() {
         )}
       </AnimatePresence>
 
-      {/* ORDER HISTORY MODAL */}
+      
       <AnimatePresence>
         {showHistory && (
           <motion.div
@@ -688,7 +1149,7 @@ export default function CustomerMenuPage() {
               className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Modal Header */}
+             
               <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-white dark:bg-gray-800 z-10">
                 <div>
                     <h2 className="text-2xl font-bold flex items-center gap-2 text-gray-800 dark:text-white">
@@ -701,7 +1162,7 @@ export default function CustomerMenuPage() {
                 </button>
               </div>
 
-              {/* Filter Tabs */}
+             
               <div className="flex gap-2 p-4 bg-gray-50 dark:bg-gray-900 overflow-x-auto no-scrollbar border-b border-gray-200 dark:border-gray-700">
                 {[
                   { id: 'active', label: t('activeOrders'), icon: Clock },
@@ -722,7 +1183,7 @@ export default function CustomerMenuPage() {
                 ))}
               </div>
 
-              {/* Orders List Content */}
+
               <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50 dark:bg-gray-800">
                 {filteredOrders.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-48 text-gray-400">
@@ -740,7 +1201,7 @@ export default function CustomerMenuPage() {
                         className="bg-white dark:bg-gray-700 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-600 hover:shadow-md transition-shadow"
                       >
                         <div className="flex justify-between items-start mb-4">
-                            {/* Left: Image & Title */}
+                          
                             <div className="flex gap-4">
                                 <div className="w-16 h-16 rounded-xl bg-gray-100 overflow-hidden flex-shrink-0 border border-gray-200">
                                     {order.items[0]?.image ? (
@@ -767,13 +1228,13 @@ export default function CustomerMenuPage() {
                                 </div>
                             </div>
 
-                            {/* Right: Status Badge */}
+                           
                             <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor(order.status)} uppercase tracking-wide`}>
                                 {t(order.status as any)}
                             </span>
                         </div>
 
-                        {/* Footer: Price & Action */}
+                        
                         <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-600">
                             <div className="text-sm">
                                 <span className="text-gray-500">{t('total')}:</span>
@@ -799,7 +1260,10 @@ export default function CustomerMenuPage() {
       </AnimatePresence>
     </>
   );
-}/*'use client';
+}*/
+  
+
+/*'use client';
 import { Image, Modal } from 'react-native';
 
 import { useState, useEffect, useRef } from 'react';

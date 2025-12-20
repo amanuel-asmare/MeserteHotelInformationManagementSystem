@@ -276,12 +276,19 @@ export default function Home() {
   
   const [menuUrl, setMenuUrl] = useState('');
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-       setMenuUrl(`${window.location.origin}/customer/menu`);
-    }
-  }, []);
-
+  // useEffect(() => {
+  //   if (typeof window !== 'undefined') {
+  //      setMenuUrl(`${window.location.origin}/customer/menu`);
+  //   }
+  // }, []);
+useEffect(() => {
+  if (typeof window !== 'undefined') {
+     // REAL WORLD QR URL:
+     // If you want to hardcode a table for the demo, use:
+     // setMenuUrl(`${window.location.origin}/customer/menu?table=5`);
+     setMenuUrl(`${window.location.origin}/customer/menu`);
+  }
+}, []);
   const handleSearch = () => {
     if (!checkIn || !checkOut) {
       alert(t('selectDatesGuests'));
@@ -402,19 +409,14 @@ export default function Home() {
           <h2 className="mb-4 text-3xl font-bold">{t('readyToBook')}</h2>
           <p className="mb-8 text-lg">{t('joinHappyGuests')}</p>
           <div className="flex flex-col gap-4 sm:flex-row sm:justify-center">
-            <Link
-              href="/rooms"
-              className="rounded-full bg-white px-8 py-3 font-semibold text-amber-600 hover:bg-gray-100 transition-colors"
-            >
-              {t('viewRooms')}
-            </Link>
+          
             
             {/* CHANGED: This button now opens the Register Modal */}
             <button
               onClick={() => setShowRegister(true)}
               className="rounded-full border-2 border-white px-8 py-3 font-semibold hover:bg-white hover:text-amber-600 transition-colors"
             >
-              {t('register')} 
+             {t('contactUsButton')}
             </button>
           </div>
         </div>

@@ -304,7 +304,13 @@ const API_URL='https://mesertehotelinformationmanagementsystem.onrender.com'
         cashier: '/cashier',
         customer: '/customer',
       };
-      router.replace(map[user.role]);
+      // router.replace(map[user.role]);
+     // ONLY REDIRECT if they are on the root "/" or "/login"
+    // Do NOT redirect if they are already on "/customer/menu"
+    const publicPaths = ['/', '/login', '/register'];
+    if (publicPaths.includes(window.location.pathname)) {
+       router.replace(map[user.role]);
+    }
     }
   }, [user, loading, router]);
 
