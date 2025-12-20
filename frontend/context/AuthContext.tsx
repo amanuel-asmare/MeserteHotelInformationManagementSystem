@@ -295,25 +295,44 @@ const API_URL='https://mesertehotelinformationmanagementsystem.onrender.com'
   }, []);
 
   // Redirect based on role after login
-  useEffect(() => {
+  // useEffect(() => {
+  //   if (!loading && user) {
+  //     const map: Record<User['role'], string> = {
+  //       admin: '/admin',
+  //       manager: '/manager',
+  //       receptionist: '/receptionist',
+  //       cashier: '/cashier',
+  //       customer: '/customer',
+  //     };
+  //     // router.replace(map[user.role]);
+  //    // ONLY REDIRECT if they are on the root "/" or "/login"
+  //   // Do NOT redirect if they are already on "/customer/menu"
+  //   const publicPaths = ['/', '/login', '/register'];
+  //   if (publicPaths.includes(window.location.pathname)) {
+  //      router.replace(map[user.role]);
+  //   }
+  //   }
+  // }, [user, loading, router]);
+ useEffect(() => {
     if (!loading && user) {
-      const map: Record<User['role'], string> = {
+      const map: Record<string, string> = {
         admin: '/admin',
         manager: '/manager',
         receptionist: '/receptionist',
         cashier: '/cashier',
         customer: '/customer',
       };
-      // router.replace(map[user.role]);
-     // ONLY REDIRECT if they are on the root "/" or "/login"
-    // Do NOT redirect if they are already on "/customer/menu"
-    const publicPaths = ['/', '/login', '/register'];
-    if (publicPaths.includes(window.location.pathname)) {
-       router.replace(map[user.role]);
-    }
+      
+      // LOGIC: Only auto-redirect if they are on a "Start" page (/, /login, /register)
+      // Do NOT redirect if they are on /customer/menu (The QR Menu)
+      const authRequiredPaths = ['/', '/login', '/register'];
+      const currentPath = window.location.pathname;
+      
+      if (authRequiredPaths.includes(currentPath)) {
+         router.replace(map[user.role] || '/');
+      }
     }
   }, [user, loading, router]);
-
   return (
     <AuthContext.Provider value={{ user, login, logout, updateUser, loading }}>
       {children}
