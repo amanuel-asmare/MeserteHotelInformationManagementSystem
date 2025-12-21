@@ -46,7 +46,8 @@ module.exports = function(passport) {
         passport.use(new GoogleStrategy({
             clientID: process.env.GOOGLE_CLIENT_ID,
             clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-            callbackURL: `${API_URL}/api/auth/google/callback`
+            callbackURL: `${API_URL}/api/auth/google/callback`,
+            proxy: true // <--- ADD THIS LINE
         }, socialAuthCallback));
     }
 
@@ -56,7 +57,9 @@ module.exports = function(passport) {
             clientID: process.env.FACEBOOK_APP_ID,
             clientSecret: process.env.FACEBOOK_APP_SECRET,
             callbackURL: `${API_URL}/api/auth/facebook/callback`,
-            profileFields: ['id', 'emails', 'name', 'photos']
+            profileFields: ['id', 'emails', 'name', 'photos'],
+            proxy: true // <--- ADD THIS LINE
+
         }, socialAuthCallback));
     }
 
@@ -66,7 +69,8 @@ module.exports = function(passport) {
             clientID: process.env.GITHUB_CLIENT_ID,
             clientSecret: process.env.GITHUB_CLIENT_SECRET,
             callbackURL: `${API_URL}/api/auth/github/callback`,
-            scope: ['user:email']
+            scope: ['user:email'],
+            proxy: true // <--- ADD THIS LINE
         }, socialAuthCallback));
     }
 
