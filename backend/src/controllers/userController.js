@@ -19,15 +19,15 @@ const getFullImageUrl = (imagePath) => {
 };
 */
 // HELPER - UPDATED TO BE ROBUST
-const getFullImageUrl = (imagePath) => {
-    if (!imagePath) return '/default-avatar.png';
-    if (imagePath.startsWith('http')) return imagePath;
+const getFullImageUrl = (path) => {
+    if (!path || path === '/default-avatar.png') return '/default-avatar.png';
 
+    // If it's already a full URL (Cloudinary or Social Login), return it
+    if (path.startsWith('http')) return path;
+
+    // Fallback for old local files (which will eventually be gone)
     const API_BASE = process.env.API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
-
-    // Ensure leading slash
-    const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
-
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
     return `${API_BASE}${cleanPath}`;
 };
 
