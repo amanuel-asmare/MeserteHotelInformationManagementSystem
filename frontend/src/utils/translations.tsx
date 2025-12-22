@@ -14,7 +14,9 @@ export const translations = {
     welcome: "Welcome back",
     todaysDate: "Today's Date",
     admin: "Admin",
-    
+       // --- NAVBAR ---
+    about: "About Us",
+  
     // --- DASHBOARD STATS ---
     occupiedRooms: "Occupied Rooms",
     rate: "Rate",
@@ -1004,6 +1006,42 @@ trackYourDuty: "Track Your Duty with Royal Precision",
     guestAddedSuccess: "Guest {name} added successfully.",
     accountCreatedRedirect: "Account created. Redirecting to login...",
     alreadyHaveAccount: "Already have an account?",
+    
+  
+
+    // --- ABOUT MODAL (Based on your Document) ---
+    aboutTitle: "Our Story",
+    aboutHeading: "A Legacy of Hospitality in Woldia",
+    aboutDescription: "Established in April 2010 E.C., Meseret Hotel has become a cornerstone of excellence in Woldia. With 50 elegantly designed rooms including single, double, and triple accommodations, we provide a sanctuary for both business and leisure travelers. Our dedicated team of 20 professionals is committed to delivering the warmth of Ethiopian hospitality combined with modern luxury.",
+    
+    // About Stats
+    happyGuests: "Happy Guests",
+    luxuryAwards: "Luxury Awards",
+    yearsExcellence: "Years Excellence",
+    primeLocations: "Location",
+    
+    // About Commitment
+    commitmentTitle: "Our Commitment",
+    commitmentDesc: "To provide seamless, digital-first hospitality while maintaining the highest standards of safety and comfort.",
+
+  
+
+   
+    // --- FOOTER ---
+    footerBio: "Experience the heights of luxury and the warmth of Ethiopian hospitality at Meseret Hotel. Your sanctuary in Woldia.",
+    
+    dining: "Dining & Bar",
+    events: "Meetings & Events",
+    
+    frontDesk247: "24/7 Front Desk",
+    valetParking: "Valet Parking",
+    inRoomDining: "In-room Dining",
+    hotelAddress: "Woldia, North Wollo, Ethiopia",
+   
+    privacyPolicy: "Privacy Policy",
+    termsOfService: "Terms of Service",
+
+    
   },
   am: {
     // --- BRAND ---
@@ -2031,5 +2069,39 @@ trackYourDuty: "የተከበሩ ሰራተኞች – የሥራ መልክ�ዎን
     guestAddedSuccess: "እንግዳ {name} በተሳካ ሁኔታ ተመዝግቧል።",
     accountCreatedRedirect: "መለያ ተፈጥሯል። ወደ መግቢያ በመሄድ ላይ...",
     alreadyHaveAccount: "መለያ አለዎት?",
+      about: "ስለ እኛ",
+   
+    // --- ABOUT MODAL ---
+    aboutTitle: "ታሪካችን",
+    aboutHeading: "በወልድያ የታመነ የእንግዳ ተቀባይነት ታሪክ",
+    aboutDescription: "በሚያዝያ ፳፲ (2010) ዓ.ም የተመሰረተው መሰረት ሆቴል፥ በወልድያ ከተማ ምርጥ አገልግሎት በመስጠት ይታወቃል። ለነጠላ፣ ለጥንድ እና ለቤተሰብ የሚሆኑ ፶ (50) ዘመናዊ የመኝታ ክፍሎችን ይዘን እንጠብቆታለን። በ፳ (20) የሰለጠኑ ባለሙያዎች የታገዘው ሆቴላችን፥ የኢትዮጵያዊያንን ባህላዊ የእንግዳ ተቀባይነት ከዘመናዊ ምቾት ጋር አጣምሮ ያቀርባል።",
+    
+    // About Stats
+    happyGuests: "ደስተኛ እንግዶች",
+    luxuryAwards: "የጥራት ሽልማቶች",
+    yearsExcellence: "የልምድ ዓመታት",
+    primeLocations: "አድራሻ",
+    
+    // About Commitment
+    commitmentTitle: "ቃላችን",
+    commitmentDesc: "ከፍተኛ ጥራት ያለው አገልግሎት በዘመናዊ የዲጂታል ቴክኖሎጂ የታገዘ እና ምቹ እንዲሆን ማድረግ።",
+
+    // --- WHY CHOOSE US / SERVICES ---
+   
+    // --- FOOTER ---
+    footerBio: "በመሰረት ሆቴል የኢትዮጵያዊያንን እንግዳ ተቀባይነት ከዘመናዊ ቅንጦት ጋር ያግኙ። በወልድያ ከተማ መሸሸጊያዎ።",
+ 
+    dining: "ምግብ እና መጠጥ",
+    events: "ስብሰባዎች እና ኩነቶች",
+  
+    frontDesk247: "የ፳፬ ሰዓት የፊት ጠረጴዛ",
+    valetParking: "የመኪና ማቆሚያ አገልግሎት",
+    inRoomDining: "ክፍል ድረስ የሚመጣ ምግብ",
+    hotelAddress: "ወልድያ፣ ሰሜን ወሎ፣ ኢትዮጵያ",
+  
+    privacyPolicy: "የግል መረጃ ጥበቃ",
+    termsOfService: "የአገልግሎት ደንቦች",
+
+  
 }
 };
