@@ -500,8 +500,8 @@ const QRModal = ({ onClose, url, t }: { onClose: () => void; url: string; t: any
         </div>
       </div>
 
-      <h3 className="text-2xl font-bold text-gray-900 mb-2">{t('scanForMenu') || 'Scan for Menu'}</h3>
-      <p className="text-gray-500 mb-6 text-sm">{t('pointCamera') || 'Point your camera at the QR code to view our digital menu.'}</p>
+      <h3 className="text-2xl font-bold text-gray-900 mb-2">{t('scanForMenu' as any) || 'Scan for Menu'}</h3>
+      <p className="text-gray-500 mb-6 text-sm">{t('pointCamera' as any) || 'Point your camera at the QR code to view our digital menu.'}</p>
 
       <div className="flex justify-center p-4 bg-white border-2 border-dashed border-gray-200 rounded-2xl mb-6">
         <QRCodeSVG 
@@ -514,7 +514,7 @@ const QRModal = ({ onClose, url, t }: { onClose: () => void; url: string; t: any
 
       <div className="flex items-center justify-center gap-2 text-xs text-amber-600 font-medium bg-amber-50 py-2 rounded-lg">
         <Smartphone size={16} />
-        <span>{t('worksOnMobile') || 'Works on all smartphones'}</span>
+        <span>{t('worksOnMobile' as any) || 'Works on all smartphones'}</span>
       </div>
     </motion.div>
   </div>
@@ -564,7 +564,7 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             className="mb-4 text-4xl font-bold tracking-tight sm:text-5xl md:text-7xl"
           >
-            {t('welcomeToMeseret')} <span className="text-amber-400">{t('meseretHotel')}</span>
+            {t('welcomeToMeseret'as any)} <span className="text-amber-400">{t('meseretHotel' as any)}</span>
           </motion.h1>
           <motion.p 
             initial={{ opacity: 0, y: 20 }}
@@ -572,7 +572,7 @@ export default function Home() {
             transition={{ delay: 0.2 }}
             className="mb-8 max-w-2xl text-lg sm:text-xl font-light italic"
           >
-            {t('experienceLuxury')}
+            {t('experienceLuxury' as any)}
           </motion.p>
 
           <motion.button
@@ -588,7 +588,7 @@ export default function Home() {
           <div className="w-full max-w-5xl rounded-2xl bg-white p-5 shadow-2xl ring-8 ring-white/10">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
               <div className="flex flex-col text-left">
-                <label className="text-[10px] font-bold text-gray-400 uppercase ml-2 mb-1">{t('checkInLabel')}</label>
+                <label className="text-[10px] font-bold text-gray-400 uppercase ml-2 mb-1">{t('checkInLabel'as any)}</label>
                 <div className="flex items-center gap-2 rounded-xl border-2 border-gray-50 bg-gray-50 p-3 focus-within:border-amber-500 transition-all">
                   <Calendar className="text-amber-600" size={20} />
                   <input type="date" value={checkIn} onChange={e => setCheckIn(e.target.value)} className="w-full bg-transparent text-black outline-none text-sm font-medium"/>
@@ -596,7 +596,7 @@ export default function Home() {
               </div>
 
               <div className="flex flex-col text-left">
-                <label className="text-[10px] font-bold text-gray-400 uppercase ml-2 mb-1">{t('checkOutLabel')}</label>
+                <label className="text-[10px] font-bold text-gray-400 uppercase ml-2 mb-1">{t('checkOutLabel' as any)}</label>
                 <div className="flex items-center gap-2 rounded-xl border-2 border-gray-50 bg-gray-50 p-3 focus-within:border-amber-500 transition-all">
                   <Calendar className="text-amber-600" size={20} />
                   <input type="date" value={checkOut} min={checkIn} onChange={e => setCheckOut(e.target.value)} className="w-full bg-transparent text-black outline-none text-sm font-medium"/>
@@ -604,7 +604,7 @@ export default function Home() {
               </div>
 
               <div className="flex flex-col text-left">
-                <label className="text-[10px] font-bold text-gray-400 uppercase ml-2 mb-1">{t('guestsLabel') || 'Guests'}</label>
+                <label className="text-[10px] font-bold text-gray-400 uppercase ml-2 mb-1">{t('guestsLabel' as any) || 'Guests'}</label>
                 <div className="flex items-center gap-2 rounded-xl border-2 border-gray-50 bg-gray-50 p-3 focus-within:border-amber-500 transition-all">
                   <Users className="text-amber-600" size={20} />
                   <select value={guests} onChange={e => setGuests(e.target.value)} className="w-full bg-transparent text-black outline-none text-sm font-medium">
@@ -615,7 +615,7 @@ export default function Home() {
 
               <div className="flex flex-col justify-end">
                 <button onClick={handleSearch} className="h-[52px] flex items-center justify-center gap-2 rounded-xl bg-amber-600 px-6 py-3 font-bold text-white shadow-lg hover:bg-amber-700 transition-all transform active:scale-95">
-                  <Search size={20} /> {t('searchRoomsButton')}
+                  <Search size={20} /> {t('searchRoomsButton' as any)}
                 </button>
               </div>
             </div>
@@ -661,11 +661,11 @@ export default function Home() {
               <div className="grid grid-cols-2 gap-8">
                 <div className="flex items-start gap-4">
                   <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-2xl text-amber-600"><ShieldCheck size={28} /></div>
-                  <div><h5 className="font-bold dark:text-white">{t('certifiedTitle' as any) || 'Safe & Secure'}</h5><p className="text-sm text-gray-500">{t('certifiedDesc') || '24/7 Security Protocols'}</p></div>
+                  <div><h5 className="font-bold dark:text-white">{t('certifiedTitle' as any) || 'Safe & Secure'}</h5><p className="text-sm text-gray-500">{t('certifiedDesc' as any) || '24/7 Security Protocols'}</p></div>
                 </div>
                 <div className="flex items-start gap-4">
                   <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-2xl text-amber-600"><HeartHandshake size={28} /></div>
-                  <div><h5 className="font-bold dark:text-white">{t('supportTitle' as any) || 'Guest First'}</h5><p className="text-sm text-gray-500">{t('supportDesc') || 'Personalized Concierge'}</p></div>
+                  <div><h5 className="font-bold dark:text-white">{t('supportTitle' as any) || 'Guest First'}</h5><p className="text-sm text-gray-500">{t('supportDesc' as any) || 'Personalized Concierge'}</p></div>
                 </div>
               </div>
             </motion.div>
@@ -678,7 +678,7 @@ export default function Home() {
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-black text-gray-800 dark:text-white mb-4">
-              {t('whyChooseMeseret')}
+              {t('whyChooseMeseret'as any)}
             </h2>
             <div className="h-1 w-20 bg-amber-500 mx-auto rounded-full"></div>
           </div>
@@ -710,14 +710,14 @@ export default function Home() {
       <section className="relative py-24 bg-amber-600 overflow-hidden">
         <div className="absolute top-0 right-0 p-24 opacity-10"><Hotel size={300} className="text-white" /></div>
         <div className="container mx-auto px-6 text-center relative z-10 text-white">
-          <h2 className="mb-6 text-4xl md:text-5xl font-black">{t('readyToBook')}</h2>
-          <p className="mb-10 text-xl font-light opacity-90">{t('joinHappyGuests')}</p>
+          <h2 className="mb-6 text-4xl md:text-5xl font-black">{t('readyToBook' as any)}</h2>
+          <p className="mb-10 text-xl font-light opacity-90">{t('joinHappyGuests' as any)}</p>
           <div className="flex flex-col gap-4 sm:flex-row sm:justify-center">
             <button
               onClick={() => setShowRegister(true)}
               className="rounded-full bg-white text-amber-600 px-10 py-4 font-bold text-lg shadow-2xl hover:bg-gray-100 transition-all transform hover:scale-105"
             >
-             {t('contactUsButton') || 'Start Reservation'}
+             {t('contactUsButton' as any) || 'Start Reservation'}
             </button>
           </div>
         </div>
@@ -744,18 +744,18 @@ export default function Home() {
 
             {/* Column 2: Navigation */}
             <div>
-              <h3 className="text-white font-bold text-lg mb-6">{t('quickLinks') || 'Quick Links'}</h3>
+              <h3 className="text-white font-bold text-lg mb-6">{t('quickLinks' as any) || 'Quick Links'}</h3>
               <ul className="space-y-4 text-sm">
-                <li><a href="#" className="hover:text-amber-500 transition flex items-center gap-2 group"><ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-all"/>{t('rooms') || 'Our Rooms'}</a></li>
-                <li><a href="#" className="hover:text-amber-500 transition flex items-center gap-2 group"><ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-all"/>{t('dining') || 'Dining & Bar'}</a></li>
-                <li><a href="#" className="hover:text-amber-500 transition flex items-center gap-2 group"><ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-all"/>{t('events') || 'Meetings & Events'}</a></li>
-                <li><a href="#" className="hover:text-amber-500 transition flex items-center gap-2 group"><ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-all"/>{t('contact') || 'Get in Touch'}</a></li>
+                <li><a href="#" className="hover:text-amber-500 transition flex items-center gap-2 group"><ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-all"/>{t('rooms' as any) || 'Our Rooms'}</a></li>
+                <li><a href="#" className="hover:text-amber-500 transition flex items-center gap-2 group"><ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-all"/>{t('dining' as any) || 'Dining & Bar'}</a></li>
+                <li><a href="#" className="hover:text-amber-500 transition flex items-center gap-2 group"><ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-all"/>{t('events' as any) || 'Meetings & Events'}</a></li>
+                <li><a href="#" className="hover:text-amber-500 transition flex items-center gap-2 group"><ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-all"/>{t('contact' as any) || 'Get in Touch'}</a></li>
               </ul>
             </div>
 
             {/* Column 3: Services */}
             <div>
-              <h3 className="text-white font-bold text-lg mb-6">{t('ourServices') || 'Guest Services'}</h3>
+              <h3 className="text-white font-bold text-lg mb-6">{t('ourServices' as any) || 'Guest Services'}</h3>
               <ul className="space-y-4 text-sm">
                 <li className="flex items-center gap-2"><Clock size={16} className="text-amber-600"/> 24/7 Front Desk</li>
                 <li className="flex items-center gap-2"><Car size={16} className="text-amber-600"/> Valet Parking</li>

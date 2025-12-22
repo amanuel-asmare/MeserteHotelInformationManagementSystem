@@ -39,12 +39,12 @@ export default function AboutSection() {
             viewport={{ once: true }}
             className="lg:w-1/2"
           >
-            <h4 className="text-amber-600 font-bold uppercase tracking-widest mb-4">{t('aboutTitle') || 'Our Story'}</h4>
+            <h4 className="text-amber-600 font-bold uppercase tracking-widest mb-4">{t('aboutTitle' as any) || 'Our Story'}</h4>
             <h2 className="text-4xl md:text-5xl font-black text-gray-900 dark:text-white mb-6 leading-tight">
-              {t('aboutHeading') || 'A Legacy of Ethiopian Hospitality'}
+              {t('aboutHeading' as any) || 'A Legacy of Ethiopian Hospitality'}
             </h2>
             <p className="text-gray-600 dark:text-gray-400 text-lg mb-8 leading-relaxed">
-              {t('aboutDescription') || 'Founded on the principles of grace and comfort, Meseret Hotel has been the cornerstone of luxury in the region for over a decade. We combine traditional Ethiopian warmth with modern architectural elegance to provide an experience that is both authentic and world-class.'}
+              {t('aboutDescription' as any) || 'Founded on the principles of grace and comfort, Meseret Hotel has been the cornerstone of luxury in the region for over a decade. We combine traditional Ethiopian warmth with modern architectural elegance to provide an experience that is both authentic and world-class.'}
             </p>
 
             <div className="grid grid-cols-2 gap-8">
