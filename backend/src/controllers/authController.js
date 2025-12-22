@@ -115,9 +115,13 @@ exports.register = async(req, res) => {
 
         // CRITICAL FIX: Ensure the path stored in DB always starts with /uploads/avatars/
         let profileImage = '/default-avatar.png';
+        // if (req.file) {
+        //     // Force the correct relative path structure
+        //     profileImage = `/uploads/avatars/${req.file.filename}`;
+        // }
+        // NEW (Cloudinary Storage):
         if (req.file) {
-            // Force the correct relative path structure
-            profileImage = `/uploads/avatars/${req.file.filename}`;
+            profileImage = req.file.path; // This will be the permanent HTTPS link
         }
 
         const user = await User.create({

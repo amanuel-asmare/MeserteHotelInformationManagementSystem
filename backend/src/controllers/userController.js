@@ -209,9 +209,13 @@ exports.updateUser = async(req, res) => {
             updates.shift = { start: shiftStart, end: shiftEnd };
         }
 
+        // if (req.file) {
+        //     // FIX: Ensure consistent path format
+        //     updates.profileImage = `/uploads/avatars/${req.file.filename}`;
+        // }
+        // NEW (Cloudinary Storage):
         if (req.file) {
-            // FIX: Ensure consistent path format
-            updates.profileImage = `/uploads/avatars/${req.file.filename}`;
+            updates.profileImage = req.file.path; // This will be the permanent HTTPS link
         }
 
         await User.findByIdAndUpdate(req.params.id, updates, { runValidators: true });

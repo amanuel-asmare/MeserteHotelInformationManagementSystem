@@ -12,7 +12,7 @@ const sendEmail = async(options) => {
 
     try {
         const { data, error } = await resend.emails.send({
-            // from: 'Meseret Hotel <onboarding@resend.dev>',
+            // from: 'Meseret Hotel <onboarding@resend.dev>',f
             from: 'Meseret Hotel <amanuelasmare18@gmail.com>',
             to: ['amanuelasmare18@gmail.com'], // Force to your email only
             // to: [options.email],  // Comment this out
