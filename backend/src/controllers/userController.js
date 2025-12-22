@@ -18,16 +18,15 @@ const getFullImageUrl = (imagePath) => {
     return `${API_BASE}/uploads/menu/${imagePath}`; // Default to menu upload path if unsure
 };
 */
-// HELPER - UPDATED TO BE ROBUST
-const getFullImageUrl = (path) => {
-    if (!path || path === '/default-avatar.png') return '/default-avatar.png';
+const getFullImageUrl = (imagePath) => {
+    if (!imagePath || imagePath === '/default-avatar.png') return '/default-avatar.png';
 
-    // If it's already a full URL (Cloudinary or Social Login), return it
-    if (path.startsWith('http')) return path;
+    // If it's a Cloudinary link (starts with http), return it immediately
+    if (imagePath.startsWith('http')) return imagePath;
 
-    // Fallback for old local files (which will eventually be gone)
+    // Only fallback to Render URL for old local files added during development
     const API_BASE = process.env.API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
-    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
     return `${API_BASE}${cleanPath}`;
 };
 
@@ -115,9 +114,13 @@ exports.createStaff = async(req, res) => {
     } = req.body;
 
     let profileImage = '/default-avatar.png';
+    // if (req.file) {
+    //     // FIX: Ensure consistent path format
+    //     profileImage = `/uploads/avatars/${req.file.filename}`;
+    // }
     if (req.file) {
-        // FIX: Ensure consistent path format
-        profileImage = `/uploads/avatars/${req.file.filename}`;
+        // FIX: Use the Cloudinary URL (path) instead of filename
+        profileImage = req.file.path;
     }
     if (!firstName || !lastName || !email || !password || !role) {
         return res.status(400).json({ message: 'First name, last name, email, password, and role are required' });
@@ -253,10 +256,15 @@ exports.updateMyProfile = async(req, res) => {
         if (phone) updates.phone = phone; // Allow updating phone
         if (roomNumber) updates.roomNumber = roomNumber; // Allow updating roomNumber
 
+        // // Profile image
+        // if (req.file) {
+        //     // FIX: Ensure consistent path format
+        //     updates.profileImage = `/uploads/avatars/${req.file.filename}`;
+        // }
         // Profile image
         if (req.file) {
-            // FIX: Ensure consistent path format
-            updates.profileImage = `/uploads/avatars/${req.file.filename}`;
+            // FIX: Use the Cloudinary URL (path)
+            updates.profileImage = req.file.path;
         }
 
         // Password change logic
