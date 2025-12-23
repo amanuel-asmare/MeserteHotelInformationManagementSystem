@@ -115,3 +115,46 @@ exports.deleteNews = async(req, res) => {
         res.status(500).json({ message: err.message });
     }
 };
+// backend/src/controllers/newsController.js
+
+// ... (keep current imports and helper)
+
+// UPDATE News
+exports.updateNews = async(req, res) => {
+    try {
+        const { title, content, category, targetAudience } = req.body;
+        let news = await News.findById(req.params.id);
+
+        if (!news) return res.status(404).json({ message: 'News not found' });
+
+        // Update basic fields
+        news.title = title || news.title;
+        news.content = content || news.content;
+        news.category = category || news.category;
+        news.targetAudience = targetAudience || news.targetAudience;
+
+        // If new files are uploaded, replace attachments
+        if (req.files && req.files.length > 0) {
+            news.attachments = req.files.map(file => {
+                let type = 'document';
+                if (file.mimetype.startsWith('image/')) type = 'image';
+                else if (file.mimetype.startsWith('video/')) type = 'video';
+                else if (file.mimetype.startsWith('audio/')) type = 'audio';
+
+                return {
+                    type: type,
+                    path: file.path, // Cloudinary URL
+                    originalName: file.originalname
+                };
+            });
+        }
+
+        await news.save();
+        res.status(200).json(news);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Failed to update news' });
+    }
+};
+
+// ... (keep current create, get, delete functions)
