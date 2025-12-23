@@ -181,7 +181,7 @@ const uploadLogo = multer({
 
 module.exports = { uploadAvatar, uploadMenu, uploadRoom, uploadChatFile, uploadNews, uploadLogo };
 module.exports = { uploadAvatar, uploadMenu, uploadRoom, uploadChatFile, uploadNews, uploadLogo };*/ // backend/src/middleware/upload.js
-const multer = require('multer');
+/*const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const cloudinary = require('cloudinary').v2;
@@ -314,4 +314,36 @@ const uploadLogo = multer({
     }
 });
 
-module.exports = { uploadAvatar, uploadMenu, uploadRoom, uploadChatFile, uploadNews, uploadLogo };
+module.exports = { uploadAvatar, uploadMenu, uploadRoom, uploadChatFile, uploadNews, uploadLogo };*/ // backend/src/middleware/upload.js
+
+const multer = require('multer');
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+
+// Configuration (Ensure these are in your Render Env Variables)
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+// Helper to create Cloudinary storage for different folders
+const createCloudinaryStorage = (folderName) => new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: folderName,
+        allowed_formats: ['jpg', 'png', 'jpeg', 'webp', 'gif', 'pdf', 'mp4', 'mp3'],
+        resource_type: 'auto' // Important for News (videos/audio/docs)
+    }
+});
+
+const uploadAvatar = multer({ storage: createCloudinaryStorage('avatars') });
+const uploadMenu = multer({ storage: createCloudinaryStorage('menu') });
+const uploadRoom = multer({ storage: createCloudinaryStorage('rooms') });
+const uploadNews = multer({ storage: createCloudinaryStorage('news') });
+
+// Keep these as they are or switch if needed later
+const uploadChatFile = multer({ storage: createCloudinaryStorage('chat') });
+const uploadLogo = multer({ storage: createCloudinaryStorage('logo') });
+
+module.exports = { uploadAvatar, uploadMenu, uploadRoom, uploadNews, uploadChatFile, uploadLogo };

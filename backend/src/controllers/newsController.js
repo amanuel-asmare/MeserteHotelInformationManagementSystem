@@ -2,9 +2,17 @@ const News = require('../models/News');
 const fs = require('fs');
 const path = require('path');
 
-// Helper to get full URL without ?.
+// // Helper to get full URL without ?.
+// const getFullUrl = (filePath) => {
+//     // const API_BASE = process.env.API_URL || 'https://localhost:5000';
+//     const API_BASE = process.env.API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
+//     const cleanPath = filePath.startsWith('/') ? filePath : '/' + filePath;
+//     return API_BASE + cleanPath;
+// };
+// 1. Update Helper
 const getFullUrl = (filePath) => {
-    // const API_BASE = process.env.API_URL || 'https://localhost:5000';
+    if (!filePath) return '';
+    if (filePath.startsWith('http')) return filePath; // Cloudinary Link
     const API_BASE = process.env.API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
     const cleanPath = filePath.startsWith('/') ? filePath : '/' + filePath;
     return API_BASE + cleanPath;
@@ -25,7 +33,8 @@ exports.createNews = async(req, res) => {
 
                 return {
                     type: type,
-                    path: '/uploads/news/' + file.filename,
+                    // path: '/uploads/news/' + file.filename,
+                    path: file.path, // FIX: Save the permanent Cloudinary URL
                     originalName: file.originalname
                 };
             });

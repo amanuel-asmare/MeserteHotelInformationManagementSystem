@@ -37,8 +37,9 @@ exports.getAll = async(req, res) => {
 exports.add = async(req, res) => {
     try {
         const { name, description, price, category, tags } = req.body;
-        const image = req.file ? `/uploads/menu/${req.file.filename}` : '/uploads/menu/default-menu.png';
-
+        // const image = req.file ? `/uploads/menu/${req.file.filename}` : '/uploads/menu/default-menu.png';
+        // FIX: Store the Cloudinary URL
+        const image = req.file ? req.file.path : '/uploads/menu/default-menu.png';
         const menu = await Menu.create({
             name,
             description,
@@ -66,7 +67,11 @@ exports.update = async(req, res) => {
                 const oldPath = path.join(__dirname, '..', 'public', menu.image.replace(/^\/uploads\//, 'uploads/'));
                 if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
             }
-            menu.image = `/uploads/menu/${req.file.filename}`;
+            // menu.image = `/uploads/menu/${req.file.filename}`;
+            // FIX: Store the Cloudinary URL if a new file is uploaded
+
+            menu.image = req.file.path;
+
         }
 
         Object.assign(menu, req.body);

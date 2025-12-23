@@ -181,13 +181,19 @@ const Room = require('../models/Room.js');
 const fs = require('fs');
 const path = require('path');
 
-// Helper to get full image URL
+// // Helper to get full image URL
+// const getFullImageUrl = (imagePath) => {
+//     // const API_BASE = process.env.API_URL || 'https://localhost:5000';
+//     const API_BASE = process.env.API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
+//     return `${API_BASE}${imagePath}`; // Fixed: Backticks + ${}
+// };
+// 1. Update the Helper at the top
 const getFullImageUrl = (imagePath) => {
-    // const API_BASE = process.env.API_URL || 'https://localhost:5000';
+    if (!imagePath) return '';
+    if (imagePath.startsWith('http')) return imagePath; // Cloudinary URL
     const API_BASE = process.env.API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
-    return `${API_BASE}${imagePath}`; // Fixed: Backticks + ${}
+    return `${API_BASE}${imagePath}`;
 };
-
 // Format room response with full image URLs
 const formatRoom = (room) => {
     return {
@@ -236,8 +242,9 @@ exports.createRoom = async(req, res) => {
         numberOfBeds,
         bathrooms
     } = req.body;
-    const images = req.files ? req.files.map(file => `/uploads/rooms/${file.filename}`) : []; // Fixed
-
+    // const images = req.files ? req.files.map(file => `/uploads/rooms/${file.filename}`) : []; // Fixed
+    // FIX: Get full URLs from Cloudinary
+    const images = req.files ? req.files.map(file => file.path) : [];
     try {
         const room = new Room({
             roomNumber,
@@ -278,7 +285,8 @@ exports.updateRoom = async(req, res) => {
                 const imgPath = path.join(__dirname, '..', 'public', img);
                 if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
             });
-            room.images = req.files.map(file => `/uploads/rooms/${file.filename}`); // Fixed
+            // room.images = req.files.map(file => `/uploads/rooms/${file.filename}`); // Fixed
+            room.images = req.files.map(file => file.path);
         }
 
         room.roomNumber = roomNumber || room.roomNumber;

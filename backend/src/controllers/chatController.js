@@ -37,14 +37,21 @@ exports.sendMessage = async(req, res) => {
         const { receiver, message, replyTo } = req.body;
         let fileData = null;
 
+        // if (req.file) {
+        //     fileData = {
+        //         url: `/uploads/chat/${req.file.filename}`,
+        //         originalName: req.file.originalname,
+        //         mimeType: req.file.mimetype
+        //     };
+        // }
+        // TO THIS:
         if (req.file) {
             fileData = {
-                url: `/uploads/chat/${req.file.filename}`,
+                url: req.file.path, // FIXED: Saves the Cloudinary URL
                 originalName: req.file.originalname,
                 mimeType: req.file.mimetype
             };
         }
-
         if (!message && !fileData) {
             return res.status(400).json({ message: 'Message or file is required' });
         }
