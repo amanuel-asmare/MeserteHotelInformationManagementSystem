@@ -187,11 +187,19 @@ const path = require('path');
 //     const API_BASE = process.env.API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
 //     return `${API_BASE}${imagePath}`; // Fixed: Backticks + ${}
 // };
+// 1. Update the Helper at the top
 const getFullImageUrl = (imagePath) => {
     if (!imagePath) return '';
     if (imagePath.startsWith('http')) return imagePath;
     const API_BASE = process.env.API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
     return `${API_BASE}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
+};
+// Format room response with full image URLs
+const formatRoom = (room) => {
+    return {
+        ...room.toObject(),
+        images: room.images.map(getFullImageUrl)
+    };
 };
 
 // GET ALL ROOMS
@@ -262,64 +270,43 @@ exports.createRoom = async(req, res) => {
         res.status(400).json({ message: err.message });
     }
 };
+
+// UPDATE ROOM
 exports.updateRoom = async(req, res) => {
+    const { roomNumber, type, price, availability, floorNumber, description, capacity, amenities, status, numberOfBeds, bathrooms } = req.body;
+
     try {
         const room = await Room.findById(req.params.id);
         if (!room) return res.status(404).json({ message: 'Room not found' });
 
+        // Delete old images if new ones uploaded
         if (req.files && req.files.length > 0) {
-            // SAFE DELETE: Only attempt to delete if it's an old local file
             room.images.forEach(img => {
-                if (img && !img.startsWith('http')) {
-                    const imgPath = path.join(__dirname, '..', 'public', img);
-                    if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
-                }
+                const imgPath = path.join(__dirname, '..', 'public', img);
+                if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
             });
+            // room.images = req.files.map(file => `/uploads/rooms/${file.filename}`); // Fixed
             room.images = req.files.map(file => file.path);
         }
 
-        Object.assign(room, req.body);
+        room.roomNumber = roomNumber || room.roomNumber;
+        room.type = type || room.type;
+        room.price = price ? Number(price) : room.price;
+        room.availability = availability !== undefined ? availability : room.availability;
+        room.floorNumber = floorNumber ? Number(floorNumber) : room.floorNumber;
+        room.description = description || room.description;
+        room.capacity = capacity ? Number(capacity) : room.capacity;
+        room.amenities = amenities ? amenities.split(',').map(a => a.trim()) : room.amenities;
+        room.status = status || room.status;
+        room.numberOfBeds = numberOfBeds ? Number(numberOfBeds) : room.numberOfBeds;
+        room.bathrooms = bathrooms ? Number(bathrooms) : room.bathrooms;
+
         await room.save();
         res.json(formatRoom(room));
-    } catch (err) { res.status(400).json({ message: err.message }); }
+    } catch (err) {
+        res.status(400).json({ message: err.message });
+    }
 };
-
-// // UPDATE ROOM
-// exports.updateRoom = async(req, res) => {
-//     const { roomNumber, type, price, availability, floorNumber, description, capacity, amenities, status, numberOfBeds, bathrooms } = req.body;
-
-//     try {
-//         const room = await Room.findById(req.params.id);
-//         if (!room) return res.status(404).json({ message: 'Room not found' });
-
-//         // Delete old images if new ones uploaded
-//         if (req.files && req.files.length > 0) {
-//             room.images.forEach(img => {
-//                 const imgPath = path.join(__dirname, '..', 'public', img);
-//                 if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
-//             });
-//             // room.images = req.files.map(file => `/uploads/rooms/${file.filename}`); // Fixed
-//             room.images = req.files.map(file => file.path);
-//         }
-
-//         room.roomNumber = roomNumber || room.roomNumber;
-//         room.type = type || room.type;
-//         room.price = price ? Number(price) : room.price;
-//         room.availability = availability !== undefined ? availability : room.availability;
-//         room.floorNumber = floorNumber ? Number(floorNumber) : room.floorNumber;
-//         room.description = description || room.description;
-//         room.capacity = capacity ? Number(capacity) : room.capacity;
-//         room.amenities = amenities ? amenities.split(',').map(a => a.trim()) : room.amenities;
-//         room.status = status || room.status;
-//         room.numberOfBeds = numberOfBeds ? Number(numberOfBeds) : room.numberOfBeds;
-//         room.bathrooms = bathrooms ? Number(bathrooms) : room.bathrooms;
-
-//         await room.save();
-//         res.json(formatRoom(room));
-//     } catch (err) {
-//         res.status(400).json({ message: err.message });
-//     }
-// };
 
 // DELETE ROOM
 exports.deleteRoom = async(req, res) => {
