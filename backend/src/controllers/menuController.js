@@ -55,32 +55,52 @@ exports.add = async(req, res) => {
     }
 };
 
-// ✅ Update menu item
 exports.update = async(req, res) => {
     try {
         const menu = await Menu.findById(req.params.id);
         if (!menu) return res.status(404).json({ message: 'Menu not found' });
 
-        // ✅ delete old image if replaced
         if (req.file) {
-            if (menu.image && menu.image !== '/uploads/menu/default-menu.png') {
-                const oldPath = path.join(__dirname, '..', 'public', menu.image.replace(/^\/uploads\//, 'uploads/'));
+            // SAFE DELETE: Only unlink if it is NOT a cloudinary link (doesn't start with http)
+            if (menu.image && !menu.image.startsWith('http') && menu.image !== '/uploads/menu/default-menu.png') {
+                const oldPath = path.join(__dirname, '..', 'public', menu.image);
                 if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
             }
-            // menu.image = `/uploads/menu/${req.file.filename}`;
-            // FIX: Store the Cloudinary URL if a new file is uploaded
-
-            menu.image = req.file.path;
-
+            menu.image = req.file.path; // Update with new Cloudinary URL
         }
 
         Object.assign(menu, req.body);
         await menu.save();
         res.json(menu);
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
+    } catch (err) { res.status(500).json({ message: err.message }); }
 };
+
+// // ✅ Update menu item
+// exports.update = async(req, res) => {
+//     try {
+//         const menu = await Menu.findById(req.params.id);
+//         if (!menu) return res.status(404).json({ message: 'Menu not found' });
+
+//         // ✅ delete old image if replaced
+//         if (req.file) {
+//             if (menu.image && menu.image !== '/uploads/menu/default-menu.png') {
+//                 const oldPath = path.join(__dirname, '..', 'public', menu.image.replace(/^\/uploads\//, 'uploads/'));
+//                 if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+//             }
+//             // menu.image = `/uploads/menu/${req.file.filename}`;
+//             // FIX: Store the Cloudinary URL if a new file is uploaded
+
+//             menu.image = req.file.path;
+
+//         }
+
+//         Object.assign(menu, req.body);
+//         await menu.save();
+//         res.json(menu);
+//     } catch (err) {
+//         res.status(500).json({ message: err.message });
+//     }
+// };
 
 // ✅ Delete menu item
 exports.remove = async(req, res) => {
