@@ -386,7 +386,7 @@ export default function AdminNewsPage() {
                 className="w-full py-5 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-2xl font-bold text-xl shadow-xl hover:shadow-2xl hover:scale-[1.01] transition-all flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {loading ? (t('processing') || "Processing...") : (
-                    <>{editingId ? <Edit size={24} /> : <Send size={24} />} {editingId ? (t('updateAnnouncement') || "Update Announcement") : t('publishAnnouncement')}</>
+                    <>{editingId ? <Edit size={24} /> : <Send size={24} />} {editingId ? (t('updateAnnouncement' as any) || "Update Announcement") : t('publishAnnouncement' as any)}</>
                 )}
               </button>
             </form>
@@ -436,11 +436,11 @@ export const NewsCard = ({ news, isAdmin, onDelete, onEdit }: any) => {
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-gray-400 bg-gray-50">
               <FileText size={48} className="mb-2 opacity-50" />
-              <span className="text-xs font-bold uppercase tracking-widest">{t('document')}</span>
+              <span className="text-xs font-bold uppercase tracking-widest">{t('document' as any)}</span>
             </div>
           )}
           <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md text-white px-2 py-1 rounded-lg text-xs font-bold">
-            {news.attachments.length} {news.attachments.length > 1 ? t('attachments') : t('attachment')}
+            {news.attachments.length} {news.attachments.length > 1 ? t('attachments' as any) : t('attachment' as any)}
           </div>
         </div>
       )}
