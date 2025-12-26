@@ -316,6 +316,34 @@ const uploadLogo = multer({
 
 module.exports = { uploadAvatar, uploadMenu, uploadRoom, uploadChatFile, uploadNews, uploadLogo };*/ // backend/src/middleware/upload.js
 
+// const multer = require('multer');
+// const cloudinary = require('cloudinary').v2;
+// const { CloudinaryStorage } = require('multer-storage-cloudinary');
+
+// cloudinary.config({
+//     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+//     api_key: process.env.CLOUDINARY_API_KEY,
+//     api_secret: process.env.CLOUDINARY_API_SECRET
+// });
+
+// const createCloudinaryStorage = (folderName) => new CloudinaryStorage({
+//     cloudinary: cloudinary,
+//     params: {
+//         folder: folderName,
+//         resource_type: 'auto', // Important: Allows images, video, and pdf
+//         allowed_formats: ['jpg', 'png', 'jpeg', 'webp', 'gif', 'pdf', 'mp4', 'mp3'],
+//     }
+// });
+
+// const uploadAvatar = multer({ storage: createCloudinaryStorage('avatars') });
+// const uploadMenu = multer({ storage: createCloudinaryStorage('menu') });
+// const uploadRoom = multer({ storage: createCloudinaryStorage('rooms') });
+// const uploadNews = multer({ storage: createCloudinaryStorage('news') });
+// const uploadChatFile = multer({ storage: createCloudinaryStorage('chat') });
+// const uploadLogo = multer({ storage: createCloudinaryStorage('logo') });
+
+// module.exports = { uploadAvatar, uploadMenu, uploadRoom, uploadNews, uploadChatFile, uploadLogo };
+// backend/src/middleware/upload.js
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
@@ -330,7 +358,7 @@ const createCloudinaryStorage = (folderName) => new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
         folder: folderName,
-        resource_type: 'auto', // Important: Allows images, video, and pdf
+        resource_type: 'auto', // Detects if it is image or video automatically
         allowed_formats: ['jpg', 'png', 'jpeg', 'webp', 'gif', 'pdf', 'mp4', 'mp3'],
     }
 });

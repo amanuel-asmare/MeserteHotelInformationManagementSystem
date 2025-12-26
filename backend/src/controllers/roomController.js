@@ -484,13 +484,10 @@ const Room = require('../models/Room.js');
 const fs = require('fs');
 const path = require('path');
 
-// 1. Robust Helper: Handles Cloudinary URLs and old local paths
+// Helper to get full image URL - Handles both legacy local and new Cloudinary paths
 const getFullImageUrl = (imagePath) => {
     if (!imagePath) return '';
-    // If it's already a Cloudinary link, return it
-    if (imagePath.startsWith('http')) return imagePath;
-    
-    // Otherwise, handle it as a local path
+    if (imagePath.startsWith('http')) return imagePath; // Return Cloudinary link directly
     const API_BASE = process.env.API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
     const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
     return `${API_BASE}${cleanPath}`;
@@ -502,7 +499,6 @@ const formatRoom = (room) => {
     const roomObj = room.toObject();
     return {
         ...roomObj,
-        // Ensure images are mapped through the helper
         images: (roomObj.images || []).map(getFullImageUrl)
     };
 };
@@ -533,20 +529,18 @@ exports.createRoom = async(req, res) => {
     try {
         const roomData = { ...req.body };
         
-        // FIX: Map Cloudinary paths correctly
+        // FIX: Map Cloudinary URLs from req.files
         if (req.files && req.files.length > 0) {
-            roomData.images = req.files.map(file => file.path);
+            roomData.images = req.files.map(file => file.path); // 'path' contains the Cloudinary URL
         } else {
             roomData.images = [];
         }
 
-        // Convert strings to numbers for safety
+        // Ensure numbers are numbers
         if (roomData.price) roomData.price = Number(roomData.price);
         if (roomData.floorNumber) roomData.floorNumber = Number(roomData.floorNumber);
         if (roomData.capacity) roomData.capacity = Number(roomData.capacity);
-        if (roomData.numberOfBeds) roomData.numberOfBeds = Number(roomData.numberOfBeds);
-        if (roomData.bathrooms) roomData.bathrooms = Number(roomData.bathrooms);
-        
+
         // Handle amenities string to array
         if (roomData.amenities && typeof roomData.amenities === 'string') {
             roomData.amenities = roomData.amenities.split(',').map(a => a.trim());
@@ -569,7 +563,7 @@ exports.updateRoom = async(req, res) => {
         const updates = { ...req.body };
 
         if (req.files && req.files.length > 0) {
-            // SAFE DELETE OLD IMAGES: Only delete if they are local files
+            // SAFE DELETE: Only try to delete from disk if it's NOT a Cloudinary URL
             room.images.forEach(img => {
                 if (img && !img.startsWith('http')) {
                     const imgPath = path.join(__dirname, '..', 'public', img);
@@ -580,7 +574,7 @@ exports.updateRoom = async(req, res) => {
             updates.images = req.files.map(file => file.path);
         }
 
-        // Handle amenities string to array
+        // Handle amenities if updated
         if (updates.amenities && typeof updates.amenities === 'string') {
             updates.amenities = updates.amenities.split(',').map(a => a.trim());
         }
@@ -599,9 +593,8 @@ exports.deleteRoom = async(req, res) => {
         const room = await Room.findById(req.params.id);
         if (!room) return res.status(404).json({ message: 'Room not found' });
 
-        // FIX: SAFE DELETE IMAGES before deleting room record
+        // SAFE DELETE IMAGES: Only delete local files
         room.images.forEach(img => {
-            // Only try to delete from disk if it's NOT a Cloudinary URL
             if (img && !img.startsWith('http')) {
                 const imgPath = path.join(__dirname, '..', 'public', img);
                 if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
@@ -620,7 +613,6 @@ exports.updateRoomStatus = async(req, res) => {
     try {
         const room = await Room.findById(req.params.id);
         if (!room) return res.status(404).json({ message: 'Room not found' });
-
         room.status = req.body.status;
         await room.save();
         res.json(formatRoom(room));
