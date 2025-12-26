@@ -362,12 +362,27 @@ const createCloudinaryStorage = (folderName) => new CloudinaryStorage({
         allowed_formats: ['jpg', 'png', 'jpeg', 'webp', 'gif', 'pdf', 'mp4', 'mp3'],
     }
 });
-
+const createStorage = (folder) => {
+    return multer.diskStorage({
+        destination: (req, file, cb) => {
+            // This is correct for saving
+            const dir = path.join(__dirname, '..', 'public', 'uploads', folder);
+            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+            cb(null, dir);
+        },
+        filename: (req, file, cb) => {
+            // This just sets the filename, which is what we want
+            const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1e9);
+            const prefix = folder === 'avatars' ? 'avatar' : folder === 'menu' ? 'menu' : 'room';
+            cb(null, `${prefix}-${uniqueName}${path.extname(file.originalname)}`);
+        },
+    });
+};
 const uploadAvatar = multer({ storage: createCloudinaryStorage('avatars') });
 const uploadMenu = multer({ storage: createCloudinaryStorage('menu') });
 // const uploadRoom = multer({ storage: createCloudinaryStorage('rooms') });
 const uploadRoom = multer({
-    storage: createCloudinaryStorage('rooms'),
+    storage: createStorage('rooms'),
     limits: { fileSize: 10 * 1024 * 1024, files: 3 },
     fileFilter: (req, file, cb) => {
         const allowed = /jpeg|jpg|png|webp|gif/;
