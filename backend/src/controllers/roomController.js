@@ -480,7 +480,7 @@ exports.updateRoomStatus = async(req, res) => {
     }
 };
 */
-
+/*
 
 // backend/src/controllers/roomController.js
 const Room = require('../models/Room.js');
@@ -639,4 +639,134 @@ const path = require('path');
      } catch (err) {
          res.status(500).json({ message: err.message });
      }
- };
+ };*/
+ // backend/src/controllers/roomController.js
+const Room = require('../models/Room.js');
+const fs = require('fs');
+const path = require('path');
+
+const getFullImageUrl = (imagePath) => {
+    if (!imagePath) return '';
+    if (imagePath.startsWith('http')) return imagePath; // Return Cloudinary link directly
+    const API_BASE = process.env.API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
+    return `${API_BASE}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
+};
+
+const formatRoom = (room) => {
+    if (!room) return null;
+    const roomObj = room.toObject();
+    return {
+        ...roomObj,
+        images: (roomObj.images || []).map(getFullImageUrl)
+    };
+};
+
+exports.getAllRooms = async(req, res) => {
+    try {
+        const rooms = await Room.find().sort({ roomNumber: 1 });
+        res.json(rooms.map(formatRoom));
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+exports.getRoom = async(req, res) => {
+    try {
+        const room = await Room.findById(req.params.id);
+        if (!room) return res.status(404).json({ message: 'Room not found' });
+        res.json(formatRoom(room));
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+exports.createRoom = async(req, res) => {
+    try {
+        const roomData = { ...req.body };
+        
+        // ✅ FIXED: Save the Cloudinary URL (path) instead of local string
+        if (req.files && req.files.length > 0) {
+            roomData.images = req.files.map(file => file.path);
+        } else {
+            roomData.images = [];
+        }
+
+        // Conversions
+        if (roomData.price) roomData.price = Number(roomData.price);
+        if (roomData.floorNumber) roomData.floorNumber = Number(roomData.floorNumber);
+        if (roomData.capacity) roomData.capacity = Number(roomData.capacity);
+
+        if (roomData.amenities && typeof roomData.amenities === 'string') {
+            roomData.amenities = roomData.amenities.split(',').map(a => a.trim());
+        }
+
+        const room = new Room(roomData);
+        await room.save();
+        res.status(201).json(formatRoom(room));
+    } catch (err) {
+        res.status(400).json({ message: err.message });
+    }
+};
+
+exports.updateRoom = async(req, res) => {
+    try {
+        const room = await Room.findById(req.params.id);
+        if (!room) return res.status(404).json({ message: 'Room not found' });
+
+        const updates = { ...req.body };
+
+        if (req.files && req.files.length > 0) {
+            // ✅ FIXED: Only attempt to delete if it's an OLD local file
+            room.images.forEach(img => {
+                if (img && !img.startsWith('http')) {
+                    const imgPath = path.join(__dirname, '..', 'public', img);
+                    if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+                }
+            });
+            // Update with new Cloudinary paths
+            updates.images = req.files.map(file => file.path);
+        }
+
+        if (updates.amenities && typeof updates.amenities === 'string') {
+            updates.amenities = updates.amenities.split(',').map(a => a.trim());
+        }
+
+        Object.assign(room, updates);
+        await room.save();
+        res.json(formatRoom(room));
+    } catch (err) {
+        res.status(400).json({ message: err.message });
+    }
+};
+
+exports.deleteRoom = async(req, res) => {
+    try {
+        const room = await Room.findById(req.params.id);
+        if (!room) return res.status(404).json({ message: 'Room not found' });
+
+        // ✅ FIXED: Safe Delete
+        room.images.forEach(img => {
+            if (img && !img.startsWith('http')) {
+                const imgPath = path.join(__dirname, '..', 'public', img);
+                if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+            }
+        });
+
+        await Room.deleteOne({ _id: req.params.id });
+        res.json({ message: 'Room deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+exports.updateRoomStatus = async(req, res) => {
+    try {
+        const room = await Room.findById(req.params.id);
+        if (!room) return res.status(404).json({ message: 'Room not found' });
+        room.status = req.body.status;
+        await room.save();
+        res.json(formatRoom(room));
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
