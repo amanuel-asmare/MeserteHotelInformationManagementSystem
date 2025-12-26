@@ -294,15 +294,15 @@ export default function RoomManagementClient() {
     }
   };
 
-  //  const getImageUrl = (image: string) => {
-  //   if (image.startsWith('http')) return image;
-  //   return `${API_BASE}${image}`;
-  //  };
-const getImageUrl = (image: string) => {
-    if (!image) return '/default-room.jpg';
-    if (image.startsWith('http')) return image; // Use Cloudinary link directly
-    return `${API_BASE}${image.startsWith('/') ? '' : '/'}${image}`; // Legacy local path
-};
+   const getImageUrl = (image: string) => {
+    if (image.startsWith('http')) return image;
+    return `${API_BASE}${image}`;
+  };
+// const getImageUrl = (image: string) => {
+//     if (!image) return '/default-room.jpg';
+//     if (image.startsWith('http')) return image; // Use Cloudinary link directly
+//     return `${API_BASE}${image.startsWith('/') ? '' : '/'}${image}`; // Legacy local path
+// };
   // --- ROYAL LOADING SCREEN ---
   if (loading || !minTimePassed) {
     return (
