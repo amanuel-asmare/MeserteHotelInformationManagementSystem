@@ -488,7 +488,7 @@ const fs = require('fs');
 const path = require('path');
 // // Helper to get full image URL
  const getFullImageUrl = (imagePath) => {
-const API_BASE = process.env.API_URL || 'https://localhost:5000';
+//const API_BASE = process.env.API_URL || 'https://localhost:5000';
     const API_BASE = process.env.API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
     return `${API_BASE}${imagePath}`; // Fixed: Backticks + ${}
 };
