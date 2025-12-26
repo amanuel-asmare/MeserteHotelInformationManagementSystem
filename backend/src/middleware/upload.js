@@ -401,8 +401,6 @@ module.exports = { uploadAvatar, uploadMenu, uploadRoom, uploadNews, uploadChatF
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
-const path = require('path');
-const fs = require('fs');
 
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -410,6 +408,7 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
+// Use this for EVERY upload type
 const createCloudinaryStorage = (folderName) => new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
@@ -419,10 +418,10 @@ const createCloudinaryStorage = (folderName) => new CloudinaryStorage({
     }
 });
 
-// ✅ ALL uploaders now use Cloudinary for permanent storage
 const uploadAvatar = multer({ storage: createCloudinaryStorage('avatars') });
 const uploadMenu = multer({ storage: createCloudinaryStorage('menu') });
-const uploadRoom = multer({ storage: createCloudinaryStorage('rooms') }); // Fixed: Switched from local to cloud
+// ✅ FIXED: Room now uses Cloudinary, NOT local storage
+const uploadRoom = multer({ storage: createCloudinaryStorage('rooms') }); 
 const uploadNews = multer({ storage: createCloudinaryStorage('news') });
 const uploadChatFile = multer({ storage: createCloudinaryStorage('chat') });
 const uploadLogo = multer({ storage: createCloudinaryStorage('logo') });

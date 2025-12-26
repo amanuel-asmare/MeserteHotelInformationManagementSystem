@@ -300,8 +300,8 @@ export default function RoomManagementClient() {
   //  };
 const getImageUrl = (image: string) => {
     if (!image) return '/default-room.jpg';
-    if (image.startsWith('http')) return image; // Direct Cloudinary link
-    return `${API_BASE}${image.startsWith('/') ? '' : '/'}${image}`; // Old local files
+    if (image.startsWith('http')) return image; // Already Cloudinary
+    return `${API_BASE}${image.startsWith('/') ? '' : '/'}${image}`; // Old local fallback
 };
   // --- ROYAL LOADING SCREEN ---
   if (loading || !minTimePassed) {
