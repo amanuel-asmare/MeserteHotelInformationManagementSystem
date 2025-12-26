@@ -294,16 +294,15 @@ export default function RoomManagementClient() {
     }
   };
 
-   const getImageUrl = (image: string) => {
-    if (image.startsWith('http')) return image;
-    return `${API_BASE}${image}`;
-   };
-//   // Inside your RoomManagementClient.tsx component:
-// const getImageUrl = (image: string) => {
-//     if (!image) return '/default-room.jpg';
-//     if (image.startsWith('http')) return image; // Use Cloudinary link directly
-//     return `${API_BASE}${image.startsWith('/') ? '' : '/'}${image}`; // Legacy fallback
-// };
+  //  const getImageUrl = (image: string) => {
+  //   if (image.startsWith('http')) return image;
+  //   return `${API_BASE}${image}`;
+  //  };
+const getImageUrl = (image: string) => {
+    if (!image) return '/default-room.jpg';
+    if (image.startsWith('http')) return image; // Direct Cloudinary link
+    return `${API_BASE}${image.startsWith('/') ? '' : '/'}${image}`; // Old local files
+};
   // --- ROYAL LOADING SCREEN ---
   if (loading || !minTimePassed) {
     return (

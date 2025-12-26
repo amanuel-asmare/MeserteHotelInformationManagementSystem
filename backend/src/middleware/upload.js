@@ -398,7 +398,6 @@ const uploadChatFile = multer({ storage: createCloudinaryStorage('chat') });
 const uploadLogo = multer({ storage: createCloudinaryStorage('logo') });
 
 module.exports = { uploadAvatar, uploadMenu, uploadRoom, uploadNews, uploadChatFile, uploadLogo };*/
-// backend/src/middleware/upload.js
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
@@ -420,10 +419,10 @@ const createCloudinaryStorage = (folderName) => new CloudinaryStorage({
     }
 });
 
-// ✅ FIXED: All uploaders now use Cloudinary
+// ✅ ALL uploaders now use Cloudinary for permanent storage
 const uploadAvatar = multer({ storage: createCloudinaryStorage('avatars') });
 const uploadMenu = multer({ storage: createCloudinaryStorage('menu') });
-const uploadRoom = multer({ storage: createCloudinaryStorage('rooms') }); // Fixed this line
+const uploadRoom = multer({ storage: createCloudinaryStorage('rooms') }); // Fixed: Switched from local to cloud
 const uploadNews = multer({ storage: createCloudinaryStorage('news') });
 const uploadChatFile = multer({ storage: createCloudinaryStorage('chat') });
 const uploadLogo = multer({ storage: createCloudinaryStorage('logo') });

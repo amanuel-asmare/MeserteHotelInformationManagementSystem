@@ -640,16 +640,19 @@ const path = require('path');
          res.status(500).json({ message: err.message });
      }
  };*/
- // backend/src/controllers/roomController.js
-const Room = require('../models/Room.js');
+ const Room = require('../models/Room.js');
 const fs = require('fs');
 const path = require('path');
 
+// Helper to get full image URL
 const getFullImageUrl = (imagePath) => {
     if (!imagePath) return '';
-    if (imagePath.startsWith('http')) return imagePath; // Return Cloudinary link directly
+    // If it's a Cloudinary link, return as is
+    if (imagePath.startsWith('http')) return imagePath; 
+    // Fallback for old local files
     const API_BASE = process.env.API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
-    return `${API_BASE}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
+    const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+    return `${API_BASE}${cleanPath}`;
 };
 
 const formatRoom = (room) => {
@@ -684,17 +687,19 @@ exports.createRoom = async(req, res) => {
     try {
         const roomData = { ...req.body };
         
-        // ✅ FIXED: Save the Cloudinary URL (path) instead of local string
+        // ✅ Map Cloudinary URLs correctly
         if (req.files && req.files.length > 0) {
             roomData.images = req.files.map(file => file.path);
         } else {
             roomData.images = [];
         }
 
-        // Conversions
+        // Conversions to prevent validation errors
         if (roomData.price) roomData.price = Number(roomData.price);
         if (roomData.floorNumber) roomData.floorNumber = Number(roomData.floorNumber);
         if (roomData.capacity) roomData.capacity = Number(roomData.capacity);
+        if (roomData.numberOfBeds) roomData.numberOfBeds = Number(roomData.numberOfBeds);
+        if (roomData.bathrooms) roomData.bathrooms = Number(roomData.bathrooms);
 
         if (roomData.amenities && typeof roomData.amenities === 'string') {
             roomData.amenities = roomData.amenities.split(',').map(a => a.trim());
@@ -716,16 +721,20 @@ exports.updateRoom = async(req, res) => {
         const updates = { ...req.body };
 
         if (req.files && req.files.length > 0) {
-            // ✅ FIXED: Only attempt to delete if it's an OLD local file
+            // ✅ SAFE DELETE: Only delete from disk if NOT a Cloudinary URL
             room.images.forEach(img => {
                 if (img && !img.startsWith('http')) {
                     const imgPath = path.join(__dirname, '..', 'public', img);
                     if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
                 }
             });
-            // Update with new Cloudinary paths
             updates.images = req.files.map(file => file.path);
         }
+
+        // Conversions
+        if (updates.price) updates.price = Number(updates.price);
+        if (updates.floorNumber) updates.floorNumber = Number(updates.floorNumber);
+        if (updates.capacity) updates.capacity = Number(updates.capacity);
 
         if (updates.amenities && typeof updates.amenities === 'string') {
             updates.amenities = updates.amenities.split(',').map(a => a.trim());
@@ -744,7 +753,7 @@ exports.deleteRoom = async(req, res) => {
         const room = await Room.findById(req.params.id);
         if (!room) return res.status(404).json({ message: 'Room not found' });
 
-        // ✅ FIXED: Safe Delete
+        // ✅ SAFE DELETE
         room.images.forEach(img => {
             if (img && !img.startsWith('http')) {
                 const imgPath = path.join(__dirname, '..', 'public', img);
