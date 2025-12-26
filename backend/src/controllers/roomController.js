@@ -640,7 +640,6 @@ const path = require('path');
          res.status(500).json({ message: err.message });
      }
  };*/
-// backend/src/controllers/roomController.js
 const Room = require('../models/Room.js');
 const fs = require('fs');
 const path = require('path');
@@ -685,12 +684,12 @@ exports.createRoom = async(req, res) => {
             roomData.images = req.files.map(file => file.path);
         }
 
-        // MUST convert these for MongoDB validation to pass
+        // CRITICAL: Convert all numeric fields to real Numbers
         roomData.price = Number(roomData.price);
         roomData.floorNumber = Number(roomData.floorNumber);
         roomData.capacity = Number(roomData.capacity);
-        roomData.numberOfBeds = Number(roomData.numberOfBeds); // FIXED
-        roomData.bathrooms = Number(roomData.bathrooms);       // FIXED
+        roomData.numberOfBeds = Number(roomData.numberOfBeds);
+        roomData.bathrooms = Number(roomData.bathrooms);
 
         if (typeof roomData.amenities === 'string') {
             roomData.amenities = roomData.amenities.split(',').map(a => a.trim()).filter(a => a);
@@ -700,7 +699,7 @@ exports.createRoom = async(req, res) => {
         await room.save();
         res.status(201).json(formatRoom(room));
     } catch (err) {
-        console.error("CREATE ROOM ERROR:", err);
+        console.error("SAVE ERROR:", err.message);
         res.status(400).json({ message: err.message });
     }
 };
@@ -713,7 +712,7 @@ exports.updateRoom = async(req, res) => {
         const updates = { ...req.body };
 
         if (req.files && req.files.length > 0) {
-            // SAFE DELETE: Prevents crash
+            // SAFE DELETE: Don't crash if img is a Cloudinary URL
             room.images.forEach(img => {
                 if (img && !img.startsWith('http')) {
                     const imgPath = path.join(__dirname, '..', 'public', img);
@@ -723,12 +722,12 @@ exports.updateRoom = async(req, res) => {
             updates.images = req.files.map(file => file.path);
         }
 
-        // FIXED: Convert updates to Numbers (Crucial for validation)
+        // CRITICAL: Convert updates to Numbers
         if (updates.price) updates.price = Number(updates.price);
         if (updates.floorNumber) updates.floorNumber = Number(updates.floorNumber);
         if (updates.capacity) updates.capacity = Number(updates.capacity);
-        if (updates.numberOfBeds) updates.numberOfBeds = Number(updates.numberOfBeds); // FIXED
-        if (updates.bathrooms) updates.bathrooms = Number(updates.bathrooms);       // FIXED
+        if (updates.numberOfBeds) updates.numberOfBeds = Number(updates.numberOfBeds);
+        if (updates.bathrooms) updates.bathrooms = Number(updates.bathrooms);
 
         if (typeof updates.amenities === 'string') {
             updates.amenities = updates.amenities.split(',').map(a => a.trim()).filter(a => a);
@@ -738,7 +737,7 @@ exports.updateRoom = async(req, res) => {
         await room.save();
         res.json(formatRoom(room));
     } catch (err) {
-        console.error("UPDATE ROOM ERROR:", err);
+        console.error("UPDATE ERROR:", err.message);
         res.status(400).json({ message: err.message });
     }
 };

@@ -418,9 +418,10 @@ const createCloudinaryStorage = (folderName) => new CloudinaryStorage({
     }
 });
 
+// ALL uploaders MUST use Cloudinary for Render deployment
 const uploadAvatar = multer({ storage: createCloudinaryStorage('avatars') });
 const uploadMenu = multer({ storage: createCloudinaryStorage('menu') });
-const uploadRoom = multer({ storage: createCloudinaryStorage('rooms') }); // ✅ FIXED
+const uploadRoom = multer({ storage: createCloudinaryStorage('rooms') }); 
 const uploadNews = multer({ storage: createCloudinaryStorage('news') });
 const uploadChatFile = multer({ storage: createCloudinaryStorage('chat') });
 const uploadLogo = multer({ storage: createCloudinaryStorage('logo') });
