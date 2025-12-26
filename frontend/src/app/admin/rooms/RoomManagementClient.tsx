@@ -300,11 +300,10 @@ export default function RoomManagementClient() {
   // };
   // Inside your RoomManagementClient.tsx component:
 const getImageUrl = (image: string) => {
-    if (!image) return '/default-room-placeholder.jpg';
-    if (image.startsWith('http')) return image; // Already Cloudinary URL
-    return `${API_BASE}${image.startsWith('/') ? '' : '/'}${image}`; // Legacy local path
+    if (!image) return '/default-room.jpg';
+    if (image.startsWith('http')) return image; // Use Cloudinary link directly
+    return `${API_BASE}${image.startsWith('/') ? '' : '/'}${image}`; // Legacy fallback
 };
-
   // --- ROYAL LOADING SCREEN ---
   if (loading || !minTimePassed) {
     return (
