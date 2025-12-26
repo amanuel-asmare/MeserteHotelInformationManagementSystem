@@ -640,7 +640,8 @@ const path = require('path');
          res.status(500).json({ message: err.message });
      }
  };*/
- const Room = require('../models/Room.js');
+// backend/src/controllers/roomController.js
+const Room = require('../models/Room.js');
 const fs = require('fs');
 const path = require('path');
 
@@ -680,17 +681,16 @@ exports.createRoom = async(req, res) => {
     try {
         const roomData = { ...req.body };
         
-        // Map Cloudinary paths
         if (req.files && req.files.length > 0) {
             roomData.images = req.files.map(file => file.path);
         }
 
-        // Convert data types (req.body sends everything as strings)
+        // MUST convert these for MongoDB validation to pass
         roomData.price = Number(roomData.price);
         roomData.floorNumber = Number(roomData.floorNumber);
         roomData.capacity = Number(roomData.capacity);
-        roomData.numberOfBeds = Number(roomData.numberOfBeds);
-        roomData.bathrooms = Number(roomData.bathrooms);
+        roomData.numberOfBeds = Number(roomData.numberOfBeds); // FIXED
+        roomData.bathrooms = Number(roomData.bathrooms);       // FIXED
 
         if (typeof roomData.amenities === 'string') {
             roomData.amenities = roomData.amenities.split(',').map(a => a.trim()).filter(a => a);
@@ -700,7 +700,7 @@ exports.createRoom = async(req, res) => {
         await room.save();
         res.status(201).json(formatRoom(room));
     } catch (err) {
-        console.error("Create Room Error:", err);
+        console.error("CREATE ROOM ERROR:", err);
         res.status(400).json({ message: err.message });
     }
 };
@@ -713,7 +713,7 @@ exports.updateRoom = async(req, res) => {
         const updates = { ...req.body };
 
         if (req.files && req.files.length > 0) {
-            // ✅ SAFE DELETE: Don't crash if img is a Cloudinary URL
+            // SAFE DELETE: Prevents crash
             room.images.forEach(img => {
                 if (img && !img.startsWith('http')) {
                     const imgPath = path.join(__dirname, '..', 'public', img);
@@ -723,10 +723,12 @@ exports.updateRoom = async(req, res) => {
             updates.images = req.files.map(file => file.path);
         }
 
-        // Convert data types
+        // FIXED: Convert updates to Numbers (Crucial for validation)
         if (updates.price) updates.price = Number(updates.price);
         if (updates.floorNumber) updates.floorNumber = Number(updates.floorNumber);
         if (updates.capacity) updates.capacity = Number(updates.capacity);
+        if (updates.numberOfBeds) updates.numberOfBeds = Number(updates.numberOfBeds); // FIXED
+        if (updates.bathrooms) updates.bathrooms = Number(updates.bathrooms);       // FIXED
 
         if (typeof updates.amenities === 'string') {
             updates.amenities = updates.amenities.split(',').map(a => a.trim()).filter(a => a);
@@ -736,7 +738,7 @@ exports.updateRoom = async(req, res) => {
         await room.save();
         res.json(formatRoom(room));
     } catch (err) {
-        console.error("Update Room Error:", err);
+        console.error("UPDATE ROOM ERROR:", err);
         res.status(400).json({ message: err.message });
     }
 };
@@ -746,7 +748,6 @@ exports.deleteRoom = async(req, res) => {
         const room = await Room.findById(req.params.id);
         if (!room) return res.status(404).json({ message: 'Room not found' });
 
-        // ✅ SAFE DELETE
         room.images.forEach(img => {
             if (img && !img.startsWith('http')) {
                 const imgPath = path.join(__dirname, '..', 'public', img);
