@@ -367,7 +367,7 @@ const uploadAvatar = multer({ storage: createCloudinaryStorage('avatars') });
 const uploadMenu = multer({ storage: createCloudinaryStorage('menu') });
 // const uploadRoom = multer({ storage: createCloudinaryStorage('rooms') });
 const uploadRoom = multer({
-    storage: createStorage('rooms'),
+    storage: createCloudinaryStorage('rooms'),
     limits: { fileSize: 10 * 1024 * 1024, files: 3 },
     fileFilter: (req, file, cb) => {
         const allowed = /jpeg|jpg|png|webp|gif/;
