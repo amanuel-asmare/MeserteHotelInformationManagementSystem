@@ -60,7 +60,8 @@ exports.getFeedback = async(req, res) => {
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
-};*/ // backend/src/controllers/feedbackController.js
+};*/ 
+// backend/src/controllers/feedbackController.js
 const Feedback = require('../models/Feedback');
 
 // @desc    Create a new feedback

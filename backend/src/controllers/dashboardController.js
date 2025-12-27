@@ -341,77 +341,137 @@ exports.getReceptionistDashboardData = async(req, res) => {
     }
 };
 // ... existing imports
+// backend/src/controllers/dashboardController.js
 
-// --- GET NOTIFICATIONS (Dynamic) ---
-exports.getNotifications = async(req, res) => {
+// --- GET NOTIFICATIONS (Dynamic & Professional) ---
+exports.getNotifications = async (req, res) => {
     try {
         const notifications = [];
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        // 1. New Bookings Today (Info)
+        // 1. Fetch New Bookings (Success Type)
         const newBookings = await Booking.find({
             createdAt: { $gte: today },
             status: 'confirmed'
-        }).populate('user', 'firstName lastName').limit(5);
+        }).populate('user', 'firstName lastName').populate('room', 'roomNumber').limit(5);
 
         newBookings.forEach(b => {
             notifications.push({
                 id: `book-${b._id}`,
-                title: 'New Booking Confirmed',
-                message: `Room ${b.room ? b.room : 'Unknown'} - ${b.user ? b.user.firstName : 'Guest'}`,
-                time: 'Today',
+                title: 'New Room Booking',
+                message: `Room ${b.room?.roomNumber || 'N/A'} confirmed by ${b.user?.firstName || 'Guest'}`,
+                detail: `A new booking has been confirmed for Room ${b.room?.roomNumber}. Total Price: ETB ${b.totalPrice}. Guests: ${b.guests}. Check-in: ${new Date(b.checkIn).toLocaleDateString()}.`,
+                time: 'Recently',
                 type: 'success',
                 read: false
             });
         });
 
-        // 2. Pending Orders (Warning)
-        const pendingOrders = await Order.countDocuments({ status: 'pending' });
-        if (pendingOrders > 0) {
+        // 2. Fetch Pending Orders (Warning Type)
+        const pendingOrders = await Order.find({ status: 'pending' }).limit(5);
+        pendingOrders.forEach(order => {
             notifications.push({
-                id: 'orders-pending',
-                title: 'Kitchen Alert',
-                message: `${pendingOrders} orders are waiting for preparation`,
-                time: 'Now',
+                id: `order-${order._id}`,
+                title: 'Pending Food Order',
+                message: `Order ${order.orderNumber} is waiting in the kitchen`,
+                detail: `Order ${order.orderNumber} for ${order.customer.name} (${order.orderType}) requires immediate attention. Total items: ${order.items.length}. Amount: ETB ${order.totalAmount}.`,
+                time: 'Action Required',
                 type: 'warning',
                 read: false
             });
-        }
+        });
 
-        // 3. Maintenance Rooms (Alert)
-        const maintenanceCount = await Room.countDocuments({ status: 'maintenance' });
-        if (maintenanceCount > 0) {
+        // 3. Maintenance Rooms (Info Type)
+        const maintRooms = await Room.find({ status: 'maintenance' }).limit(3);
+        maintRooms.forEach(room => {
             notifications.push({
-                id: 'room-maint',
-                title: 'Maintenance Required',
-                message: `${maintenanceCount} rooms are marked for maintenance`,
+                id: `room-${room._id}`,
+                title: 'Room Maintenance',
+                message: `Room ${room.roomNumber} is currently offline`,
+                detail: `Room ${room.roomNumber} has been marked for maintenance. It is excluded from the public booking list until marked as 'Clean'.`,
                 time: 'Ongoing',
                 type: 'info',
                 read: false
             });
-        }
-
-        // 4. New Feedback (Success)
-        const recentFeedback = await Feedback.find({ createdAt: { $gte: today } }).limit(3);
-        recentFeedback.forEach(f => {
-            notifications.push({
-                id: `feed-${f._id}`,
-                title: 'New Feedback Received',
-                message: `${f.rating} Stars - ${f.category}`,
-                time: 'Today',
-                type: 'success',
-                read: true
-            });
         });
 
         res.json(notifications);
-
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Failed to fetch notifications' });
     }
 };
+// // --- GET NOTIFICATIONS (Dynamic) ---
+// exports.getNotifications = async(req, res) => {
+//     try {
+//         const notifications = [];
+//         const today = new Date();
+//         today.setHours(0, 0, 0, 0);
+
+//         // 1. New Bookings Today (Info)
+//         const newBookings = await Booking.find({
+//             createdAt: { $gte: today },
+//             status: 'confirmed'
+//         }).populate('user', 'firstName lastName').limit(5);
+
+//         newBookings.forEach(b => {
+//             notifications.push({
+//                 id: `book-${b._id}`,
+//                 title: 'New Booking Confirmed',
+//                 message: `Room ${b.room ? b.room : 'Unknown'} - ${b.user ? b.user.firstName : 'Guest'}`,
+//                 time: 'Today',
+//                 type: 'success',
+//                 read: false
+//             });
+//         });
+
+//         // 2. Pending Orders (Warning)
+//         const pendingOrders = await Order.countDocuments({ status: 'pending' });
+//         if (pendingOrders > 0) {
+//             notifications.push({
+//                 id: 'orders-pending',
+//                 title: 'Kitchen Alert',
+//                 message: `${pendingOrders} orders are waiting for preparation`,
+//                 time: 'Now',
+//                 type: 'warning',
+//                 read: false
+//             });
+//         }
+
+//         // 3. Maintenance Rooms (Alert)
+//         const maintenanceCount = await Room.countDocuments({ status: 'maintenance' });
+//         if (maintenanceCount > 0) {
+//             notifications.push({
+//                 id: 'room-maint',
+//                 title: 'Maintenance Required',
+//                 message: `${maintenanceCount} rooms are marked for maintenance`,
+//                 time: 'Ongoing',
+//                 type: 'info',
+//                 read: false
+//             });
+//         }
+
+//         // 4. New Feedback (Success)
+//         const recentFeedback = await Feedback.find({ createdAt: { $gte: today } }).limit(3);
+//         recentFeedback.forEach(f => {
+//             notifications.push({
+//                 id: `feed-${f._id}`,
+//                 title: 'New Feedback Received',
+//                 message: `${f.rating} Stars - ${f.category}`,
+//                 time: 'Today',
+//                 type: 'success',
+//                 read: true
+//             });
+//         });
+
+//         res.json(notifications);
+
+//     } catch (err) {
+//         console.error(err);
+//         res.status(500).json({ message: 'Failed to fetch notifications' });
+//     }
+// };
 
 // ... (keep existing exports)
 /*// backend/src/controllers/dashboardController.js

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Menu, X, Globe, LogOut, Sun, Moon, Bell, CheckCircle, Info, AlertCircle, Eye, Trash2, Calendar } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Menu, X, Globe, LogOut, Sun, Moon, Bell, CheckCircle, Info, AlertCircle, Trash2, Calendar, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '../../../context/AuthContext';
 import { usePathname } from 'next/navigation';
@@ -9,13 +9,9 @@ import Footer from '../../app/admin/Footer';
 import { useLanguage } from '../../../context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import HotelLogo from '../../../components/HotelLogo'; 
+import axios from 'axios';
 
-const getImageUrl = (path: string | undefined) => {
-  if (!path) return '/default-avatar.png';
-  if (path.startsWith('http')) return path;
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
-  return `${API_BASE}${path}`;
-};
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
 
 export default function AdminLayoutClient({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
@@ -27,12 +23,16 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
   const [langOpen, setLangOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
   const [selectedNotification, setSelectedNotification] = useState<any>(null);
+  const [loadingNotifs, setLoadingNotifs] = useState(false);
 
-  // --- DARK MODE LOGIC (FIXED) ---
+  // --- DARK MODE LOGIC (FULL FIX) ---
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
-    const isDark = savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const isDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
+    
     setDarkMode(isDark);
     if (isDark) {
       document.documentElement.classList.add('dark');
@@ -44,70 +44,54 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
   const toggleDarkMode = () => {
     const newMode = !darkMode;
     setDarkMode(newMode);
+    localStorage.setItem('theme', newMode ? 'dark' : 'light');
     if (newMode) {
       document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
     } else {
       document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
     }
   };
 
-  // --- ADVANCED NOTIFICATION SYSTEM ---
-  const [notifications, setNotifications] = useState([
-    { 
-      id: 1, 
-      title: 'System Update', 
-      message: 'Maintenance scheduled for 2:00 AM', 
-      detail: 'Our servers will undergo scheduled maintenance to improve database performance. Expected downtime is 30 minutes. Please ensure all active sessions are saved.',
-      time: '10 min ago', 
-      type: 'info', 
-      read: false 
-    },
-    { 
-      id: 2, 
-      title: 'New Booking', 
-      message: 'Room 104 booked by Abebe', 
-      detail: 'Guest Abebe Bekele has confirmed a 3-night stay in Room 104 (Deluxe Suite). Check-in scheduled for tomorrow at 2:00 PM.',
-      time: '1 hour ago', 
-      type: 'success', 
-      read: false 
-    },
-    { 
-        id: 3, 
-        title: 'Low Stock Alert', 
-        message: 'Kitchen supplies running low', 
-        detail: 'Stock levels for "Coffee Beans" and "Milk" have fallen below the 10% threshold. Please review the inventory and place a purchase order.',
-        time: '3 hours ago', 
-        type: 'warning', 
-        read: false 
-      },
-  ]);
+  // --- NOTIFICATION FETCHING ---
+  const fetchNotifications = useCallback(async () => {
+    setLoadingNotifs(true);
+    try {
+      const res = await axios.get(`${API_URL}/api/dashboard/notifications`, { withCredentials: true });
+      setNotifications(res.data);
+    } catch (err) {
+      console.error("Error fetching notifications", err);
+    } finally {
+      setLoadingNotifs(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 60000); // Refresh every minute
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const handleNotificationClick = (notif: any) => {
     setSelectedNotification(notif);
     setShowNotifications(false);
-    // Mark as read
+    // Sync UI locally: Mark as read
     setNotifications(prev => 
       prev.map(n => n.id === notif.id ? { ...n, read: true } : n)
     );
   };
 
-  const markAllRead = () => {
+  const markAllAsRead = () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
-  const deleteNotification = (e: React.MouseEvent, id: number) => {
+  const deleteNotification = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
-  const languages = [
-    { code: 'en', name: 'English' },
-    { code: 'am', name: 'Amharic (አማርኛ)' },
-  ];
+  const languages = [{ code: 'en', name: 'English' }, { code: 'am', name: 'Amharic (አማርኛ)' }];
 
   const menuItems = [
     { icon: 'LayoutDashboard', label: t('dashboard'), href: '/admin' },
@@ -130,30 +114,28 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
   return (
     <div className={`min-h-screen flex flex-col transition-colors duration-300 ${darkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
       
-      {/* --- HEADER --- */}
-      <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50 transition-colors duration-300">
+      {/* HEADER */}
+      <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
-          
           <div className="flex items-center gap-3">
-            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition md:hidden text-gray-600 dark:text-gray-300">
+            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 md:hidden text-gray-600 dark:text-gray-300">
               {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
             <HotelLogo className="scale-90 origin-left" />
           </div>
 
-          <div className="flex items-center gap-3 sm:gap-4">
-            
-            {/* Language */}
+          <div className="flex items-center gap-3">
+            {/* Language Dropdown */}
             <div className="relative">
-              <button onClick={() => {setLangOpen(!langOpen); setShowNotifications(false);}} className="flex items-center gap-1.5 px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+              <button onClick={() => {setLangOpen(!langOpen); setShowNotifications(false);}} className="flex items-center gap-1.5 px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg">
                 <Globe size={18} />
-                <span className="hidden sm:inline font-medium uppercase">{language}</span>
+                <span className="hidden sm:inline uppercase">{language}</span>
               </button>
               <AnimatePresence>
                 {langOpen && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 py-1 z-50">
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-xl border dark:border-gray-700 z-50">
                     {languages.map(lang => (
-                      <button key={lang.code} onClick={() => { setLanguage(lang.code as 'en' | 'am'); setLangOpen(false); }} className={`block w-full text-left px-4 py-3 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 ${language === lang.code ? 'text-amber-600 font-bold bg-amber-50 dark:bg-amber-900/20' : 'text-gray-700 dark:text-gray-300'}`}>
+                      <button key={lang.code} onClick={() => { setLanguage(lang.code as 'en' | 'am'); setLangOpen(false); }} className={`block w-full text-left px-4 py-3 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 ${language === lang.code ? 'text-amber-600 font-bold' : 'dark:text-gray-300'}`}>
                         {lang.name}
                       </button>
                     ))}
@@ -162,17 +144,17 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
               </AnimatePresence>
             </div>
 
-            {/* Dark Mode */}
-            <button onClick={toggleDarkMode} className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-yellow-400 transition">
+            {/* Theme Toggle */}
+            <button onClick={toggleDarkMode} className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-yellow-400">
               {darkMode ? <Sun size={20} /> : <Moon size={20} />}
             </button>
 
-            {/* Notifications */}
+            {/* Notification Dropdown */}
             <div className="relative">
-              <button onClick={() => {setShowNotifications(!showNotifications); setLangOpen(false);}} className={`relative p-2 rounded-lg transition ${showNotifications ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}`}>
+              <button onClick={() => {setShowNotifications(!showNotifications); setLangOpen(false);}} className={`relative p-2 rounded-lg ${showNotifications ? 'bg-amber-100 dark:bg-amber-900/40' : 'bg-gray-100 dark:bg-gray-700'} text-gray-600 dark:text-gray-300`}>
                 <Bell size={20} />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold animate-pulse border-2 border-white dark:border-gray-800">
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold border-2 border-white dark:border-gray-800 animate-pulse">
                     {unreadCount}
                   </span>
                 )}
@@ -180,89 +162,65 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
 
               <AnimatePresence>
                 {showNotifications && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50">
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border dark:border-gray-700 overflow-hidden z-50">
                     <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
                       <h3 className="font-bold dark:text-white">Notifications</h3>
-                      <button onClick={markAllRead} className="text-xs text-amber-600 hover:underline font-bold">Mark all read</button>
+                      <button onClick={markAllAsRead} className="text-xs text-amber-600 font-bold hover:underline">Mark all read</button>
                     </div>
                     <div className="max-h-96 overflow-y-auto">
+                      {loadingNotifs && <div className="p-6 flex justify-center"><Loader2 className="animate-spin text-amber-500" /></div>}
                       {notifications.length > 0 ? (
                         notifications.map((n) => (
                           <div 
                             key={n.id} 
                             onClick={() => handleNotificationClick(n)}
-                            className={`p-4 border-b dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors cursor-pointer relative group ${!n.read ? 'bg-amber-50/30 dark:bg-amber-900/10' : ''}`}
+                            className={`p-4 border-b dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30 cursor-pointer group ${!n.read ? 'bg-amber-50/40 dark:bg-amber-900/10' : ''}`}
                           >
-                            {!n.read && <div className="absolute left-1 top-1/2 -translate-y-1/2 w-1 h-8 bg-amber-500 rounded-full" />}
                             <div className="flex gap-3">
-                              <div className={`mt-1 p-1.5 rounded-full h-fit ${n.type === 'success' ? 'bg-green-100 text-green-600' : n.type === 'warning' ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
+                              <div className={`p-1.5 rounded-full h-fit ${n.type === 'success' ? 'bg-green-100 text-green-600' : n.type === 'warning' ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
                                 {n.type === 'success' ? <CheckCircle size={14} /> : n.type === 'warning' ? <AlertCircle size={14} /> : <Info size={14} />}
                               </div>
                               <div className="flex-1">
                                 <p className={`text-sm font-bold ${!n.read ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>{n.title}</p>
-                                <p className="text-xs text-gray-500 dark:text-gray-500 mt-0.5 line-clamp-1">{n.message}</p>
-                                <p className="text-[10px] text-gray-400 mt-2">{n.time}</p>
+                                <p className="text-xs text-gray-500 line-clamp-1">{n.message}</p>
+                                <p className="text-[10px] text-gray-400 mt-1">{n.time}</p>
                               </div>
-                              <button onClick={(e) => deleteNotification(e, n.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-opacity">
-                                <Trash2 size={14} />
-                              </button>
+                              <button onClick={(e) => deleteNotification(e, n.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500"><Trash2 size={14} /></button>
                             </div>
                           </div>
                         ))
-                      ) : (
-                        <div className="p-10 text-center text-gray-400 text-sm">No notifications</div>
-                      )}
+                      ) : !loadingNotifs && <div className="p-10 text-center text-gray-400 text-sm">No new alerts</div>}
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
 
-            {/* Profile */}
-            <div className="hidden sm:flex items-center gap-3 pl-3 border-l dark:border-gray-700">
-              <div className="text-right">
-                <p className="text-sm font-bold dark:text-white">{user?.firstName || 'Amanuel'}</p>
-                <p className="text-[10px] text-gray-500 uppercase font-bold">{t('admin')}</p>
-              </div>
-              <img src={getImageUrl(user?.profileImage)} alt="P" className="w-9 h-9 rounded-full object-cover ring-2 ring-amber-500 dark:ring-offset-gray-800" />
-            </div>
-
+            {/* Logout */}
             <button onClick={logout} className="p-2 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-lg hover:bg-red-100 transition">
               <LogOut size={18} />
             </button>
-
           </div>
         </div>
       </header>
 
-      {/* --- NOTIFICATION DETAIL MODAL --- */}
+      {/* NOTIFICATION DETAIL MODAL */}
       <AnimatePresence>
         {selectedNotification && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white dark:bg-gray-800 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden">
-                <div className="p-6">
-                    <div className="flex justify-between items-start mb-6">
-                        <div className={`p-3 rounded-2xl ${selectedNotification.type === 'success' ? 'bg-green-100 text-green-600' : selectedNotification.type === 'warning' ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
-                            {selectedNotification.type === 'success' ? <CheckCircle size={28} /> : selectedNotification.type === 'warning' ? <AlertCircle size={28} /> : <Info size={28} />}
-                        </div>
-                        <button onClick={() => setSelectedNotification(null)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-400 transition">
-                            <X size={20} />
-                        </button>
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white dark:bg-gray-800 w-full max-w-md rounded-3xl shadow-2xl p-6">
+                <div className="flex justify-between items-start mb-4">
+                    <div className={`p-3 rounded-2xl ${selectedNotification.type === 'success' ? 'bg-green-100 text-green-600' : selectedNotification.type === 'warning' ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
+                        {selectedNotification.type === 'success' ? <CheckCircle size={28} /> : selectedNotification.type === 'warning' ? <AlertCircle size={28} /> : <Info size={28} />}
                     </div>
-                    <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-2">{selectedNotification.title}</h2>
-                    <div className="flex items-center gap-2 text-gray-400 text-sm mb-6">
-                        <Calendar size={14} />
-                        <span>{selectedNotification.time}</span>
-                    </div>
-                    <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-2xl border dark:border-gray-700">
-                        <p className="text-gray-600 dark:text-gray-300 leading-relaxed font-medium">
-                            {selectedNotification.detail}
-                        </p>
-                    </div>
-                    <button onClick={() => setSelectedNotification(null)} className="w-full mt-8 py-4 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-2xl transition shadow-lg shadow-amber-600/20">
-                        Dismiss
-                    </button>
+                    <button onClick={() => setSelectedNotification(null)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-400"><X size={20} /></button>
                 </div>
+                <h2 className="text-xl font-black text-gray-900 dark:text-white mb-2">{selectedNotification.title}</h2>
+                <div className="flex items-center gap-2 text-gray-400 text-xs mb-4"><Calendar size={14} /><span>{selectedNotification.time}</span></div>
+                <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-2xl border dark:border-gray-700">
+                    <p className="text-gray-600 dark:text-gray-300 leading-relaxed text-sm font-medium">{selectedNotification.detail}</p>
+                </div>
+                <button onClick={() => setSelectedNotification(null)} className="w-full mt-6 py-3 bg-amber-600 text-white font-bold rounded-xl shadow-lg">Close</button>
             </motion.div>
           </div>
         )}
@@ -270,14 +228,14 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
-        <aside className={`fixed md:static inset-y-0 left-0 z-40 w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-lg transform transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+        <aside className={`fixed md:static inset-y-0 left-0 z-40 w-64 bg-white dark:bg-gray-800 border-r dark:border-gray-700 shadow-lg transform transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
           <div className="p-5 h-full overflow-y-auto">
             <nav className="space-y-1">
               {menuItems.map((item) => {
                 const Icon = require('lucide-react')[item.icon];
                 const isActive = pathname === item.href;
                 return (
-                  <Link key={item.href} href={item.href} onClick={() => setSidebarOpen(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive ? 'bg-amber-600 text-white shadow-md' : 'text-gray-600 dark:text-gray-400 hover:bg-amber-50 dark:hover:bg-gray-700 hover:text-amber-700 dark:hover:text-white'}`}>
+                  <Link key={item.href} href={item.href} onClick={() => setSidebarOpen(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive ? 'bg-amber-600 text-white' : 'text-gray-600 dark:text-gray-400 hover:bg-amber-50 dark:hover:bg-gray-700'}`}>
                     {Icon && <Icon size={20} />}
                     <span className="font-medium">{item.label}</span>
                   </Link>
@@ -289,7 +247,8 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
 
         {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-30 md:hidden" onClick={() => setSidebarOpen(false)} />}
 
-        <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+        {/* Main Content */}
+        <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 transition-colors">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             {children}
           </div>
