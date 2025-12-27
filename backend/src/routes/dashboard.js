@@ -91,7 +91,8 @@ const {
     getAdminDashboardStats,
     getManagerDashboardStats,
     getReceptionistDashboardData,
-    getNotifications
+    getNotifications,
+      dismissNotification // <--- Import the new controller function
 } = require('../controllers/dashboardController');
 
 
@@ -103,4 +104,8 @@ router.get('/admin', protect, authorize('admin', 'manager'), getAdminDashboardSt
 router.get('/cashier', protect, authorize('cashier', 'manager', 'admin'), getCashierDashboardData);
 router.get('/manager', protect, authorize('manager', 'admin'), getManagerDashboardStats);
 router.get('/notifications', protect, getNotifications);
+// Permanent dismissal route
+// This matches the frontend call: axios.delete(`${API_URL}/api/dashboard/notifications/${id}`)
+router.delete('/notifications/:id', protect, dismissNotification);
+
 module.exports = router;

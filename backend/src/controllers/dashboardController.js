@@ -343,17 +343,38 @@ exports.getReceptionistDashboardData = async(req, res) => {
 // ... existing imports
 // backend/src/controllers/dashboardController.js
 
-// --- GET NOTIFICATIONS (Dynamic & Professional) ---
+// --- NEW: Dismiss/Delete Notification ---
+exports.dismissNotification = async (req, res) => {
+    try {
+        const { id } = req.params; // Format: "book-123" or "order-456"
+        const [type, docId] = id.split('-');
+
+        if (type === 'book') {
+            // Update the booking so it's no longer considered "New" for notifications
+            // We can add a hidden field or just use the 'read' status if you have a Notification model
+            await Booking.findByIdAndUpdate(docId, { notificationRead: true });
+        } else if (type === 'order') {
+            await Order.findByIdAndUpdate(docId, { notificationRead: true });
+        }
+
+        res.json({ message: 'Notification dismissed permanently' });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to dismiss notification' });
+    }
+};
+
+// --- Update your getNotifications to EXCLUDE read ones ---
 exports.getNotifications = async (req, res) => {
     try {
         const notifications = [];
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        // 1. Fetch New Bookings (Success Type)
+        // Fetch ONLY bookings where notificationRead is NOT true
         const newBookings = await Booking.find({
             createdAt: { $gte: today },
-            status: 'confirmed'
+            status: 'confirmed',
+            notificationRead: { $ne: true } // EXCLUDE READ ONES
         }).populate('user', 'firstName lastName').populate('room', 'roomNumber').limit(5);
 
         newBookings.forEach(b => {
@@ -361,45 +382,34 @@ exports.getNotifications = async (req, res) => {
                 id: `book-${b._id}`,
                 title: 'New Room Booking',
                 message: `Room ${b.room?.roomNumber || 'N/A'} confirmed by ${b.user?.firstName || 'Guest'}`,
-                detail: `A new booking has been confirmed for Room ${b.room?.roomNumber}. Total Price: ETB ${b.totalPrice}. Guests: ${b.guests}. Check-in: ${new Date(b.checkIn).toLocaleDateString()}.`,
+                detail: `A new booking has been confirmed for Room ${b.room?.roomNumber}. Check-in: ${new Date(b.checkIn).toLocaleDateString()}.`,
                 time: 'Recently',
                 type: 'success',
                 read: false
             });
         });
 
-        // 2. Fetch Pending Orders (Warning Type)
-        const pendingOrders = await Order.find({ status: 'pending' }).limit(5);
+        // Same logic for Orders...
+        const pendingOrders = await Order.find({ 
+            status: 'pending', 
+            notificationRead: { $ne: true } 
+        }).limit(5);
+        
         pendingOrders.forEach(order => {
             notifications.push({
                 id: `order-${order._id}`,
                 title: 'Pending Food Order',
-                message: `Order ${order.orderNumber} is waiting in the kitchen`,
-                detail: `Order ${order.orderNumber} for ${order.customer.name} (${order.orderType}) requires immediate attention. Total items: ${order.items.length}. Amount: ETB ${order.totalAmount}.`,
+                message: `Order ${order.orderNumber} is waiting`,
+                detail: `Order ${order.orderNumber} for ${order.customer.name} requires attention.`,
                 time: 'Action Required',
                 type: 'warning',
                 read: false
             });
         });
 
-        // 3. Maintenance Rooms (Info Type)
-        const maintRooms = await Room.find({ status: 'maintenance' }).limit(3);
-        maintRooms.forEach(room => {
-            notifications.push({
-                id: `room-${room._id}`,
-                title: 'Room Maintenance',
-                message: `Room ${room.roomNumber} is currently offline`,
-                detail: `Room ${room.roomNumber} has been marked for maintenance. It is excluded from the public booking list until marked as 'Clean'.`,
-                time: 'Ongoing',
-                type: 'info',
-                read: false
-            });
-        });
-
         res.json(notifications);
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Failed to fetch notifications' });
+        res.status(500).json({ message: err.message });
     }
 };
 // // --- GET NOTIFICATIONS (Dynamic) ---
