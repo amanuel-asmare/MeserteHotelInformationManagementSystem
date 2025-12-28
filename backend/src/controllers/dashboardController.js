@@ -340,42 +340,21 @@ exports.getReceptionistDashboardData = async(req, res) => {
         res.status(500).json({ message: 'Failed to load dashboard data' });
     }
 };
-// ... existing imports
-// backend/src/controllers/dashboardController.js
 
-// --- NEW: Dismiss/Delete Notification ---
-exports.dismissNotification = async (req, res) => {
-    try {
-        const { id } = req.params; // Format: "book-123" or "order-456"
-        const [type, docId] = id.split('-');
-
-        if (type === 'book') {
-            // Update the booking so it's no longer considered "New" for notifications
-            // We can add a hidden field or just use the 'read' status if you have a Notification model
-            await Booking.findByIdAndUpdate(docId, { notificationRead: true });
-        } else if (type === 'order') {
-            await Order.findByIdAndUpdate(docId, { notificationRead: true });
-        }
-
-        res.json({ message: 'Notification dismissed permanently' });
-    } catch (err) {
-        res.status(500).json({ message: 'Failed to dismiss notification' });
-    }
-};
-
-// --- Update your getNotifications to EXCLUDE read ones ---
-exports.getNotifications = async (req, res) => {
+// GET Notifications (Only unread ones)
+exports.getNotifications = async(req, res) => {
     try {
         const notifications = [];
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
 
-        // Fetch ONLY bookings where notificationRead is NOT true
+        // 1. Fetch unread Bookings (Limit to 10 for performance)
         const newBookings = await Booking.find({
-            createdAt: { $gte: today },
-            status: 'confirmed',
-            notificationRead: { $ne: true } // EXCLUDE READ ONES
-        }).populate('user', 'firstName lastName').populate('room', 'roomNumber').limit(5);
+                status: 'confirmed',
+                notificationRead: false // ONLY fetch those not marked as read
+            })
+            .populate('user', 'firstName lastName')
+            .populate('room', 'roomNumber')
+            .sort({ createdAt: -1 })
+            .limit(10);
 
         newBookings.forEach(b => {
             notifications.push({
@@ -383,33 +362,55 @@ exports.getNotifications = async (req, res) => {
                 title: 'New Room Booking',
                 message: `Room ${b.room?.roomNumber || 'N/A'} confirmed by ${b.user?.firstName || 'Guest'}`,
                 detail: `A new booking has been confirmed for Room ${b.room?.roomNumber}. Check-in: ${new Date(b.checkIn).toLocaleDateString()}.`,
-                time: 'Recently',
-                type: 'success',
-                read: false
+                time: b.createdAt,
+                type: 'success'
             });
         });
 
-        // Same logic for Orders...
-        const pendingOrders = await Order.find({ 
-            status: 'pending', 
-            notificationRead: { $ne: true } 
-        }).limit(5);
-        
+        // 2. Fetch unread Pending Orders
+        const pendingOrders = await Order.find({
+                status: 'pending',
+                notificationRead: false
+            })
+            .sort({ createdAt: -1 })
+            .limit(10);
+
         pendingOrders.forEach(order => {
             notifications.push({
                 id: `order-${order._id}`,
                 title: 'Pending Food Order',
-                message: `Order ${order.orderNumber} is waiting`,
-                detail: `Order ${order.orderNumber} for ${order.customer.name} requires attention.`,
-                time: 'Action Required',
-                type: 'warning',
-                read: false
+                message: `Order ${order.orderNumber} for ${order.customer.name}`,
+                detail: `Order #${order.orderNumber} requires attention. Items: ${order.items.length}. Total: ETB ${order.totalAmount}`,
+                time: order.createdAt,
+                type: 'info'
             });
         });
+
+        // Sort combined list by time
+        notifications.sort((a, b) => new Date(b.time) - new Date(a.time));
 
         res.json(notifications);
     } catch (err) {
         res.status(500).json({ message: err.message });
+    }
+};
+
+// DISMISS Notification (Mark as read in DB)
+exports.dismissNotification = async(req, res) => {
+    try {
+        const { id } = req.params;
+        const [type, docId] = id.split('-');
+
+        if (type === 'book') {
+            await Booking.findByIdAndUpdate(docId, { notificationRead: true });
+        } else if (type === 'order') {
+            await Order.findByIdAndUpdate(docId, { notificationRead: true });
+        }
+
+        res.json({ success: true, message: 'Notification marked as read' });
+    } catch (err) {
+        console.error("Dismiss error:", err);
+        res.status(500).json({ message: 'Failed to dismiss notification' });
     }
 };
 // // --- GET NOTIFICATIONS (Dynamic) ---

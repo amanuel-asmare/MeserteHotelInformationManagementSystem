@@ -88,6 +88,10 @@ const bookingSchema = new mongoose.Schema({
         type: Number,
         required: true,
         min: [1, 'At least one guest is required']
+    }, // --- ADD THIS FIELD ---
+    notificationRead: {
+        type: Boolean,
+        default: false
     }
 }, { timestamps: true });
 module.exports = mongoose.model('Booking', bookingSchema);

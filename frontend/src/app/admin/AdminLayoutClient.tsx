@@ -49,49 +49,48 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
     else document.documentElement.classList.remove('dark');
   };
 
-  // --- NOTIFICATION FETCHING ---
-  const fetchNotifications = useCallback(async () => {
-    setLoadingNotifs(true);
+  // Inside AdminLayoutClient component...
+
+const fetchNotifications = useCallback(async () => {
+    // Only show loader on the first ever load
+    if (notifications.length === 0) setLoadingNotifs(true);
     try {
-      const res = await axios.get(`${API_URL}/api/dashboard/notifications`, { withCredentials: true });
-      setNotifications(res.data);
+        const res = await axios.get(`${API_URL}/api/dashboard/notifications`, { withCredentials: true });
+        // Use functional update to ensure we have the latest state
+        setNotifications(res.data);
     } catch (err) {
-      console.error("Error fetching notifications", err);
+        console.error("Error fetching notifications", err);
     } finally {
-      setLoadingNotifs(false);
+        setLoadingNotifs(false);
     }
-  }, []);
+}, [notifications.length]);
 
-  useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000); // 30s refresh
-    return () => clearInterval(interval);
-  }, [fetchNotifications]);
-
-  // --- PERMANENT REMOVAL LOGIC ---
-  const dismissNotificationPermanently = async (id: string) => {
+// Permanent Removal logic
+const dismissNotificationPermanently = async (id: string) => {
     try {
-      // Call backend to mark as read/dismissed in DB
-      await axios.delete(`${API_URL}/api/dashboard/notifications/${id}`, { withCredentials: true });
-      // Remove from local state immediately
-      setNotifications(prev => prev.filter(n => n.id !== id));
+        // Optimistic UI update: Remove from list immediately
+        setNotifications(prev => prev.filter(n => n.id !== id));
+        
+        // Call backend to update notificationRead: true
+        await axios.delete(`${API_URL}/api/dashboard/notifications/${id}`, { withCredentials: true });
     } catch (err) {
-      console.error("Failed to dismiss notification permanently", err);
+        console.error("Failed to dismiss notification permanently", err);
+        // If it fails, refresh the list to stay in sync with server
+        fetchNotifications();
     }
-  };
+};
 
-  const handleNotificationClick = (notif: any) => {
+const handleNotificationClick = (notif: any) => {
     setSelectedNotification(notif);
     setShowNotifications(false);
-    // When viewed, mark it as read and trigger permanent removal
+    // Mark as read when the user clicks the notification to view it
     dismissNotificationPermanently(notif.id);
-  };
+};
 
-  const deleteNotification = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
+const deleteNotification = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation(); // Don't open the modal if just clicking delete
     dismissNotificationPermanently(id);
-  };
-
+};
   const languages = [{ code: 'en', name: 'English' }, { code: 'am', name: 'Amharic (አማርኛ)' }];
 
   const menuItems = [
