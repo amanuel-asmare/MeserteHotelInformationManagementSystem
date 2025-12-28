@@ -31,6 +31,11 @@ const feedbackSchema = new mongoose.Schema({
     isAnonymous: {
         type: Boolean,
         default: false
+    },
+    // --- ADD THIS FIELD ---
+    notificationRead: {
+        type: Boolean,
+        default: false
     }
 }, { timestamps: true });
 

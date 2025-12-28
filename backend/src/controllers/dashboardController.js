@@ -340,26 +340,24 @@ exports.getReceptionistDashboardData = async(req, res) => {
         res.status(500).json({ message: 'Failed to load dashboard data' });
     }
 };
+// ... (getDayRange and other imports)
 
 exports.getNotifications = async(req, res) => {
     try {
         const notifications = [];
 
-        // 1. Fetch unread Confirmed Bookings (No date limit, so you never miss one)
+        // 1. Fetch unread Confirmed Bookings
         const unreadBookings = await Booking.find({
-                status: 'confirmed',
-                notificationRead: false
-            })
-            .populate('user', 'firstName lastName')
-            .populate('room', 'roomNumber')
-            .sort({ createdAt: -1 });
+            status: 'confirmed',
+            notificationRead: false
+        }).populate('user', 'firstName lastName').populate('room', 'roomNumber').limit(10);
 
         unreadBookings.forEach(b => {
             notifications.push({
                 id: `book-${b._id}`,
                 title: 'New Room Booking',
                 message: `Room ${b.room?.roomNumber || 'N/A'} confirmed by ${b.user?.firstName || 'Guest'}`,
-                detail: `A new booking for Room ${b.room?.roomNumber} has been paid. Guest: ${b.user?.firstName} ${b.user?.lastName}.`,
+                detail: `A new booking has been paid. Guest: ${b.user?.firstName} ${b.user?.lastName}. Check-in: ${new Date(b.checkIn).toLocaleDateString()}`,
                 type: 'success',
                 createdAt: b.createdAt
             });
@@ -369,20 +367,36 @@ exports.getNotifications = async(req, res) => {
         const unreadOrders = await Order.find({
             status: 'pending',
             notificationRead: false
-        }).sort({ createdAt: -1 });
+        }).limit(10);
 
         unreadOrders.forEach(o => {
             notifications.push({
                 id: `order-${o._id}`,
                 title: 'New Food Order',
-                message: `Order ${o.orderNumber} is waiting for preparation`,
-                detail: `Order #${o.orderNumber} for ${o.customer.name} (Amount: ETB ${o.totalAmount}) needs to be sent to kitchen.`,
+                message: `Order ${o.orderNumber} for ${o.customer.name}`,
+                detail: `Order #${o.orderNumber} requires attention. Total: ETB ${o.totalAmount}`,
                 type: 'info',
                 createdAt: o.createdAt
             });
         });
 
-        // Sort combined list by newest first
+        // 3. --- NEW: Fetch unread Customer Feedback ---
+        const unreadFeedback = await Feedback.find({
+            notificationRead: false
+        }).populate('user', 'firstName lastName').limit(10);
+
+        unreadFeedback.forEach(f => {
+            notifications.push({
+                id: `feedback-${f._id}`,
+                title: 'New Guest Feedback',
+                message: `${f.rating} Stars - ${f.category} feedback`,
+                detail: `Guest ${f.isAnonymous ? 'Anonymous' : f.user?.firstName} left a message: "${f.message}"`,
+                type: 'warning', // Use warning color to distinguish from orders/bookings
+                createdAt: f.createdAt
+            });
+        });
+
+        // Sort everything by newest first
         notifications.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
         res.json(notifications);
@@ -400,12 +414,82 @@ exports.dismissNotification = async(req, res) => {
             await Booking.findByIdAndUpdate(docId, { notificationRead: true });
         } else if (type === 'order') {
             await Order.findByIdAndUpdate(docId, { notificationRead: true });
+        } else if (type === 'feedback') {
+            // --- NEW: Handle Feedback dismissal ---
+            await Feedback.findByIdAndUpdate(docId, { notificationRead: true });
         }
 
-        res.json({ success: true });
+        res.json({ success: true, message: 'Dismissed successfully' });
     } catch (err) {
-        res.status(500).json({ message: 'Failed to dismiss' });
+        res.status(500).json({ message: 'Failed to dismiss notification' });
     }
+};
+
+// exports.getNotifications = async(req, res) => {
+//     try {
+//         const notifications = [];
+
+//         // 1. Fetch unread Confirmed Bookings (No date limit, so you never miss one)
+//         const unreadBookings = await Booking.find({
+//                 status: 'confirmed',
+//                 notificationRead: false
+//             })
+//             .populate('user', 'firstName lastName')
+//             .populate('room', 'roomNumber')
+//             .sort({ createdAt: -1 });
+
+//         unreadBookings.forEach(b => {
+//             notifications.push({
+//                 id: `book-${b._id}`,
+//                 title: 'New Room Booking',
+//                 message: `Room ${b.room?.roomNumber || 'N/A'} confirmed by ${b.user?.firstName || 'Guest'}`,
+//                 detail: `A new booking for Room ${b.room?.roomNumber} has been paid. Guest: ${b.user?.firstName} ${b.user?.lastName}.`,
+//                 type: 'success',
+//                 createdAt: b.createdAt
+//             });
+//         });
+
+//         // 2. Fetch unread Pending Food Orders
+//         const unreadOrders = await Order.find({
+//             status: 'pending',
+//             notificationRead: false
+//         }).sort({ createdAt: -1 });
+
+//         unreadOrders.forEach(o => {
+//             notifications.push({
+//                 id: `order-${o._id}`,
+//                 title: 'New Food Order',
+//                 message: `Order ${o.orderNumber} is waiting for preparation`,
+//                 detail: `Order #${o.orderNumber} for ${o.customer.name} (Amount: ETB ${o.totalAmount}) needs to be sent to kitchen.`,
+//                 type: 'info',
+//                 createdAt: o.createdAt
+//             });
+//         });
+
+//         // Sort combined list by newest first
+//         notifications.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+//         res.json(notifications);
+//     } catch (err) {
+//         res.status(500).json({ message: err.message });
+//     }
+// };
+
+// exports.dismissNotification = async(req, res) => {
+//     try {
+//         const { id } = req.params;
+//         const [type, docId] = id.split('-');
+
+//         if (type === 'book') {
+//             await Booking.findByIdAndUpdate(docId, { notificationRead: true });
+//         } else if (type === 'order') {
+//             await Order.findByIdAndUpdate(docId, { notificationRead: true });
+//         }
+
+//         res.json({ success: true });
+//     } catch (err) {
+//         res.status(500).json({ message: 'Failed to dismiss' });
+//     }
 };
 // // --- GET NOTIFICATIONS (Dynamic) ---
 // exports.getNotifications = async(req, res) => {

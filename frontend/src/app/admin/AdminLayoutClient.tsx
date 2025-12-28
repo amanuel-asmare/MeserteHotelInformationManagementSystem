@@ -166,29 +166,30 @@ const deleteNotification = (e: React.MouseEvent, id: string) => {
 
               <AnimatePresence>
                 {showNotifications && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border dark:border-gray-700 overflow-hidden z-50">
-                    <div className="p-4 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex justify-between">
-                      <h3 className="font-bold dark:text-white">Notifications</h3>
-                      <span className="text-[10px] bg-amber-100 dark:bg-amber-900/40 text-amber-700 px-2 py-0.5 rounded-full font-bold">Latest</span>
+                  <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 15 }} className="absolute right-0 mt-3 w-80 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border dark:border-gray-700 overflow-hidden z-50">
+                    <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
+                      <h3 className="font-bold dark:text-white">Recent Updates</h3>
+                      <span className="text-[10px] px-2 py-1 bg-amber-500 text-white rounded-full uppercase tracking-tighter">Live</span>
                     </div>
-                    <div className="max-h-96 overflow-y-auto">
-                      {loadingNotifs && <div className="p-6 flex justify-center"><Loader2 className="animate-spin text-amber-500" /></div>}
-                      {notifications.length > 0 ? (
+                    <div className="max-h-[400px] overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <div className="p-10 text-center text-gray-400 text-sm italic">All caught up!</div>
+                      ) : (
                         notifications.map((n) => (
-                          <div key={n.id} onClick={() => handleNotificationClick(n)} className="p-4 border-b dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30 cursor-pointer group transition-colors">
+                          <div key={n.id} onClick={() => handleNotifClick(n)} className="p-4 border-b dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/40 cursor-pointer group transition-all">
                             <div className="flex gap-3">
-                              <div className={`mt-1 p-1.5 rounded-full h-fit ${n.type === 'success' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
-                                {n.type === 'success' ? <CheckCircle size={14} /> : <Info size={14} />}
+                              <div className={`mt-1 p-2 rounded-xl h-fit ${getColors(n.type)}`}>
+                                {getIcon(n.type)}
                               </div>
                               <div className="flex-1">
                                 <p className="text-sm font-bold text-gray-900 dark:text-white">{n.title}</p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1">{n.message}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{n.message}</p>
                               </div>
-                              <button onClick={(e) => deleteNotification(e, n.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-opacity"><Trash2 size={14} /></button>
+                              <button onClick={(e) => { e.stopPropagation(); dismissPermanently(n.id); }} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500"><Trash2 size={14} /></button>
                             </div>
                           </div>
                         ))
-                      ) : !loadingNotifs && <div className="p-10 text-center text-gray-400 text-sm italic">No active alerts</div>}
+                      )}
                     </div>
                   </motion.div>
                 )}
