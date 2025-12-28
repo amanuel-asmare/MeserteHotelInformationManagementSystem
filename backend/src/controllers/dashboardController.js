@@ -343,63 +343,81 @@ exports.getReceptionistDashboardData = async(req, res) => {
 
 
 
+
+// GET /api/dashboard/notifications
 exports.getNotifications = async(req, res) => {
     try {
         const notifications = [];
 
-        // 1. Unread Bookings (Success Type)
+        // 1. Fetch unread Bookings
         const bookings = await Booking.find({ status: 'confirmed', notificationRead: false })
             .populate('user', 'firstName lastName')
             .populate('room', 'roomNumber')
-            .sort({ createdAt: -1 }).limit(10);
+            .sort({ createdAt: -1 });
 
         bookings.forEach(b => {
             notifications.push({
                 id: `book-${b._id}`,
                 title: 'New Room Booking',
                 message: `Room ${b.room?.roomNumber} booked by ${b.user?.firstName}`,
-                detail: `Confirmed booking for Room ${b.room?.roomNumber}. Guest: ${b.user?.firstName} ${b.user?.lastName}. Amount: ETB ${b.totalPrice}`,
+                detail: `Confirmed booking for Room ${b.room?.roomNumber}. Guest: ${b.user?.firstName} ${b.user?.lastName}. Total: ETB ${b.totalPrice}`,
                 type: 'success',
                 createdAt: b.createdAt
             });
         });
 
-        // 2. Unread Orders (Info Type)
+        // 2. Fetch unread Pending Food Orders
         const orders = await Order.find({ status: 'pending', notificationRead: false })
-            .sort({ createdAt: -1 }).limit(10);
+            .sort({ createdAt: -1 });
 
         orders.forEach(o => {
             notifications.push({
                 id: `order-${o._id}`,
                 title: 'New Food Order',
                 message: `Order #${o.orderNumber} is pending`,
-                detail: `Customer ${o.customer.name} placed an order for ${o.items.length} items. Total: ETB ${o.totalAmount}`,
+                detail: `Customer ${o.customer?.name} placed an order. Total: ETB ${o.totalAmount}. Check the Food Orders section for details.`,
                 type: 'info',
-                createdAt: o.orderedAt
+                createdAt: o.createdAt
             });
         });
 
-        // 3. New Guest Feedback (Warning Type) - THE NEW IDEA
+        // 3. Fetch unread Guest Feedback
         const feedbacks = await Feedback.find({ notificationRead: false })
             .populate('user', 'firstName lastName')
-            .sort({ createdAt: -1 }).limit(10);
+            .sort({ createdAt: -1 });
 
         feedbacks.forEach(f => {
             notifications.push({
                 id: `feedback-${f._id}`,
                 title: 'Guest Feedback',
                 message: `${f.rating} Star Review - ${f.category}`,
-                detail: `Message from ${f.isAnonymous ? 'Anonymous' : f.user?.firstName}: "${f.message}"`,
+                detail: `Feedback from ${f.isAnonymous ? 'Anonymous' : f.user?.firstName}: "${f.message}"`,
                 type: 'warning',
                 createdAt: f.createdAt
             });
         });
 
-        // Sort by newest first
+        // Sort combined list by time
         notifications.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         res.json(notifications);
     } catch (err) {
         res.status(500).json({ message: err.message });
+    }
+};
+
+// DELETE /api/dashboard/notifications/:id
+exports.dismissNotification = async(req, res) => {
+    try {
+        const { id } = req.params;
+        const [type, docId] = id.split('-');
+
+        if (type === 'book') await Booking.findByIdAndUpdate(docId, { notificationRead: true });
+        else if (type === 'order') await Order.findByIdAndUpdate(docId, { notificationRead: true });
+        else if (type === 'feedback') await Feedback.findByIdAndUpdate(docId, { notificationRead: true });
+
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to dismiss notification' });
     }
 };
 // // --- GET NOTIFICATIONS (Dynamic) ---

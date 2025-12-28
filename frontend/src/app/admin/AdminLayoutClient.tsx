@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Menu, X, Globe, LogOut, Sun, Moon, Bell, CheckCircle, Info, AlertCircle, Trash2, Calendar, Loader2 } from 'lucide-react';
+import { 
+  Menu, X, Globe, LogOut, Sun, Moon, Bell, CheckCircle, 
+  Info, Trash2, Calendar, Loader2, MessageSquare, ShoppingCart, BedDouble 
+} from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '../../../context/AuthContext';
 import { usePathname } from 'next/navigation';
@@ -13,86 +16,71 @@ import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
 
-const getImageUrl = (path: string | undefined) => {
-  if (!path) return '/default-avatar.png';
-  if (path.startsWith('http')) return path;
-  return `${API_URL}${path}`;
-};
-
 export default function AdminLayoutClient({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const { language, setLanguage, t } = useLanguage();
   const pathname = usePathname();
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [langOpen, setLangOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [selectedNotification, setSelectedNotification] = useState<any>(null);
   const [loadingNotifs, setLoadingNotifs] = useState(false);
 
-  // --- DARK MODE LOGIC ---
+  // --- Theme ---
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    const isDark = savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    const isDark = localStorage.getItem('theme') === 'dark';
     setDarkMode(isDark);
-    if (isDark) document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
+    document.documentElement.classList.toggle('dark', isDark);
   }, []);
 
   const toggleDarkMode = () => {
     const newMode = !darkMode;
     setDarkMode(newMode);
     localStorage.setItem('theme', newMode ? 'dark' : 'light');
-    if (newMode) document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
+    document.documentElement.classList.toggle('dark', newMode);
   };
 
-  // Inside your fetchNotifications function:
-const fetchNotifications = useCallback(async () => {
+  // --- Notifications Fetching ---
+  const fetchNotifications = useCallback(async () => {
     try {
-        const res = await axios.get(`${API_URL}/api/dashboard/notifications`, { withCredentials: true });
-        // Only update state if the data is different to avoid unnecessary re-renders
-        setNotifications(res.data);
+      const res = await axios.get(`${API_URL}/api/dashboard/notifications`, { withCredentials: true });
+      setNotifications(res.data);
     } catch (err) {
-        console.error("Error fetching notifications", err);
+      console.error("Error fetching notifications", err);
     }
-}, []);
+  }, []);
 
-// Update the UseEffect for polling (make it faster for "real-time" feel)
-useEffect(() => {
+  useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 10000); // Check every 10 seconds
+    const interval = setInterval(fetchNotifications, 10000); // 10s Poll
     return () => clearInterval(interval);
-}, [fetchNotifications]);
+  }, [fetchNotifications]);
 
-// Updated Dismiss Logic
-const dismissNotificationPermanently = async (id: string) => {
-    // 1. Optimistic Update (Remove from UI immediately)
+  // --- Permanent Dismissal ---
+  const dismissPermanently = async (id: string) => {
+    // Optimistic Update
     setNotifications(prev => prev.filter(n => n.id !== id));
-    
     try {
-        // 2. Tell the backend to mark as read
-        await axios.delete(`${API_URL}/api/dashboard/notifications/${id}`, { withCredentials: true });
+      await axios.delete(`${API_URL}/api/dashboard/notifications/${id}`, { withCredentials: true });
     } catch (err) {
-        console.error("Failed to dismiss", err);
-        // 3. If it failed, put it back in the list
-        fetchNotifications(); 
+      fetchNotifications(); // Rollback on error
     }
-};
+  };
 
-const handleNotificationClick = (notif: any) => {
+  const handleNotificationClick = (notif: any) => {
     setSelectedNotification(notif);
     setShowNotifications(false);
-    // When viewed, mark it as read permanently
-    dismissNotificationPermanently(notif.id);
-};
-const deleteNotification = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation(); // Don't open the modal if just clicking delete
-    dismissNotificationPermanently(id);
-};
-  const languages = [{ code: 'en', name: 'English' }, { code: 'am', name: 'Amharic (አማርኛ)' }];
+    dismissPermanently(notif.id);
+  };
+
+  // Helper for UI icons
+  const getIcon = (type: string) => {
+    if (type === 'success') return <BedDouble size={16} />;
+    if (type === 'warning') return <MessageSquare size={16} />;
+    return <ShoppingCart size={16} />;
+  };
 
   const menuItems = [
     { icon: 'LayoutDashboard', label: t('dashboard'), href: '/admin' },
@@ -112,83 +100,60 @@ const deleteNotification = (e: React.MouseEvent, id: string) => {
     { icon: 'Settings', label: t('settings'), href: '/admin/settings' },
   ];
 
-  const unreadCount = notifications.length;
-
   return (
     <div className={`min-h-screen flex flex-col transition-colors duration-300 ${darkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
       
       {/* HEADER */}
       <header className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
-          
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 md:hidden text-gray-600 dark:text-gray-300">
-              {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
-            <HotelLogo className="scale-90 origin-left" />
+            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 md:hidden dark:text-white"><Menu /></button>
+            <HotelLogo className="scale-90" />
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Language */}
-            <div className="relative">
-              <button onClick={() => setLangOpen(!langOpen)} className="flex items-center gap-1.5 px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg">
-                <Globe size={18} />
-                <span className="hidden sm:inline uppercase">{language}</span>
-              </button>
-              <AnimatePresence>
-                {langOpen && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-xl border dark:border-gray-700 z-50 overflow-hidden">
-                    {languages.map(lang => (
-                      <button key={lang.code} onClick={() => { setLanguage(lang.code as 'en' | 'am'); setLangOpen(false); }} className={`block w-full text-left px-4 py-3 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 ${language === lang.code ? 'text-amber-600 font-bold bg-amber-50 dark:bg-amber-900/20' : 'dark:text-gray-300'}`}>
-                        {lang.name}
-                      </button>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Dark Mode */}
-            <button onClick={toggleDarkMode} className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-yellow-400">
+            <button onClick={toggleDarkMode} className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 dark:text-yellow-400">
               {darkMode ? <Sun size={20} /> : <Moon size={20} />}
             </button>
 
-            {/* Notifications */}
+            {/* Notifications Bell */}
             <div className="relative">
-              <button onClick={() => setShowNotifications(!showNotifications)} className={`relative p-2 rounded-lg transition ${showNotifications ? 'bg-amber-100 dark:bg-amber-900/40' : 'bg-gray-100 dark:bg-gray-700'} text-gray-600 dark:text-gray-300`}>
+              <button onClick={() => setShowNotifications(!showNotifications)} className="relative p-2 bg-gray-100 dark:bg-gray-700 dark:text-white rounded-lg">
                 <Bell size={20} />
-                {unreadCount > 0 && (
+                {notifications.length > 0 && (
                   <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold border-2 border-white dark:border-gray-800 animate-pulse">
-                    {unreadCount}
+                    {notifications.length}
                   </span>
                 )}
               </button>
 
               <AnimatePresence>
                 {showNotifications && (
-                  <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 15 }} className="absolute right-0 mt-3 w-80 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border dark:border-gray-700 overflow-hidden z-50">
-                    <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
-                      <h3 className="font-bold dark:text-white">Recent Updates</h3>
-                      <span className="text-[10px] px-2 py-1 bg-amber-500 text-white rounded-full uppercase tracking-tighter">Live</span>
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-3 w-80 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border dark:border-gray-700 overflow-hidden z-50">
+                    <div className="p-4 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex justify-between items-center">
+                      <h3 className="font-bold dark:text-white text-sm">Notifications</h3>
+                      <span className="text-[10px] bg-amber-500 text-white px-2 py-0.5 rounded-full font-bold">New</span>
                     </div>
-                    <div className="max-h-[400px] overflow-y-auto">
-                      {notifications.length === 0 ? (
-                        <div className="p-10 text-center text-gray-400 text-sm italic">All caught up!</div>
-                      ) : (
+                    <div className="max-h-96 overflow-y-auto">
+                      {notifications.length > 0 ? (
                         notifications.map((n) => (
-                          <div key={n.id} onClick={() => handleNotifClick(n)} className="p-4 border-b dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/40 cursor-pointer group transition-all">
+                          <div key={n.id} onClick={() => handleNotificationClick(n)} className="p-4 border-b dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30 cursor-pointer group transition-colors">
                             <div className="flex gap-3">
-                              <div className={`mt-1 p-2 rounded-xl h-fit ${getColors(n.type)}`}>
+                              <div className={`mt-1 p-1.5 rounded-lg h-fit ${n.type === 'success' ? 'bg-green-100 text-green-600' : n.type === 'warning' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'}`}>
                                 {getIcon(n.type)}
                               </div>
                               <div className="flex-1">
                                 <p className="text-sm font-bold text-gray-900 dark:text-white">{n.title}</p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{n.message}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1">{n.message}</p>
                               </div>
-                              <button onClick={(e) => { e.stopPropagation(); dismissPermanently(n.id); }} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500"><Trash2 size={14} /></button>
+                              <button onClick={(e) => { e.stopPropagation(); dismissPermanently(n.id); }} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-opacity">
+                                <Trash2 size={14} />
+                              </button>
                             </div>
                           </div>
                         ))
+                      ) : (
+                        <div className="p-10 text-center text-gray-400 text-sm italic">No unread alerts</div>
                       )}
                     </div>
                   </motion.div>
@@ -196,27 +161,7 @@ const deleteNotification = (e: React.MouseEvent, id: string) => {
               </AnimatePresence>
             </div>
 
-            {/* User Profile - KEPT AS PER ORIGINAL */}
-            <div className="hidden sm:flex items-center gap-3 pl-3 border-l dark:border-gray-700">
-              <div className="text-right">
-                <p className="text-sm font-bold text-gray-900 dark:text-white leading-none">
-                  {user?.firstName || 'Amanuel'}
-                </p>
-                <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider mt-1">
-                  {t('admin')}
-                </p>
-              </div>
-              <img
-                src={getImageUrl(user?.profileImage)}
-                alt="Profile"
-                className="w-9 h-9 rounded-full object-cover ring-2 ring-offset-2 ring-amber-500 dark:ring-offset-gray-800"
-              />
-            </div>
-
-            {/* Logout */}
-            <button onClick={logout} className="p-2 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-lg hover:bg-red-100 transition">
-              <LogOut size={18} />
-            </button>
+            <button onClick={logout} className="p-2 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-lg"><LogOut size={18} /></button>
           </div>
         </div>
       </header>
@@ -225,35 +170,32 @@ const deleteNotification = (e: React.MouseEvent, id: string) => {
       <AnimatePresence>
         {selectedNotification && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white dark:bg-gray-800 w-full max-w-md rounded-3xl shadow-2xl p-6">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white dark:bg-gray-800 w-full max-w-md rounded-3xl shadow-2xl p-6">
                 <div className="flex justify-between items-start mb-4">
-                    <div className={`p-3 rounded-2xl ${selectedNotification.type === 'success' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
-                        {selectedNotification.type === 'success' ? <CheckCircle size={28} /> : <Info size={28} />}
+                    <div className={`p-3 rounded-2xl ${selectedNotification.type === 'success' ? 'bg-green-100 text-green-600' : selectedNotification.type === 'warning' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'}`}>
+                        {getIcon(selectedNotification.type)}
                     </div>
                     <button onClick={() => setSelectedNotification(null)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-400 transition-colors"><X size={20} /></button>
                 </div>
                 <h2 className="text-xl font-black text-gray-900 dark:text-white mb-2">{selectedNotification.title}</h2>
-                <div className="flex items-center gap-2 text-gray-400 text-xs mb-4"><Calendar size={14} /><span>Received Today</span></div>
+                <div className="flex items-center gap-2 text-gray-400 text-xs mb-4"><Calendar size={14} /><span>Recently Received</span></div>
                 <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-2xl border dark:border-gray-700">
                     <p className="text-gray-600 dark:text-gray-300 leading-relaxed text-sm font-medium">{selectedNotification.detail}</p>
                 </div>
-                <button onClick={() => setSelectedNotification(null)} className="w-full mt-6 py-3 bg-amber-600 text-white font-bold rounded-xl shadow-lg hover:bg-amber-700 transition-colors">Dismiss</button>
+                <button onClick={() => setSelectedNotification(null)} className="w-full mt-6 py-3 bg-amber-600 text-white font-bold rounded-xl shadow-lg hover:bg-amber-700 transition-colors">Close</button>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <aside className={`fixed md:static inset-y-0 left-0 z-40 w-64 bg-white dark:bg-gray-800 border-r dark:border-gray-700 shadow-lg transform transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+        <aside className={`fixed md:static inset-y-0 left-0 z-40 w-64 bg-white dark:bg-gray-800 border-r dark:border-gray-700 transform transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
           <div className="p-5 h-full overflow-y-auto">
             <nav className="space-y-1">
               {menuItems.map((item) => {
-                const Icon = require('lucide-react')[item.icon];
                 const isActive = pathname === item.href;
                 return (
-                  <Link key={item.href} href={item.href} onClick={() => setSidebarOpen(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive ? 'bg-amber-600 text-white shadow-md' : 'text-gray-600 dark:text-gray-400 hover:bg-amber-50 dark:hover:bg-gray-700'}`}>
-                    {Icon && <Icon size={20} />}
+                  <Link key={item.href} href={item.href} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive ? 'bg-amber-600 text-white shadow-md' : 'text-gray-600 dark:text-gray-400 hover:bg-amber-50 dark:hover:bg-gray-700'}`}>
                     <span className="font-medium">{item.label}</span>
                   </Link>
                 );
@@ -262,15 +204,9 @@ const deleteNotification = (e: React.MouseEvent, id: string) => {
           </div>
         </aside>
 
-        {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-30 md:hidden" onClick={() => setSidebarOpen(false)} />}
-
         <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 transition-colors">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            {children}
-          </div>
-          <div className="mt-auto border-t dark:border-gray-800">
-             <Footer />
-          </div>
+          <div className="max-w-7xl mx-auto px-4 py-6">{children}</div>
+          <Footer />
         </main>
       </div>
     </div>
