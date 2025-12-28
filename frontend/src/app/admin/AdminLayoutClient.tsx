@@ -49,44 +49,45 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
     else document.documentElement.classList.remove('dark');
   };
 
-  // Inside AdminLayoutClient component...
-
+  // Inside your fetchNotifications function:
 const fetchNotifications = useCallback(async () => {
-    // Only show loader on the first ever load
-    if (notifications.length === 0) setLoadingNotifs(true);
     try {
         const res = await axios.get(`${API_URL}/api/dashboard/notifications`, { withCredentials: true });
-        // Use functional update to ensure we have the latest state
+        // Only update state if the data is different to avoid unnecessary re-renders
         setNotifications(res.data);
     } catch (err) {
         console.error("Error fetching notifications", err);
-    } finally {
-        setLoadingNotifs(false);
     }
-}, [notifications.length]);
+}, []);
 
-// Permanent Removal logic
+// Update the UseEffect for polling (make it faster for "real-time" feel)
+useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 10000); // Check every 10 seconds
+    return () => clearInterval(interval);
+}, [fetchNotifications]);
+
+// Updated Dismiss Logic
 const dismissNotificationPermanently = async (id: string) => {
+    // 1. Optimistic Update (Remove from UI immediately)
+    setNotifications(prev => prev.filter(n => n.id !== id));
+    
     try {
-        // Optimistic UI update: Remove from list immediately
-        setNotifications(prev => prev.filter(n => n.id !== id));
-        
-        // Call backend to update notificationRead: true
+        // 2. Tell the backend to mark as read
         await axios.delete(`${API_URL}/api/dashboard/notifications/${id}`, { withCredentials: true });
     } catch (err) {
-        console.error("Failed to dismiss notification permanently", err);
-        // If it fails, refresh the list to stay in sync with server
-        fetchNotifications();
+        console.error("Failed to dismiss", err);
+        // 3. If it failed, put it back in the list
+        fetchNotifications(); 
     }
 };
 
 const handleNotificationClick = (notif: any) => {
     setSelectedNotification(notif);
     setShowNotifications(false);
-    // Mark as read when the user clicks the notification to view it
+    // When viewed, mark it as read permanently
     dismissNotificationPermanently(notif.id);
 };
-
 const deleteNotification = (e: React.MouseEvent, id: string) => {
     e.stopPropagation(); // Don't open the modal if just clicking delete
     dismissNotificationPermanently(id);

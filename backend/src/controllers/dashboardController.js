@@ -341,53 +341,49 @@ exports.getReceptionistDashboardData = async(req, res) => {
     }
 };
 
-// GET Notifications (Only unread ones)
 exports.getNotifications = async(req, res) => {
     try {
         const notifications = [];
 
-        // 1. Fetch unread Bookings (Limit to 10 for performance)
-        const newBookings = await Booking.find({
+        // 1. Fetch unread Confirmed Bookings (No date limit, so you never miss one)
+        const unreadBookings = await Booking.find({
                 status: 'confirmed',
-                notificationRead: false // ONLY fetch those not marked as read
+                notificationRead: false
             })
             .populate('user', 'firstName lastName')
             .populate('room', 'roomNumber')
-            .sort({ createdAt: -1 })
-            .limit(10);
+            .sort({ createdAt: -1 });
 
-        newBookings.forEach(b => {
+        unreadBookings.forEach(b => {
             notifications.push({
                 id: `book-${b._id}`,
                 title: 'New Room Booking',
                 message: `Room ${b.room?.roomNumber || 'N/A'} confirmed by ${b.user?.firstName || 'Guest'}`,
-                detail: `A new booking has been confirmed for Room ${b.room?.roomNumber}. Check-in: ${new Date(b.checkIn).toLocaleDateString()}.`,
-                time: b.createdAt,
-                type: 'success'
+                detail: `A new booking for Room ${b.room?.roomNumber} has been paid. Guest: ${b.user?.firstName} ${b.user?.lastName}.`,
+                type: 'success',
+                createdAt: b.createdAt
             });
         });
 
-        // 2. Fetch unread Pending Orders
-        const pendingOrders = await Order.find({
-                status: 'pending',
-                notificationRead: false
-            })
-            .sort({ createdAt: -1 })
-            .limit(10);
+        // 2. Fetch unread Pending Food Orders
+        const unreadOrders = await Order.find({
+            status: 'pending',
+            notificationRead: false
+        }).sort({ createdAt: -1 });
 
-        pendingOrders.forEach(order => {
+        unreadOrders.forEach(o => {
             notifications.push({
-                id: `order-${order._id}`,
-                title: 'Pending Food Order',
-                message: `Order ${order.orderNumber} for ${order.customer.name}`,
-                detail: `Order #${order.orderNumber} requires attention. Items: ${order.items.length}. Total: ETB ${order.totalAmount}`,
-                time: order.createdAt,
-                type: 'info'
+                id: `order-${o._id}`,
+                title: 'New Food Order',
+                message: `Order ${o.orderNumber} is waiting for preparation`,
+                detail: `Order #${o.orderNumber} for ${o.customer.name} (Amount: ETB ${o.totalAmount}) needs to be sent to kitchen.`,
+                type: 'info',
+                createdAt: o.createdAt
             });
         });
 
-        // Sort combined list by time
-        notifications.sort((a, b) => new Date(b.time) - new Date(a.time));
+        // Sort combined list by newest first
+        notifications.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
         res.json(notifications);
     } catch (err) {
@@ -395,7 +391,6 @@ exports.getNotifications = async(req, res) => {
     }
 };
 
-// DISMISS Notification (Mark as read in DB)
 exports.dismissNotification = async(req, res) => {
     try {
         const { id } = req.params;
@@ -407,10 +402,9 @@ exports.dismissNotification = async(req, res) => {
             await Order.findByIdAndUpdate(docId, { notificationRead: true });
         }
 
-        res.json({ success: true, message: 'Notification marked as read' });
+        res.json({ success: true });
     } catch (err) {
-        console.error("Dismiss error:", err);
-        res.status(500).json({ message: 'Failed to dismiss notification' });
+        res.status(500).json({ message: 'Failed to dismiss' });
     }
 };
 // // --- GET NOTIFICATIONS (Dynamic) ---
