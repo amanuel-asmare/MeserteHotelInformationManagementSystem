@@ -34,7 +34,7 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
   const [notifications, setNotifications] = useState<any[]>([]);
   const [selectedNotification, setSelectedNotification] = useState<any>(null);
 
-  // --- Theme ---
+  // --- Theme Logic ---
   useEffect(() => {
     const isDark = localStorage.getItem('theme') === 'dark';
     setDarkMode(isDark);
@@ -54,13 +54,13 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
       const res = await axios.get(`${API_URL}/api/dashboard/notifications`, { withCredentials: true });
       setNotifications(res.data);
     } catch (err) {
-      console.error("Error", err);
+      console.error("Notification fetch error", err);
     }
   }, []);
 
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 10000);
+    const interval = setInterval(fetchNotifications, 15000); // 15s refresh
     return () => clearInterval(interval);
   }, [fetchNotifications]);
 
@@ -69,7 +69,7 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
     try {
       await axios.delete(`${API_URL}/api/dashboard/notifications/${id}`, { withCredentials: true });
     } catch (err) {
-      fetchNotifications();
+      fetchNotifications(); // rollback on failure
     }
   };
 
@@ -87,26 +87,66 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
 
   const languages = [{ code: 'en', name: 'English' }, { code: 'am', name: 'Amharic (አማርኛ)' }];
 
+  const menuItems = [
+    { icon: 'LayoutDashboard', label: t('dashboard'), href: '/admin' },
+    { icon: 'BedDouble', label: t('roomManagement'), href: '/admin/rooms' },
+    { icon: 'Users', label: t('manageStaff'), href: '/admin/staff' },
+    { icon: 'MenuSquare', label: t('menuManagement'), href: '/admin/menu' },
+    { icon: 'ShoppingCart', label: t('foodOrders'), href: '/admin/food-orders' },
+    { icon: 'FileBarChart', label: t('generateReport'), href: '/admin/reports' },
+    { icon: 'UploadCloud', label: t('News'), href: '/admin/upload-docs' },
+    { icon: 'FileText', label: t('feedback'), href: '/admin/feedback' },
+    { icon: 'MessageCircle', label: t('chat'), href: '/admin/chat' },
+    { icon: 'Banknote', label: t('pyroll'), href: '/admin/payroll' },
+    { icon: 'Settings', label: t('HotelLego'), href: '/admin/settings/settingConfigration' },
+    { icon: 'ShoppingBag', label: t('purchases'), href: '/admin/purchases' },
+    { icon: 'Receipt', label: t('expenses'), href: '/admin/expenses' },
+    { icon: 'PieChart', label: t('financialReports'), href: '/admin/analytics' },
+    { icon: 'Settings', label: t('settings'), href: '/admin/settings' },
+  ];
+
   return (
     <div className={`min-h-screen flex flex-col transition-colors duration-300 ${darkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
       
       {/* HEADER */}
       <header className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
+          
           <div className="flex items-center gap-3">
-            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 md:hidden dark:text-white"><Menu /></button>
-            <HotelLogo className="scale-90" />
+            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 md:hidden text-gray-600 dark:text-gray-300">
+              {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+            <HotelLogo className="scale-90 origin-left" />
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Language Selector */}
+            <div className="relative">
+              <button onClick={() => setLangOpen(!langOpen)} className="flex items-center gap-1.5 px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg">
+                <Globe size={18} />
+                <span className="hidden sm:inline uppercase font-bold">{language}</span>
+              </button>
+              <AnimatePresence>
+                {langOpen && (
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-xl border dark:border-gray-700 z-50 overflow-hidden">
+                    {languages.map(lang => (
+                      <button key={lang.code} onClick={() => { setLanguage(lang.code as 'en' | 'am'); setLangOpen(false); }} className={`block w-full text-left px-4 py-3 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 ${language === lang.code ? 'text-amber-600 font-bold bg-amber-50 dark:bg-amber-900/20' : 'dark:text-gray-300'}`}>
+                        {lang.name}
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
             {/* Dark Mode */}
-            <button onClick={toggleDarkMode} className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 dark:text-yellow-400">
+            <button onClick={toggleDarkMode} className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-yellow-400">
               {darkMode ? <Sun size={20} /> : <Moon size={20} />}
             </button>
 
             {/* Notifications */}
             <div className="relative">
-              <button onClick={() => setShowNotifications(!showNotifications)} className="relative p-2 bg-gray-100 dark:bg-gray-700 dark:text-white rounded-lg">
+              <button onClick={() => setShowNotifications(!showNotifications)} className={`relative p-2 rounded-lg transition ${showNotifications ? 'bg-amber-100 dark:bg-amber-900/40' : 'bg-gray-100 dark:bg-gray-700'} text-gray-600 dark:text-gray-300`}>
                 <Bell size={20} />
                 {notifications.length > 0 && (
                   <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold border-2 border-white dark:border-gray-800 animate-pulse">
@@ -114,12 +154,13 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
                   </span>
                 )}
               </button>
+
               <AnimatePresence>
                 {showNotifications && (
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-3 w-80 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border dark:border-gray-700 overflow-hidden z-50">
                     <div className="p-4 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex justify-between items-center">
                       <h3 className="font-bold dark:text-white text-sm">Notifications</h3>
-                      <span className="text-[10px] bg-amber-500 text-white px-2 py-0.5 rounded-full">LIVE</span>
+                      <span className="text-[10px] bg-amber-500 text-white px-2 py-0.5 rounded-full font-bold">NEW</span>
                     </div>
                     <div className="max-h-96 overflow-y-auto">
                       {notifications.length > 0 ? (
@@ -133,12 +174,14 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
                                 <p className="text-sm font-bold text-gray-900 dark:text-white">{n.title}</p>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1">{n.message}</p>
                               </div>
-                              <button onClick={(e) => { e.stopPropagation(); dismissPermanently(n.id); }} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500"><Trash2 size={14} /></button>
+                              <button onClick={(e) => { e.stopPropagation(); dismissPermanently(n.id); }} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-opacity">
+                                <Trash2 size={14} />
+                              </button>
                             </div>
                           </div>
                         ))
                       ) : (
-                        <div className="p-10 text-center text-gray-400 text-sm italic">No alerts</div>
+                        <div className="p-10 text-center text-gray-400 text-sm italic">No unread alerts</div>
                       )}
                     </div>
                   </motion.div>
@@ -146,7 +189,7 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
               </AnimatePresence>
             </div>
 
-            {/* USER PROFILE - PRESERVED */}
+            {/* User Profile */}
             <div className="hidden sm:flex items-center gap-3 pl-3 border-l dark:border-gray-700">
               <div className="text-right">
                 <p className="text-sm font-bold text-gray-900 dark:text-white leading-none">
@@ -171,7 +214,44 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
         </div>
       </header>
 
-      {/* DETAIL MODAL */}
+      {/* SIDEBAR & CONTENT */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar */}
+        <aside className={`fixed md:static inset-y-0 left-0 z-40 w-64 bg-white dark:bg-gray-800 border-r dark:border-gray-700 shadow-lg transform transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+          <div className="p-5 h-full overflow-y-auto">
+            <nav className="space-y-1">
+              {menuItems.map((item) => {
+                const isActive = pathname === item.href;
+                return (
+                  <Link 
+                    key={item.href} 
+                    href={item.href} 
+                    onClick={() => setSidebarOpen(false)}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive ? 'bg-amber-600 text-white shadow-md' : 'text-gray-600 dark:text-gray-400 hover:bg-amber-50 dark:hover:bg-gray-700'}`}
+                  >
+                    <span className="font-medium">{item.label}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        </aside>
+
+        {/* Overlay for mobile sidebar */}
+        {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-30 md:hidden" onClick={() => setSidebarOpen(false)} />}
+
+        {/* Main Content Area */}
+        <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 transition-colors">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            {children}
+          </div>
+          <div className="mt-auto border-t dark:border-gray-800">
+             <Footer />
+          </div>
+        </main>
+      </div>
+
+      {/* NOTIFICATION DETAIL MODAL */}
       <AnimatePresence>
         {selectedNotification && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -180,23 +260,18 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
                     <div className={`p-3 rounded-2xl ${selectedNotification.type === 'success' ? 'bg-green-100 text-green-600' : selectedNotification.type === 'warning' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'}`}>
                         {getIcon(selectedNotification.type)}
                     </div>
-                    <button onClick={() => setSelectedNotification(null)} className="p-2 hover:bg-gray-100 rounded-full dark:text-white"><X size={20} /></button>
+                    <button onClick={() => setSelectedNotification(null)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-400 transition-colors"><X size={20} /></button>
                 </div>
                 <h2 className="text-xl font-black text-gray-900 dark:text-white mb-2">{selectedNotification.title}</h2>
-                <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-2xl border dark:border-gray-700 mt-4">
+                <div className="flex items-center gap-2 text-gray-400 text-xs mb-4"><Calendar size={14} /><span>Received Recently</span></div>
+                <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-2xl border dark:border-gray-700">
                     <p className="text-gray-600 dark:text-gray-300 leading-relaxed text-sm font-medium">{selectedNotification.detail}</p>
                 </div>
-                <button onClick={() => setSelectedNotification(null)} className="w-full mt-6 py-3 bg-amber-600 text-white font-bold rounded-xl shadow-lg hover:bg-amber-700 transition-colors">Dismiss</button>
+                <button onClick={() => setSelectedNotification(null)} className="w-full mt-6 py-3 bg-amber-600 text-white font-bold rounded-xl shadow-lg hover:bg-amber-700 transition-colors">Mark as Read</button>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
-
-      <div className="flex flex-1 overflow-hidden">
-        {/* Main layout content... */}
-        {children}
-      </div>
-      <Footer />
     </div>
   );
 }/*'use client';
