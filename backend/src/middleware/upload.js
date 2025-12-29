@@ -382,8 +382,20 @@ const createStorage = (folder) => {
 const uploadAvatar = multer({ storage: createCloudinaryStorage('avatars') });
 const uploadMenu = multer({ storage: createCloudinaryStorage('menu') });
 // const uploadRoom = multer({ storage: createCloudinaryStorage('rooms') });
+// const uploadRoom = multer({
+//     storage: createStorage('rooms'),
+//     limits: { fileSize: 10 * 1024 * 1024, files: 3 },
+//     fileFilter: (req, file, cb) => {
+//         const allowed = /jpeg|jpg|png|webp|gif/;
+//         const ext = path.extname(file.originalname).toLowerCase();
+//         if (allowed.test(ext)) cb(null, true);
+//         else cb(new Error('Only image files allowed'));
+//     }
+// });
+
+// CHANGE THIS: Switch from createStorage (local) to createCloudinaryStorage (cloud)
 const uploadRoom = multer({
-    storage: createStorage('rooms'),
+    storage: createCloudinaryStorage('rooms'), // Use Cloudinary
     limits: { fileSize: 10 * 1024 * 1024, files: 3 },
     fileFilter: (req, file, cb) => {
         const allowed = /jpeg|jpg|png|webp|gif/;
@@ -392,6 +404,7 @@ const uploadRoom = multer({
         else cb(new Error('Only image files allowed'));
     }
 });
+
 const uploadNews = multer({ storage: createCloudinaryStorage('news') });
 const uploadChatFile = multer({ storage: createCloudinaryStorage('chat') });
 const uploadLogo = multer({ storage: createCloudinaryStorage('logo') });
