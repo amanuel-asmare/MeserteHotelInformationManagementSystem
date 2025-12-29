@@ -272,31 +272,29 @@ const handleSubmit = async (e: React.FormEvent) => {
   try {
     const formData = new FormData();
     
-    // 1. Append text fields
-    formData.append('roomNumber', form.roomNumber);
+    // 1. Append Text Fields (Ensuring they are never empty/null)
+    formData.append('roomNumber', String(form.roomNumber));
     formData.append('type', form.type);
-    formData.append('price', form.price);
-    formData.append('floorNumber', form.floorNumber);
+    formData.append('price', form.price || "0");
+    formData.append('floorNumber', form.floorNumber || "0");
     formData.append('description', form.description);
-    formData.append('capacity', form.capacity);
+    formData.append('capacity', form.capacity || "1");
     formData.append('amenities', form.amenities);
     formData.append('status', form.status);
-    formData.append('numberOfBeds', form.numberOfBeds);
-    formData.append('bathrooms', form.bathrooms);
+    formData.append('numberOfBeds', form.numberOfBeds || "1");
+    formData.append('bathrooms', form.bathrooms || "1");
 
-    // 2. Append images - Ensure key matches backend 'images'
+    // 2. Append Images (Backend expects 'images' key)
     if (form.images && form.images.length > 0) {
       form.images.forEach((file) => {
         formData.append('images', file);
       });
     }
 
-    // 3. Set explicit headers for Multer
+    // 3. Request Configuration
     const config = {
       withCredentials: true,
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+      headers: { 'Content-Type': 'multipart/form-data' },
     };
 
     if (editingRoom) {
@@ -312,9 +310,9 @@ const handleSubmit = async (e: React.FormEvent) => {
     setEditingRoom(null);
 
   } catch (err: any) {
-    console.error("Submission error details:", err.response?.data);
-    const errorMessage = err.response?.data?.message || 'Error saving room. Please check all fields.';
-    alert(errorMessage);
+    console.error("Submission error:", err.response?.data);
+    const msg = err.response?.data?.message || 'Check connection and try again';
+    alert(msg);
   } finally {
     setUploading(false);
   }
