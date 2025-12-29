@@ -7,7 +7,7 @@ import * as z from 'zod';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, LogIn, Facebook, Github, Chrome, ArrowLeft, Send } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { useLanguage } from '../../context/LanguageContext'; // Import Hook
+import { useLanguage } from '../../context/LanguageContext';
 import { Modal } from '../ui/Modal';
 import axios from 'axios';
 
@@ -33,7 +33,7 @@ interface LoginFormProps {
 
 export default function LoginForm({ onClose, onSwitch, onSwitchToRegister }: LoginFormProps) {
   const { login } = useAuth();
-  const { t } = useLanguage(); // Use Translation Hook
+  const { t } = useLanguage();
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [globalSuccess, setGlobalSuccess] = useState<string | null>(null);
   const [view, setView] = useState<'login' | 'forgot'>('login');
@@ -76,7 +76,6 @@ export default function LoginForm({ onClose, onSwitch, onSwitchToRegister }: Log
     setGlobalSuccess(null);
     try {
       await axios.post(`${API_URL}/api/auth/forgotpassword`, { email: data.email });
-      // Translate the success message dynamically
       let message = t('emailSentMessage') || `Reset link sent to {email}.`;
       message = message.replace('{email}', data.email);
       setGlobalSuccess(message);
@@ -87,195 +86,196 @@ export default function LoginForm({ onClose, onSwitch, onSwitchToRegister }: Log
 
   const handleSwitch = onSwitch || onSwitchToRegister;
 
-  // --- SOCIAL LOGIN HANDLERS ---
   const handleSocialLogin = (provider: string) => {
     window.location.href = `${API_URL}/api/auth/${provider}`;
   };
 
   return (
     <Modal title="" onClose={onClose}>
-      {/* Added max-h-[90vh] and overflow-y-auto to ensure scrolling on small screens */}
-      <div className="max-w-md w-full mx-auto overflow-hidden rounded-3xl bg-white dark:bg-gray-900 shadow-xl min-h-[500px] max-h-[90vh] overflow-y-auto custom-scrollbar mt-35">
-        <div className="flex flex-col h-full">
-          
-          {/* Header */}
-          <div className="bg-gradient-to-r from-amber-600 to-amber-800 p-8 text-center relative overflow-hidden transition-all duration-500 shrink-0">
-            <motion.div
-              key={view}
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.5 }}
-              className="relative z-10"
-            >
-              <div className="mx-auto bg-white/20 w-16 h-16 rounded-full flex items-center justify-center backdrop-blur-sm mb-4 border border-white/30 shadow-lg">
-                {view === 'login' ? <LogIn className="text-white w-8 h-8" /> : <Mail className="text-white w-8 h-8" />}
-              </div>
-              <h2 className="text-3xl font-bold text-white tracking-wide font-serif">
-                {view === 'login' ? t('welcomeBack') : t('recoverAccount')} 
-              </h2>
-              <p className="text-amber-100 mt-2 text-sm">
-                {view === 'login' ? t('signInAccessDashboard') : t('enterEmailReset')}
-              </p>
-            </motion.div>
-            
-            <div className="absolute top-[-50%] left-[-20%] w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
-            <div className="absolute bottom-[-20%] right-[-20%] w-40 h-40 bg-amber-400/20 rounded-full blur-2xl"></div>
-          </div>
+      {/* 
+        FIXED CONTAINER STYLES:
+        1. z-[70] to stay above navbar
+        2. relative + flex flex-col for proper layout
+        3. custom-scrollbar for attractive UI
+      */}
+      <div className="relative z-[70] w-full max-w-md mx-auto my-4 overflow-hidden rounded-3xl bg-white dark:bg-gray-900 shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/10 max-h-[calc(100vh-60px)] flex flex-col">
+        
+        {/* Header - Made Sticky and shrink-0 */}
+        <div className="sticky top-0 z-30 bg-gradient-to-r from-amber-600 to-amber-800 p-8 text-center relative overflow-hidden shrink-0 shadow-lg transition-all duration-500">
+          <motion.div
+            key={view}
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.5 }}
+            className="relative z-10"
+          >
+            <div className="mx-auto bg-white/20 w-16 h-16 rounded-full flex items-center justify-center backdrop-blur-sm mb-4 border border-white/30 shadow-lg">
+              {view === 'login' ? <LogIn className="text-white w-8 h-8" /> : <Mail className="text-white w-8 h-8" />}
+            </div>
+            <h2 className="text-3xl font-bold text-white tracking-wide font-serif">
+              {view === 'login' ? t('welcomeBack') : t('recoverAccount')} 
+            </h2>
+            <p className="text-amber-100 mt-2 text-sm">
+              {view === 'login' ? t('signInAccessDashboard') : t('enterEmailReset')}
+            </p>
+          </motion.div>
+          <div className="absolute top-[-50%] left-[-20%] w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-[-20%] right-[-20%] w-40 h-40 bg-amber-400/20 rounded-full blur-2xl"></div>
+        </div>
 
-          <div className="p-8 flex-1">
-            <AnimatePresence mode="wait">
-              {view === 'login' && (
-                <motion.form
-                  key="login-form"
-                  initial={{ opacity: 0, x: -50 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -50 }}
-                  onSubmit={handleSubmit(onSubmit)} 
-                  className="space-y-6"
-                >
-                  {globalError && (
-                    <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm text-center">
-                      {globalError}
-                    </div>
-                  )}
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-gray-500 ml-1">{t('email')}</label>
-                    <div className="relative group">
-                      <Mail className="absolute left-4 top-3.5 text-gray-400 group-focus-within:text-amber-600 transition-colors" size={20} />
-                      <input
-                        type="email"
-                        placeholder="name@example.com"
-                        {...register('email')}
-                        className={`w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-gray-800 border-2 ${errors.email ? 'border-red-400' : 'border-gray-100 dark:border-gray-700'} rounded-2xl focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 transition-all`}
-                      />
-                    </div>
-                    {errors.email && <p className="text-red-500 text-xs ml-1">{errors.email.message}</p>}
+        {/* Form Body - Made Scrollable */}
+        <div className="p-8 flex-1 overflow-y-auto custom-scrollbar">
+          <AnimatePresence mode="wait">
+            {view === 'login' && (
+              <motion.form
+                key="login-form"
+                initial={{ opacity: 0, x: -50 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -50 }}
+                onSubmit={handleSubmit(onSubmit)} 
+                className="space-y-6"
+              >
+                {globalError && (
+                  <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm text-center">
+                    {globalError}
                   </div>
+                )}
 
-                  <div className="space-y-1">
-                    <div className="flex justify-between items-center ml-1">
-                      <label className="text-xs font-semibold uppercase tracking-wider text-gray-500">{t('password')}</label>
-                      <button type="button" onClick={() => setView('forgot')} className="text-xs text-amber-600 hover:underline">
-                        {/* FIX: Use 'forgotPassword' translation key, fallback if missing */}
-                        {t('forgotPassword' as any) || "Forgot password?"}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-gray-500 ml-1">{t('email')}</label>
+                  <div className="relative group">
+                    <Mail className="absolute left-4 top-3.5 text-gray-400 group-focus-within:text-amber-600 transition-colors" size={20} />
+                    <input
+                      type="email"
+                      placeholder="name@example.com"
+                      {...register('email')}
+                      className={`w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-gray-800 border-2 ${errors.email ? 'border-red-400' : 'border-gray-100 dark:border-gray-700'} rounded-2xl focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 transition-all`}
+                    />
+                  </div>
+                  {errors.email && <p className="text-red-500 text-xs ml-1">{errors.email.message}</p>}
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center ml-1">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-gray-500">{t('password')}</label>
+                    <button type="button" onClick={() => setView('forgot')} className="text-xs text-amber-600 hover:underline">
+                      {t('forgotPassword' as any) || "Forgot password?"}
+                    </button>
+                  </div>
+                  <div className="relative group">
+                    <Lock className="absolute left-4 top-3.5 text-gray-400 group-focus-within:text-amber-600 transition-colors" size={20} />
+                    <input
+                      type="password"
+                      placeholder="••••••••"
+                      {...register('password')}
+                      className={`w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-gray-800 border-2 ${errors.password ? 'border-red-400' : 'border-gray-100 dark:border-gray-700'} rounded-2xl focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 transition-all`}
+                    />
+                  </div>
+                  {errors.password && <p className="text-red-500 text-xs ml-1">{errors.password.message}</p>}
+                </div>
+
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full py-3.5 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-bold rounded-2xl shadow-lg shadow-amber-600/30 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : t('login')}
+                </motion.button>
+
+                {handleSwitch && (
+                  <div className="text-center mt-4 text-sm text-gray-600 dark:text-gray-400">
+                    {t('dontHaveAccount')} <button type="button" onClick={handleSwitch} className="text-amber-600 hover:underline font-semibold">{t('register')}</button>
+                  </div>
+                )}
+
+                <div className="relative my-6">
+                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200 dark:border-gray-700"></div></div>
+                  <div className="relative flex justify-center text-sm"><span className="px-3 bg-white dark:bg-gray-900 text-gray-500">{t('orContinueWith')}</span></div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <button type="button" onClick={() => handleSocialLogin('google')} className="flex items-center justify-center py-2.5 border-2 border-gray-100 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                    <Chrome className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                  </button>
+                  <button type="button" onClick={() => handleSocialLogin('facebook')} className="flex items-center justify-center py-2.5 border-2 border-gray-100 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                    <Facebook className="w-5 h-5 text-blue-600" />
+                  </button>
+                  <button type="button" onClick={() => handleSocialLogin('github')} className="flex items-center justify-center py-2.5 border-2 border-gray-100 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                    <Github className="w-5 h-5 text-gray-900 dark:text-white" />
+                  </button>
+                </div>
+              </motion.form>
+            )}
+
+            {view === 'forgot' && (
+              <motion.form
+                key="forgot-form"
+                initial={{ opacity: 0, x: 50 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 50 }}
+                onSubmit={handleSubmitForgot(onForgotSubmit)} 
+                className="space-y-6"
+              >
+                {globalSuccess ? (
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-2xl text-center">
+                      <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-2">
+                          <Send className="text-green-600 w-6 h-6" />
+                      </div>
+                      <h3 className="text-green-800 font-bold mb-1">{t('emailSentTitle')}</h3>
+                      <p className="text-green-600 text-sm">{globalSuccess}</p>
+                      <button 
+                          type="button" 
+                          onClick={() => setView('login')}
+                          className="mt-4 text-sm font-semibold text-green-700 hover:underline"
+                      >
+                          {t('backToLogin')}
                       </button>
-                    </div>
-                    <div className="relative group">
-                      <Lock className="absolute left-4 top-3.5 text-gray-400 group-focus-within:text-amber-600 transition-colors" size={20} />
-                      <input
-                        type="password"
-                        placeholder="••••••••"
-                        {...register('password')}
-                        className={`w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-gray-800 border-2 ${errors.password ? 'border-red-400' : 'border-gray-100 dark:border-gray-700'} rounded-2xl focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 transition-all`}
-                      />
-                    </div>
-                    {errors.password && <p className="text-red-500 text-xs ml-1">{errors.password.message}</p>}
                   </div>
+                ) : (
+                  <>
+                      {globalError && (
+                          <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm text-center">
+                          {globalError}
+                          </div>
+                      )}
+                      <div className="space-y-1">
+                          <label className="text-xs font-semibold uppercase tracking-wider text-gray-500 ml-1">{t('registeredEmail')}</label>
+                          <div className="relative group">
+                          <Mail className="absolute left-4 top-3.5 text-gray-400 group-focus-within:text-amber-600 transition-colors" size={20} />
+                          <input
+                              type="email"
+                              placeholder="name@example.com"
+                              {...registerForgot('email')}
+                              className={`w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-gray-800 border-2 ${errorsForgot.email ? 'border-red-400' : 'border-gray-100 dark:border-gray-700'} rounded-2xl focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 transition-all`}
+                          />
+                          </div>
+                          {errorsForgot.email && <p className="text-red-500 text-xs ml-1">{errorsForgot.email.message}</p>}
+                      </div>
 
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full py-3.5 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-bold rounded-2xl shadow-lg shadow-amber-600/30 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    {isSubmitting ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : t('login')}
-                  </motion.button>
+                      <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          type="submit"
+                          disabled={isSubmittingForgot}
+                          className="w-full py-3.5 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-bold rounded-2xl shadow-lg shadow-amber-600/30 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                          {isSubmittingForgot ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : t('sendResetLink')}
+                      </motion.button>
 
-                  {handleSwitch && (
-                    <div className="text-center mt-4 text-sm text-gray-600 dark:text-gray-400">
-                      {t('dontHaveAccount')} <button type="button" onClick={handleSwitch} className="text-amber-600 hover:underline font-semibold">{t('register')}</button>
-                    </div>
-                  )}
-
-                  <div className="relative my-6">
-                    <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200 dark:border-gray-700"></div></div>
-                    <div className="relative flex justify-center text-sm"><span className="px-3 bg-white dark:bg-gray-900 text-gray-500">{t('orContinueWith')}</span></div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-3">
-                    <button type="button" onClick={() => handleSocialLogin('google')} className="flex items-center justify-center py-2.5 border-2 border-gray-100 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition">
-                      <Chrome className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-                    </button>
-                    <button type="button" onClick={() => handleSocialLogin('facebook')} className="flex items-center justify-center py-2.5 border-2 border-gray-100 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition">
-                      <Facebook className="w-5 h-5 text-blue-600" />
-                    </button>
-                    <button type="button" onClick={() => handleSocialLogin('github')} className="flex items-center justify-center py-2.5 border-2 border-gray-100 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition">
-                      <Github className="w-5 h-5 text-gray-900 dark:text-white" />
-                    </button>
-                  </div>
-                </motion.form>
-              )}
-
-              {view === 'forgot' && (
-                <motion.form
-                  key="forgot-form"
-                  initial={{ opacity: 0, x: 50 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 50 }}
-                  onSubmit={handleSubmitForgot(onForgotSubmit)} 
-                  className="space-y-6"
-                >
-                  {globalSuccess ? (
-                    <div className="p-4 bg-green-50 border border-green-200 rounded-2xl text-center">
-                        <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-2">
-                            <Send className="text-green-600 w-6 h-6" />
-                        </div>
-                        <h3 className="text-green-800 font-bold mb-1">{t('emailSentTitle')}</h3>
-                        <p className="text-green-600 text-sm">{globalSuccess}</p>
-                        <button 
-                            type="button" 
-                            onClick={() => setView('login')}
-                            className="mt-4 text-sm font-semibold text-green-700 hover:underline"
-                        >
-                            {t('backToLogin')}
-                        </button>
-                    </div>
-                  ) : (
-                    <>
-                        {globalError && (
-                            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm text-center">
-                            {globalError}
-                            </div>
-                        )}
-                        <div className="space-y-1">
-                            <label className="text-xs font-semibold uppercase tracking-wider text-gray-500 ml-1">{t('registeredEmail')}</label>
-                            <div className="relative group">
-                            <Mail className="absolute left-4 top-3.5 text-gray-400 group-focus-within:text-amber-600 transition-colors" size={20} />
-                            <input
-                                type="email"
-                                placeholder="name@example.com"
-                                {...registerForgot('email')}
-                                className={`w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-gray-800 border-2 ${errorsForgot.email ? 'border-red-400' : 'border-gray-100 dark:border-gray-700'} rounded-2xl focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 transition-all`}
-                            />
-                            </div>
-                            {errorsForgot.email && <p className="text-red-500 text-xs ml-1">{errorsForgot.email.message}</p>}
-                        </div>
-
-                        <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            type="submit"
-                            disabled={isSubmittingForgot}
-                            className="w-full py-3.5 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-bold rounded-2xl shadow-lg shadow-amber-600/30 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                        >
-                            {isSubmittingForgot ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : t('sendResetLink')}
-                        </motion.button>
-
-                        <button 
-                            type="button" 
-                            onClick={() => setView('login')}
-                            className="w-full py-3 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-gray-600 dark:text-gray-300 font-semibold hover:bg-gray-50 dark:hover:bg-gray-800 transition flex items-center justify-center gap-2"
-                        >
-                            <ArrowLeft size={18} /> {t('backToLogin')}
-                        </button>
-                    </>
-                  )}
-                </motion.form>
-              )}
-            </AnimatePresence>
-          </div>
+                      <button 
+                          type="button" 
+                          onClick={() => setView('login')}
+                          className="w-full py-3 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-gray-600 dark:text-gray-300 font-semibold hover:bg-gray-50 dark:hover:bg-gray-800 transition flex items-center justify-center gap-2"
+                      >
+                          <ArrowLeft size={18} /> {t('backToLogin')}
+                      </button>
+                  </>
+                )}
+              </motion.form>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </Modal>
