@@ -268,7 +268,6 @@ export default function RoomManagementClient() {
 // Replace your handleSubmit function with this:
 
 // frontend/src/app/admin/rooms/RoomManagementClient.tsx
-
 const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setUploading(true);
@@ -276,30 +275,28 @@ const handleSubmit = async (e: React.FormEvent) => {
     try {
       const formData = new FormData();
       
-      // text fields
-      formData.append('roomNumber', form.roomNumber);
+      // Append all fields as strings
+      formData.append('roomNumber', String(form.roomNumber));
       formData.append('type', form.type);
-      formData.append('price', form.price);
-      formData.append('floorNumber', form.floorNumber);
+      formData.append('price', String(form.price));
+      formData.append('floorNumber', String(form.floorNumber));
       formData.append('description', form.description);
-      formData.append('capacity', form.capacity);
+      formData.append('capacity', String(form.capacity));
       formData.append('amenities', form.amenities);
       formData.append('status', form.status);
-      formData.append('numberOfBeds', form.numberOfBeds);
-      formData.append('bathrooms', form.bathrooms);
+      formData.append('numberOfBeds', String(form.numberOfBeds));
+      formData.append('bathrooms', String(form.bathrooms));
       
-      // Images - Append files to the 'images' key
+      // Images key must match backend route 'images'
       if (form.images && form.images.length > 0) {
         form.images.forEach((file) => {
           formData.append('images', file);
         });
       }
 
-      // CRITICAL: REMOVED 'Content-Type' header. 
-      // Axios + FormData handles this automatically with the required boundary string.
-      const config = {
-        withCredentials: true,
-      };
+      // ⚠️ IMPORTANT: Do NOT set 'Content-Type' header manually. 
+      // Axios will set it with the correct boundary automatically.
+      const config = { withCredentials: true };
 
       if (editingRoom) {
         await axios.put(`${API_BASE}/api/rooms/${editingRoom._id}`, formData, config);
@@ -314,10 +311,10 @@ const handleSubmit = async (e: React.FormEvent) => {
       setEditingRoom(null);
 
     } catch (err: any) {
+      // ✅ This will now catch the JSON error message from the backend
+      const backendError = err.response?.data?.message || 'Check fields and try again';
       console.error("Submission error details:", err.response?.data);
-      // Display the actual error message from the backend if it exists
-      const errorMessage = err.response?.data?.message || 'Error saving room. Please try again.';
-      alert(errorMessage);
+      alert("Error: " + backendError);
     } finally {
       setUploading(false);
     }
