@@ -764,39 +764,44 @@ exports.getRoom = async(req, res) => {
     }
 };
 
-// ✅ CREATE ROOM (Mirrored logic from Menu)
+// backend/src/controllers/roomController.js
+
+// ✅ CREATE ROOM
 exports.createRoom = async(req, res) => {
     try {
-        const { roomNumber, type, price, floorNumber, description, capacity, amenities, status, numberOfBeds, bathrooms } = req.body;
+        const data = req.body;
 
-        // Get Cloudinary URLs from multer-storage-cloudinary
+        // Safety check for req.files to prevent crash if upload fails
         const images = req.files ? req.files.map(file => file.path) : [];
 
         const room = new Room({
-            roomNumber,
-            type,
-            price: Number(price) || 0,
-            floorNumber: Number(floorNumber) || 0,
-            description,
-            images,
-            capacity: Number(capacity) || 1,
-            status: status || 'clean',
-            numberOfBeds: Number(numberOfBeds) || 1,
-            bathrooms: Number(bathrooms) || 1,
-            // Safe split for amenities
-            amenities: amenities ? (typeof amenities === 'string' ? amenities.split(',').map(a => a.trim()) : amenities) : []
+            roomNumber: data.roomNumber,
+            type: data.type,
+            price: Number(data.price) || 0,
+            floorNumber: Number(data.floorNumber) || 0,
+            description: data.description,
+            images: images,
+            capacity: Number(data.capacity) || 1,
+            status: data.status || 'clean',
+            numberOfBeds: Number(data.numberOfBeds) || 1,
+            bathrooms: Number(data.bathrooms) || 1,
+            // Safe parsing for amenities string
+            amenities: data.amenities ? (typeof data.amenities === 'string' ? data.amenities.split(',').map(a => a.trim()).filter(a => a !== "") : data.amenities) : []
         });
 
         await room.save();
         res.status(201).json(formatRoom(room));
     } catch (err) {
-        console.error("CREATE ERROR:", err);
-        if (err.code === 11000) return res.status(400).json({ message: "Room number already exists" });
+        console.error("ROOM CREATE ERROR:", err);
+        // Handle MongoDB unique room number conflict
+        if (err.code === 11000) {
+            return res.status(400).json({ message: "Room number already exists" });
+        }
         res.status(400).json({ message: err.message });
     }
 };
 
-// ✅ UPDATE ROOM (Mirrored logic from Menu)
+// ✅ UPDATE ROOM
 exports.updateRoom = async(req, res) => {
     try {
         const room = await Room.findById(req.params.id);
@@ -804,29 +809,28 @@ exports.updateRoom = async(req, res) => {
 
         const data = req.body;
 
-        // Handle Image Update
+        // Image Update Logic
         if (req.files && req.files.length > 0) {
-            // Delete old LOCAL files (if any)
+            // Delete old LOCAL images only (skip Cloudinary http links)
             room.images.forEach(img => {
                 if (img && !img.startsWith('http')) {
                     const imgPath = path.join(__dirname, '..', 'public', img);
                     if (fs.existsSync(imgPath)) try { fs.unlinkSync(imgPath); } catch (e) {}
                 }
             });
-            // Update with new Cloudinary paths
             room.images = req.files.map(file => file.path);
         }
 
-        // Standard fields update
+        // Apply text updates
         room.roomNumber = data.roomNumber || room.roomNumber;
         room.type = data.type || room.type;
-        room.price = data.price ? Number(data.price) : room.price;
-        room.floorNumber = data.floorNumber ? Number(data.floorNumber) : room.floorNumber;
+        room.price = data.price !== undefined ? Number(data.price) : room.price;
+        room.floorNumber = data.floorNumber !== undefined ? Number(data.floorNumber) : room.floorNumber;
         room.description = data.description || room.description;
-        room.capacity = data.capacity ? Number(data.capacity) : room.capacity;
+        room.capacity = data.capacity !== undefined ? Number(data.capacity) : room.capacity;
         room.status = data.status || room.status;
-        room.numberOfBeds = data.numberOfBeds ? Number(data.numberOfBeds) : room.numberOfBeds;
-        room.bathrooms = data.bathrooms ? Number(data.bathrooms) : room.bathrooms;
+        room.numberOfBeds = data.numberOfBeds !== undefined ? Number(data.numberOfBeds) : room.numberOfBeds;
+        room.bathrooms = data.bathrooms !== undefined ? Number(data.bathrooms) : room.bathrooms;
 
         if (data.amenities !== undefined) {
             room.amenities = typeof data.amenities === 'string' ?
@@ -837,11 +841,10 @@ exports.updateRoom = async(req, res) => {
         await room.save();
         res.json(formatRoom(room));
     } catch (err) {
-        console.error("UPDATE ERROR:", err);
+        console.error("ROOM UPDATE ERROR:", err);
         res.status(400).json({ message: err.message });
     }
 };
-
 
 // DELETE ROOM
 exports.deleteRoom = async(req, res) => {

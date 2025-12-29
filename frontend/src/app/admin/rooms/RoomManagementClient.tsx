@@ -267,6 +267,8 @@ export default function RoomManagementClient() {
 
 // Replace your handleSubmit function with this:
 
+// frontend/src/app/admin/rooms/RoomManagementClient.tsx
+
 const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setUploading(true);
@@ -277,28 +279,26 @@ const handleSubmit = async (e: React.FormEvent) => {
       // text fields
       formData.append('roomNumber', form.roomNumber);
       formData.append('type', form.type);
-      formData.append('price', form.price.toString());
-      formData.append('floorNumber', form.floorNumber.toString());
+      formData.append('price', form.price);
+      formData.append('floorNumber', form.floorNumber);
       formData.append('description', form.description);
-      formData.append('capacity', form.capacity.toString());
+      formData.append('capacity', form.capacity);
       formData.append('amenities', form.amenities);
       formData.append('status', form.status);
-      formData.append('numberOfBeds', form.numberOfBeds.toString());
-      formData.append('bathrooms', form.bathrooms.toString());
+      formData.append('numberOfBeds', form.numberOfBeds);
+      formData.append('bathrooms', form.bathrooms);
       
-      // Images - Backend route uses .array('images', 3)
+      // Images - Append files to the 'images' key
       if (form.images && form.images.length > 0) {
         form.images.forEach((file) => {
           formData.append('images', file);
         });
       }
 
-      // Config with explicit Multipart header
+      // CRITICAL: REMOVED 'Content-Type' header. 
+      // Axios + FormData handles this automatically with the required boundary string.
       const config = {
         withCredentials: true,
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
       };
 
       if (editingRoom) {
@@ -315,7 +315,8 @@ const handleSubmit = async (e: React.FormEvent) => {
 
     } catch (err: any) {
       console.error("Submission error details:", err.response?.data);
-      const errorMessage = err.response?.data?.message || 'Error saving room. Check field requirements.';
+      // Display the actual error message from the backend if it exists
+      const errorMessage = err.response?.data?.message || 'Error saving room. Please try again.';
       alert(errorMessage);
     } finally {
       setUploading(false);
