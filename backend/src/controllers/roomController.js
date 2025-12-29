@@ -726,6 +726,7 @@ exports.updateRoomStatus = async(req, res) => {
 const Room = require('../models/Room.js');
 const fs = require('fs');
 const path = require('path');
+const cloudinary = require('cloudinary').v2; // Ensure SDK is imported
 
 const getFullImageUrl = (imagePath) => {
     if (!imagePath) return '';
@@ -733,7 +734,18 @@ const getFullImageUrl = (imagePath) => {
     const API_BASE = process.env.API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
     return `${API_BASE}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
 };
-
+// Helper function to upload buffer to Cloudinary
+const streamUpload = (fileBuffer) => {
+    return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream({ folder: 'rooms', resource_type: 'auto' },
+            (error, result) => {
+                if (result) resolve(result.secure_url);
+                else reject(error);
+            }
+        );
+        stream.end(fileBuffer);
+    });
+};
 const formatRoom = (room) => {
     if (!room) return null;
     const roomObj = room.toObject ? room.toObject() : room;
@@ -769,34 +781,36 @@ exports.getRoom = async(req, res) => {
 
 // ✅ CREATE ROOM
 exports.createRoom = async(req, res) => {
-    console.log("Incoming Data:", req.body); // Check logs in Render Dashboard
     try {
         const data = req.body;
-        const images = req.files ? req.files.map(file => file.path) : [];
+        const imageUrls = [];
+
+        // Manually upload each file to Cloudinary
+        if (req.files && req.files.length > 0) {
+            for (const file of req.files) {
+                const url = await streamUpload(file.buffer);
+                imageUrls.push(url);
+            }
+        }
 
         const room = new Room({
             roomNumber: data.roomNumber,
             type: data.type,
-            price: parseFloat(data.price) || 0,
-            floorNumber: parseInt(data.floorNumber) || 0,
+            price: Number(data.price) || 0,
+            floorNumber: Number(data.floorNumber) || 0,
             description: data.description,
-            images: images,
-            capacity: parseInt(data.capacity) || 1,
-            numberOfBeds: parseInt(data.numberOfBeds) || 1,
-            bathrooms: parseInt(data.bathrooms) || 1,
+            images: imageUrls, // Full Cloudinary URLs
+            capacity: Number(data.capacity) || 1,
+            numberOfBeds: Number(data.numberOfBeds) || 1,
+            bathrooms: Number(data.bathrooms) || 1,
             status: data.status || 'clean',
-            amenities: data.amenities ? data.amenities.split(',').map(a => a.trim()).filter(a => a !== "") : []
+            amenities: data.amenities ? data.amenities.split(',').map(a => a.trim()).filter(a => a) : []
         });
 
         await room.save();
-        res.status(201).json(formatRoom(room));
+        res.status(201).json(room);
     } catch (err) {
-        console.error("DETAILED CREATE ERROR:", err);
-        if (err.code === 11000) return res.status(400).json({ message: "Room number already exists" });
-        if (err.name === 'ValidationError') {
-            const messages = Object.values(err.errors).map(val => val.message);
-            return res.status(400).json({ message: messages.join(', ') });
-        }
+        console.error("MANUAL UPLOAD ERROR:", err);
         res.status(400).json({ message: err.message });
     }
 };
@@ -810,37 +824,31 @@ exports.updateRoom = async(req, res) => {
         const data = req.body;
 
         if (req.files && req.files.length > 0) {
-            // Delete legacy local files if they exist
-            room.images.forEach(img => {
-                if (img && !img.startsWith('http')) {
-                    const imgPath = path.join(__dirname, '..', 'public', img);
-                    if (fs.existsSync(imgPath)) try { fs.unlinkSync(imgPath); } catch (e) {}
-                }
-            });
-            room.images = req.files.map(file => file.path);
+            const newImageUrls = [];
+            for (const file of req.files) {
+                const url = await streamUpload(file.buffer);
+                newImageUrls.push(url);
+            }
+            room.images = newImageUrls;
         }
 
-        // Apply Updates with type safety
-        if (data.roomNumber) room.roomNumber = data.roomNumber;
-        if (data.type) room.type = data.type;
-        if (data.price !== undefined) room.price = parseFloat(data.price) || 0;
-        if (data.floorNumber !== undefined) room.floorNumber = parseInt(data.floorNumber) || 0;
-        if (data.description) room.description = data.description;
-        if (data.capacity !== undefined) room.capacity = parseInt(data.capacity) || 1;
-        if (data.numberOfBeds !== undefined) room.numberOfBeds = parseInt(data.numberOfBeds) || 1;
-        if (data.bathrooms !== undefined) room.bathrooms = parseInt(data.bathrooms) || 1;
-        if (data.status) room.status = data.status;
+        room.roomNumber = data.roomNumber || room.roomNumber;
+        room.type = data.type || room.type;
+        room.price = data.price ? Number(data.price) : room.price;
+        room.floorNumber = data.floorNumber ? Number(data.floorNumber) : room.floorNumber;
+        room.description = data.description || room.description;
+        room.capacity = data.capacity ? Number(data.capacity) : room.capacity;
+        room.status = data.status || room.status;
+        room.numberOfBeds = data.numberOfBeds ? Number(data.numberOfBeds) : room.numberOfBeds;
+        room.bathrooms = data.bathrooms ? Number(data.bathrooms) : room.bathrooms;
 
         if (data.amenities !== undefined) {
-            room.amenities = typeof data.amenities === 'string' ?
-                data.amenities.split(',').map(a => a.trim()).filter(a => a !== "") :
-                data.amenities;
+            room.amenities = data.amenities.split(',').map(a => a.trim()).filter(a => a);
         }
 
         await room.save();
-        res.json(formatRoom(room));
+        res.json(room);
     } catch (err) {
-        console.error("DETAILED UPDATE ERROR:", err);
         res.status(400).json({ message: err.message });
     }
 };

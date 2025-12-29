@@ -379,6 +379,10 @@ const createStorage = (folder) => {
         },
     });
 };
+
+// NEW METHOD: Use memory storage for rooms to prevent middleware crashes
+const roomMemoryStorage = multer.memoryStorage();
+
 const uploadAvatar = multer({ storage: createCloudinaryStorage('avatars') });
 const uploadMenu = multer({ storage: createCloudinaryStorage('menu') });
 // const uploadRoom = multer({ storage: createCloudinaryStorage('rooms') });
@@ -394,20 +398,19 @@ const uploadMenu = multer({ storage: createCloudinaryStorage('menu') });
 // });
 
 
-// ✅ Ensure Cloudinary is used for Rooms (Matching Menu Logic)
 const uploadRoom = multer({
-    storage: createCloudinaryStorage('rooms'),
-    limits: { fileSize: 10 * 1024 * 1024, files: 3 },
+    storage: roomMemoryStorage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB per file
     fileFilter: (req, file, cb) => {
-        const allowed = /jpeg|jpg|png|webp|gif/;
-        const ext = path.extname(file.originalname).toLowerCase();
-        if (allowed.test(ext)) cb(null, true);
-        else cb(new Error('Only image files allowed'));
+        if (file.mimetype.startsWith('image/')) cb(null, true);
+        else cb(new Error('Only images allowed'), false);
     }
 });
 
 const uploadNews = multer({ storage: createCloudinaryStorage('news') });
 const uploadChatFile = multer({ storage: createCloudinaryStorage('chat') });
 const uploadLogo = multer({ storage: createCloudinaryStorage('logo') });
+
+module.exports = { uploadAvatar, uploadMenu, uploadRoom, uploadNews, uploadChatFile, uploadLogo };
 
 module.exports = { uploadAvatar, uploadMenu, uploadRoom, uploadNews, uploadChatFile, uploadLogo };

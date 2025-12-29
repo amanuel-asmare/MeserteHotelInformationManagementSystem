@@ -265,9 +265,6 @@ export default function RoomManagementClient() {
   // };
 // frontend/src/app/admin/rooms/RoomManagementClient.tsx
 
-// Replace your handleSubmit function with this:
-
-// frontend/src/app/admin/rooms/RoomManagementClient.tsx
 const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setUploading(true);
@@ -275,27 +272,26 @@ const handleSubmit = async (e: React.FormEvent) => {
     try {
       const formData = new FormData();
       
-      // Append all fields as strings
-      formData.append('roomNumber', String(form.roomNumber));
+      // text fields
+      formData.append('roomNumber', form.roomNumber);
       formData.append('type', form.type);
-      formData.append('price', String(form.price));
-      formData.append('floorNumber', String(form.floorNumber));
+      formData.append('price', form.price);
+      formData.append('floorNumber', form.floorNumber);
       formData.append('description', form.description);
-      formData.append('capacity', String(form.capacity));
+      formData.append('capacity', form.capacity);
       formData.append('amenities', form.amenities);
       formData.append('status', form.status);
-      formData.append('numberOfBeds', String(form.numberOfBeds));
-      formData.append('bathrooms', String(form.bathrooms));
+      formData.append('numberOfBeds', form.numberOfBeds);
+      formData.append('bathrooms', form.bathrooms);
       
-      // Images key must match backend route 'images'
+      // Important: backend route expects field name 'images'
       if (form.images && form.images.length > 0) {
         form.images.forEach((file) => {
-          formData.append('images', file);
+          formData.append('images', file); 
         });
       }
 
-      // ⚠️ IMPORTANT: Do NOT set 'Content-Type' header manually. 
-      // Axios will set it with the correct boundary automatically.
+      // DO NOT set headers manually. Axios does it for FormData.
       const config = { withCredentials: true };
 
       if (editingRoom) {
@@ -305,16 +301,15 @@ const handleSubmit = async (e: React.FormEvent) => {
       }
 
       setShowAddModal(false);
-      setSuccessMessage(editingRoom ? t('updateSuccessfully') : t('addSuccessfully'));
+      setSuccessMessage(editingRoom ? 'Updated!' : 'Added!');
       resetForm();
       fetchRooms();
       setEditingRoom(null);
 
     } catch (err: any) {
-      // ✅ This will now catch the JSON error message from the backend
-      const backendError = err.response?.data?.message || 'Check fields and try again';
-      console.error("Submission error details:", err.response?.data);
-      alert("Error: " + backendError);
+      // Improved error detection
+      const serverMsg = err.response?.data?.message || 'Server connection error';
+      alert("Validation Error: " + serverMsg);
     } finally {
       setUploading(false);
     }
