@@ -1,5 +1,8 @@
 'use client';
+import { Switch } from 'react-native';
+
 import { useState } from 'react';
+
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../../context/AuthContext';
 import { useLanguage } from '../../../../context/LanguageContext';
@@ -12,9 +15,7 @@ import {
   X,
   Globe,
   MessageSquare,
-  Check,
-  Trash2,
-  ChevronRight
+  Check  // ← THIS WAS MISSING!
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
@@ -25,11 +26,9 @@ interface NavbarProps {
   isSidebarOpen: boolean;
   darkMode: boolean;
   toggleDarkMode: () => void;
-  notifications: any[];
-  showNotifications: boolean;
-  setShowNotifications: (v: boolean) => void;
-  onViewDetail: (notif: any) => void; 
-  onDismiss: (id: string) => void;   
+  notifications?: any[];
+  showNotifications?: boolean;
+  setShowNotifications?: (v: boolean) => void;
 }
 
 export default function Navbar({
@@ -40,8 +39,6 @@ export default function Navbar({
   notifications = [],
   showNotifications = false,
   setShowNotifications = () => {},
-  onViewDetail,
-  onDismiss,
 }: NavbarProps) {
   const { user, logout } = useAuth();
   const router = useRouter();
@@ -49,8 +46,7 @@ export default function Navbar({
 
   const [langOpen, setLangOpen] = useState(false);
 
-  // Since the backend filters for unread ones, we use length directly
-  const unreadCount = notifications.length;
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   const languages = [
     { code: 'en', name: 'English', native: 'English' },
@@ -62,8 +58,9 @@ export default function Navbar({
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
 
-          {/* LEFT: Logo + Mobile Menu Toggle */}
+          {/* LEFT: Logo + Mobile Menu */}
           <div className="flex items-center gap-4">
+            {/* Mobile Menu Toggle */}
             <button
               onClick={onMenuToggle}
               className="lg:hidden p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition"
@@ -71,15 +68,16 @@ export default function Navbar({
               {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
 
+            {/* Dynamic Hotel Logo */}
             <div className="flex items-center">
               <HotelLogo className="h-12 w-auto scale-95 origin-left" />
             </div>
           </div>
 
-          {/* RIGHT: Actions Section */}
+          {/* RIGHT: Actions */}
           <div className="flex items-center gap-3">
 
-            {/* 1. Language Switcher */}
+            {/* Language Switcher */}
             <div className="relative">
               <button
                 onClick={() => setLangOpen(!langOpen)}
@@ -106,17 +104,17 @@ export default function Navbar({
                           setLanguage(lang.code as 'en' | 'am');
                           setLangOpen(false);
                         }}
-                        className={`w-full text-left px-5 py-3 text-sm font-medium transition flex items-center justify-between ${
+                        className={`w-full text-left px-5 py-3 text-sm font-medium transition flex items-center gap-3 ${
                           language === lang.code
                             ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
                             : 'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
                         }`}
                       >
-                        <div className="flex flex-col">
-                          <span className="font-bold">{lang.native}</span>
-                          <span className="text-xs opacity-70">{lang.name}</span>
-                        </div>
                         {language === lang.code && <Check size={16} className="text-amber-600" />}
+                        <span className="ml-2">
+                          <span className="block font-bold">{lang.native}</span>
+                          <span className="text-xs opacity-70">{lang.name}</span>
+                        </span>
                       </button>
                     ))}
                   </motion.div>
@@ -124,7 +122,7 @@ export default function Navbar({
               </AnimatePresence>
             </div>
 
-            {/* 2. Theme Toggle */}
+            {/* Dark Mode Toggle */}
             <button
               onClick={toggleDarkMode}
               className="p-2.5 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-yellow-400 transition shadow-sm"
@@ -133,7 +131,7 @@ export default function Navbar({
               {darkMode ? <Sun size={20} /> : <Moon size={20} />}
             </button>
 
-            {/* 3. Notifications Dropdown */}
+            {/* Notifications */}
             <div className="relative">
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
@@ -141,12 +139,13 @@ export default function Navbar({
               >
                 <Bell size={20} />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold animate-pulse border-2 border-white dark:border-gray-800">
-                    {unreadCount}
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold animate-pulse border-2 border-white dark:border-gray-800">
+                    {unreadCount > 99 ? '99+' : unreadCount}
                   </span>
                 )}
               </button>
 
+              {/* Notification Dropdown */}
               <AnimatePresence>
                 {showNotifications && (
                   <motion.div
@@ -155,57 +154,46 @@ export default function Navbar({
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
                     className="absolute right-0 mt-4 w-80 sm:w-96 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50 origin-top-right"
                   >
-                    {/* Header */}
-                    <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-amber-50/50 dark:bg-gray-900/50">
-                      <h3 className="font-bold text-gray-900 dark:text-white">Manager Notifications</h3>
+                    <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gradient-to-r from-amber-50 to-orange-50 dark:from-gray-900 dark:to-gray-800">
+                      <h3 className="font-bold text-gray-900 dark:text-white text-lg">
+                        {t('notifications' as any) || "Notifications"}
+                      </h3>
                       {unreadCount > 0 && (
-                        <span className="text-[10px] bg-amber-600 text-white px-2 py-0.5 rounded-full font-black uppercase tracking-widest">
-                          {unreadCount} New
+                        <span className="text-xs bg-amber-600 text-white px-3 py-1 rounded-full font-bold">
+                          {unreadCount} {t('new' as any) || "New"}
                         </span>
                       )}
                     </div>
 
-                    {/* Notification List */}
                     <div className="max-h-96 overflow-y-auto">
                       {notifications.length === 0 ? (
                         <div className="p-12 text-center text-gray-400">
-                          <Bell className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                          <p className="text-sm font-medium">{t('allCaughtUp' as any) || "No new alerts"}</p>
+                          <Bell className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                          <p className="font-medium">{t('allCaughtUp' as any) || "All caught up!"}</p>
+                          <p className="text-sm mt-1">{t('noNewNotifications' as any) || "No new notifications"}</p>
                         </div>
                       ) : (
                         notifications.map((notif) => (
                           <div
                             key={notif.id}
-                            onClick={() => onViewDetail(notif)}
-                            className="p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition flex gap-4 cursor-pointer group"
+                            className={`p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition flex gap-4 ${
+                              !notif.read ? 'bg-amber-50/70 dark:bg-amber-900/20' : ''
+                            }`}
                           >
                             <div className={`w-3 h-3 mt-1.5 rounded-full flex-shrink-0 ${
                               notif.type === 'success' ? 'bg-green-500' :
                               notif.type === 'warning' ? 'bg-amber-500' :
                               'bg-blue-500'
-                            } shadow-sm`} />
-                            
+                            } shadow-lg`} />
                             <div className="flex-1">
-                              <div className="flex justify-between items-start">
-                                <p className="font-bold text-sm text-gray-900 dark:text-white leading-tight">
-                                  {notif.title}
-                                </p>
-                                <button 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onDismiss(notif.id);
-                                  }}
-                                  className="p-1 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  title="Dismiss Alert"
-                                >
-                                  <Trash2 size={14} />
-                                </button>
-                              </div>
-                              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
+                              <p className={`font-semibold text-sm ${!notif.read ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400'}`}>
+                                {notif.title}
+                              </p>
+                              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 leading-relaxed">
                                 {notif.message}
                               </p>
-                              <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2 uppercase font-semibold">
-                                {notif.time || 'Recently'}
+                              <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2 uppercase tracking-wider">
+                                {notif.time}
                               </p>
                             </div>
                           </div>
@@ -213,12 +201,11 @@ export default function Navbar({
                       )}
                     </div>
 
-                    {/* Bottom Link */}
                     <Link
                       href="/manager/chat"
-                      className="block p-4 text-center font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition text-xs border-t dark:border-gray-700 flex items-center justify-center gap-2"
+                      className="block p-4 text-center font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition text-sm flex items-center justify-center gap-2"
                     >
-                      <MessageSquare size={14} />
+                      <MessageSquare size={18} />
                       {t('openCommunicationCenter' as any) || "Open Communication Center"}
                     </Link>
                   </motion.div>
@@ -226,31 +213,32 @@ export default function Navbar({
               </AnimatePresence>
             </div>
 
-            {/* 4. User Profile Section */}
+            {/* User Profile */}
             <div className="flex items-center gap-3 pl-4 border-l border-gray-200 dark:border-gray-700">
               <div className="hidden sm:block text-right">
                 <p className="text-sm font-bold text-gray-900 dark:text-white leading-none">
                   {user?.firstName} {user?.lastName}
                 </p>
-                <p className="text-[10px] text-amber-600 dark:text-amber-400 font-black uppercase tracking-widest mt-1">
+                <p className="text-xs text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider mt-1">
                   {t('manager') || "Manager"}
                 </p>
               </div>
-              <div className="relative">
+              <div className="relative group">
                 <img
                   src={user?.profileImage || '/default-avatar.png'}
                   alt="Profile"
-                  className="w-11 h-11 rounded-full object-cover ring-4 ring-amber-500/10"
+                  className="w-11 h-11 rounded-full object-cover ring-4 ring-amber-500/20 group-hover:ring-amber-500 transition-all"
                   onError={(e) => (e.currentTarget.src = '/default-avatar.png')}
                 />
                 <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white dark:border-gray-800 rounded-full"></div>
               </div>
             </div>
 
-            {/* 5. Logout Button */}
+            {/* Logout */}
             <button
               onClick={logout}
-              className="flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 rounded-xl transition-all font-bold text-sm"
+              className="flex items-center gap-2 px-4 py-2.5 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 rounded-xl transition-all font-bold text-sm"
+              title={t('logout') || "Sign Out"}
             >
               <LogOut size={18} />
               <span className="hidden sm:inline">{t('logout') || "Logout"}</span>
