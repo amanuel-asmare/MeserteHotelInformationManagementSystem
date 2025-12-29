@@ -585,7 +585,7 @@ export default function Home() {
             {t('scanMenuQR' as any)}
           </motion.button>
 
-          {/* SEARCH BOX }
+          {/* SEARCH BOX 
           <div className="w-full max-w-5xl rounded-3xl bg-white p-4 lg:p-6 shadow-2xl ring-1 ring-black/5">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="flex flex-col text-left group">
@@ -620,9 +620,9 @@ export default function Home() {
                 </button>
               </div>
             </div>
-          </div>
+          </div>*/}
         </div>
-      </section>*/}
+      </section>
 
       {/* 2. ABOUT SECTION */}
       <section className="py-24 bg-white dark:bg-gray-950">
