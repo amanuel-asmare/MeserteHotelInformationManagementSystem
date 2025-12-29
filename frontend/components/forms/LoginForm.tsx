@@ -95,7 +95,7 @@ export default function LoginForm({ onClose, onSwitch, onSwitchToRegister }: Log
   return (
     <Modal title="" onClose={onClose}>
       {/* Added max-h-[90vh] and overflow-y-auto to ensure scrolling on small screens */}
-      <div className="max-w-md w-full mx-auto overflow-hidden rounded-3xl bg-white dark:bg-gray-900 shadow-xl min-h-[500px] max-h-[90vh] overflow-y-auto custom-scrollbar mt-30">
+      <div className="max-w-md w-full mx-auto overflow-hidden rounded-3xl bg-white dark:bg-gray-900 shadow-xl min-h-[500px] max-h-[90vh] overflow-y-auto custom-scrollbar mt-60">
         <div className="flex flex-col h-full">
           
           {/* Header */}
