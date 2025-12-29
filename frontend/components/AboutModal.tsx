@@ -33,7 +33,7 @@ export default function AboutModal({ onClose }: AboutModalProps) {
 
         {/* Image Side */}
         <div className="md:w-5/12 relative h-64 md:h-auto">
-          <img src="/hotel-hero.jpg" alt="Hotel Interior" className="w-full h-full object-cover" />
+          <img src="/hotel-background.png" alt="Hotel Interior" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-amber-900/60 to-transparent" />
           <div className="absolute bottom-8 left-8 text-white">
             <Crown className="w-12 h-12 text-amber-400 mb-2" />
