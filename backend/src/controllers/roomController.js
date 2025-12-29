@@ -740,6 +740,16 @@ const formatRoom = (room) => {
         images: (roomObj.images || []).map(getFullImageUrl)
     };
 };
+
+// ✅ GET ALL ROOMS
+exports.getAllRooms = async(req, res) => {
+    try {
+        const rooms = await Room.find().sort({ roomNumber: 1 });
+        res.json(rooms.map(formatRoom));
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
 // // GET SINGLE ROOM
 exports.getRoom = async(req, res) => {
     try {
@@ -750,16 +760,6 @@ exports.getRoom = async(req, res) => {
         res.status(500).json({ message: err.message });
     }
 };
-// ✅ GET ALL ROOMS
-exports.getAllRooms = async(req, res) => {
-    try {
-        const rooms = await Room.find().sort({ roomNumber: 1 });
-        res.json(rooms.map(formatRoom));
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
-};
-
 // ✅ CREATE ROOM
 exports.createRoom = async(req, res) => {
     try {
@@ -855,5 +855,19 @@ exports.deleteRoom = async(req, res) => {
         res.json({ message: 'Room deleted successfully' });
     } catch (err) {
         res.status(500).json({ message: err.message });
+    }
+};
+
+// ✅ UPDATE STATUS
+exports.updateRoomStatus = async(req, res) => {
+    try {
+        const { status } = req.body;
+        const room = await Room.findByIdAndUpdate(
+            req.params.id, { status }, { new: true, runValidators: true }
+        );
+        if (!room) return res.status(404).json({ message: 'Room not found' });
+        res.json(formatRoom(room));
+    } catch (err) {
+        res.status(400).json({ message: err.message });
     }
 };
