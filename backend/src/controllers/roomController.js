@@ -720,30 +720,28 @@ exports.updateRoomStatus = async(req, res) => {
     }
 }; */
 
-// backend/src/controllers/roomController.js
 const Room = require('../models/Room.js');
 const fs = require('fs');
 const path = require('path');
 
-// ✅ Robust Image URL Helper
+// ✅ Clean URL Helper
 const getFullImageUrl = (imagePath) => {
-    if (!imagePath || typeof imagePath !== 'string') return '';
-    if (imagePath.startsWith('http')) return imagePath; // Already Cloudinary
-
+    if (!imagePath) return '';
+    if (imagePath.startsWith('http')) return imagePath; // Cloudinary
     const API_BASE = process.env.API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
-    const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
-    return `${API_BASE}${cleanPath}`;
+    return `${API_BASE}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
 };
 
 const formatRoom = (room) => {
-    const roomObj = room.toObject();
+    if (!room) return null;
+    const roomObj = typeof room.toObject === 'function' ? room.toObject() : room;
     return {
         ...roomObj,
         images: (roomObj.images || []).map(getFullImageUrl)
     };
 };
 
-// ✅ GET ALL ROOMS
+// ✅ GET ALL
 exports.getAllRooms = async(req, res) => {
     try {
         const rooms = await Room.find().sort({ roomNumber: 1 });
@@ -752,7 +750,8 @@ exports.getAllRooms = async(req, res) => {
         res.status(500).json({ message: err.message });
     }
 };
-// // GET SINGLE ROOM
+
+// ✅ GET SINGLE
 exports.getRoom = async(req, res) => {
     try {
         const room = await Room.findById(req.params.id);
@@ -763,26 +762,23 @@ exports.getRoom = async(req, res) => {
     }
 };
 
-// backend/src/controllers/roomController.js
-
-// ✅ CREATE ROOM
+// ✅ CREATE
 exports.createRoom = async(req, res) => {
     try {
         const data = req.body;
-
-        // Safety check: if req.files doesn't exist, use empty array
+        // Use req.files from Multer-Cloudinary
         const images = req.files ? req.files.map(file => file.path) : [];
 
         const room = new Room({
             roomNumber: data.roomNumber,
             type: data.type,
-            price: data.price === '' ? undefined : Number(data.price),
-            floorNumber: data.floorNumber === '' ? undefined : Number(data.floorNumber),
+            price: data.price ? Number(data.price) : undefined,
+            floorNumber: data.floorNumber ? Number(data.floorNumber) : undefined,
             description: data.description,
             images: images,
-            capacity: data.capacity === '' ? undefined : Number(data.capacity),
-            numberOfBeds: data.numberOfBeds === '' ? undefined : Number(data.numberOfBeds),
-            bathrooms: data.bathrooms === '' ? undefined : Number(data.bathrooms),
+            capacity: data.capacity ? Number(data.capacity) : undefined,
+            numberOfBeds: data.numberOfBeds ? Number(data.numberOfBeds) : undefined,
+            bathrooms: data.bathrooms ? Number(data.bathrooms) : undefined,
             status: data.status || 'clean',
             amenities: data.amenities ? data.amenities.split(',').map(a => a.trim()).filter(a => a !== "") : []
         });
@@ -791,15 +787,12 @@ exports.createRoom = async(req, res) => {
         res.status(201).json(formatRoom(room));
     } catch (err) {
         console.error("CREATE ERROR:", err);
-        // Handle MongoDB unique constraint error
-        if (err.code === 11000) {
-            return res.status(400).json({ message: "Room number already exists" });
-        }
+        if (err.code === 11000) return res.status(400).json({ message: "Room number already exists" });
         res.status(400).json({ message: err.message });
     }
 };
 
-// ✅ UPDATE ROOM
+// ✅ UPDATE
 exports.updateRoom = async(req, res) => {
     try {
         const room = await Room.findById(req.params.id);
@@ -807,8 +800,9 @@ exports.updateRoom = async(req, res) => {
 
         const data = req.body;
 
+        // Image Handling
         if (req.files && req.files.length > 0) {
-            // Delete old LOCAL images only
+            // Safe cleanup for local files only (ignores http/Cloudinary links)
             room.images.forEach(img => {
                 if (img && !img.startsWith('http')) {
                     const imgPath = path.join(__dirname, '..', 'public', img);
@@ -818,17 +812,16 @@ exports.updateRoom = async(req, res) => {
             room.images = req.files.map(file => file.path);
         }
 
-        // Apply updates
+        // Field Updates
         if (data.roomNumber) room.roomNumber = data.roomNumber;
         if (data.type) room.type = data.type;
-        if (data.price !== undefined) room.price = data.price === '' ? room.price : Number(data.price);
-        if (data.floorNumber !== undefined) room.floorNumber = data.floorNumber === '' ? room.floorNumber : Number(data.floorNumber);
+        if (data.price) room.price = Number(data.price);
+        if (data.floorNumber) room.floorNumber = Number(data.floorNumber);
         if (data.description) room.description = data.description;
-        if (data.capacity !== undefined) room.capacity = data.capacity === '' ? room.capacity : Number(data.capacity);
-        if (data.numberOfBeds !== undefined) room.numberOfBeds = data.numberOfBeds === '' ? room.numberOfBeds : Number(data.numberOfBeds);
-        if (data.bathrooms !== undefined) room.bathrooms = data.bathrooms === '' ? room.bathrooms : Number(data.bathrooms);
+        if (data.capacity) room.capacity = Number(data.capacity);
+        if (data.numberOfBeds) room.numberOfBeds = Number(data.numberOfBeds);
+        if (data.bathrooms) room.bathrooms = Number(data.bathrooms);
         if (data.status) room.status = data.status;
-
         if (data.amenities !== undefined) {
             room.amenities = typeof data.amenities === 'string' ?
                 data.amenities.split(',').map(a => a.trim()).filter(a => a !== "") :
@@ -842,7 +835,8 @@ exports.updateRoom = async(req, res) => {
         res.status(400).json({ message: err.message });
     }
 };
-// ✅ DELETE ROOM
+
+// ✅ DELETE
 exports.deleteRoom = async(req, res) => {
     try {
         const room = await Room.findById(req.params.id);
@@ -851,9 +845,7 @@ exports.deleteRoom = async(req, res) => {
         room.images.forEach(img => {
             if (img && !img.startsWith('http')) {
                 const imgPath = path.join(__dirname, '..', 'public', img);
-                if (fs.existsSync(imgPath)) {
-                    try { fs.unlinkSync(imgPath); } catch (e) {}
-                }
+                if (fs.existsSync(imgPath)) try { fs.unlinkSync(imgPath); } catch (e) {}
             }
         });
 
@@ -868,9 +860,7 @@ exports.deleteRoom = async(req, res) => {
 exports.updateRoomStatus = async(req, res) => {
     try {
         const { status } = req.body;
-        const room = await Room.findByIdAndUpdate(
-            req.params.id, { status }, { new: true, runValidators: true }
-        );
+        const room = await Room.findByIdAndUpdate(req.params.id, { status }, { new: true, runValidators: true });
         if (!room) return res.status(404).json({ message: 'Room not found' });
         res.json(formatRoom(room));
     } catch (err) {

@@ -266,59 +266,58 @@ export default function RoomManagementClient() {
 // frontend/src/app/admin/rooms/RoomManagementClient.tsx
 
 const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setUploading(true);
+  e.preventDefault();
+  setUploading(true);
 
-    try {
-      const formData = new FormData();
-      
-      // Append all text fields
-      formData.append('roomNumber', form.roomNumber);
-      formData.append('type', form.type);
-      formData.append('price', form.price.toString());
-      formData.append('floorNumber', form.floorNumber.toString());
-      formData.append('description', form.description);
-      formData.append('capacity', form.capacity.toString());
-      formData.append('amenities', form.amenities);
-      formData.append('status', form.status);
-      formData.append('numberOfBeds', form.numberOfBeds.toString());
-      formData.append('bathrooms', form.bathrooms.toString());
-      
-      // Append images correctly
-      if (form.images && form.images.length > 0) {
-        form.images.forEach((file) => {
-          formData.append('images', file);
-        });
-      }
+  try {
+    const formData = new FormData();
+    
+    // 1. Append text fields
+    formData.append('roomNumber', form.roomNumber);
+    formData.append('type', form.type);
+    formData.append('price', form.price);
+    formData.append('floorNumber', form.floorNumber);
+    formData.append('description', form.description);
+    formData.append('capacity', form.capacity);
+    formData.append('amenities', form.amenities);
+    formData.append('status', form.status);
+    formData.append('numberOfBeds', form.numberOfBeds);
+    formData.append('bathrooms', form.bathrooms);
 
-      // Explicitly set headers to multipart/form-data
-      const config = {
-        withCredentials: true,
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      };
-
-      if (editingRoom) {
-        await axios.put(`${API_BASE}/api/rooms/${editingRoom._id}`, formData, config);
-      } else {
-        await axios.post(`${API_BASE}/api/rooms`, formData, config);
-      }
-
-      setShowAddModal(false);
-      setSuccessMessage(editingRoom ? t('updateSuccessfully') : t('addSuccessfully'));
-      resetForm();
-      fetchRooms();
-      setEditingRoom(null);
-
-    } catch (err: any) {
-      console.error("Submission error:", err);
-      // Show actual error message from backend if available
-      const msg = err.response?.data?.message || 'Error saving room';
-      alert(msg);
-    } finally {
-      setUploading(false);
+    // 2. Append images - Ensure key matches backend 'images'
+    if (form.images && form.images.length > 0) {
+      form.images.forEach((file) => {
+        formData.append('images', file);
+      });
     }
+
+    // 3. Set explicit headers for Multer
+    const config = {
+      withCredentials: true,
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    };
+
+    if (editingRoom) {
+      await axios.put(`${API_BASE}/api/rooms/${editingRoom._id}`, formData, config);
+    } else {
+      await axios.post(`${API_BASE}/api/rooms`, formData, config);
+    }
+
+    setShowAddModal(false);
+    setSuccessMessage(editingRoom ? t('updateSuccessfully') : t('addSuccessfully'));
+    resetForm();
+    fetchRooms();
+    setEditingRoom(null);
+
+  } catch (err: any) {
+    console.error("Submission error details:", err.response?.data);
+    const errorMessage = err.response?.data?.message || 'Error saving room. Please check all fields.';
+    alert(errorMessage);
+  } finally {
+    setUploading(false);
+  }
 };
   const resetForm = () => {
     setForm({
