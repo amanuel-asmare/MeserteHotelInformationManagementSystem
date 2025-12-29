@@ -638,7 +638,7 @@ export default function Home() {
                 <Image src="/hotel-background.png" width={700} height={900} alt="Meseret Experience" className="w-full h-[400px] lg:h-[550px] object-cover" />
               </div>
               <div className="absolute -bottom-10 -right-10 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl -z-10" />
-              <div className="relative top-10 -left-10 p-6 bg-amber-600 rounded-3xl shadow-2xl hidden md:block text-white">
+              <div className="absolute top-10 -left-10 p-6 bg-amber-600 rounded-3xl shadow-2xl hidden md:block text-white">
                 <Award size={40} className="mb-2" />
                 <p className="text-4xl font-black">12+</p>
                 <p className="text-[10px] uppercase font-black tracking-widest opacity-80 ">{t('yearsExcellence' as any)}</p>
