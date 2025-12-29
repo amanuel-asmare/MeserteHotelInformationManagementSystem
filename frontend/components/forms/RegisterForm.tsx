@@ -204,7 +204,7 @@ export default function RegisterForm({ onClose, forceRole, onSwitchToLogin, onSw
   return (
     <Modal
       title="" 
-      onClose={handleClose}
+      onClose={handleClose} 
     >
       <div className="max-h-[90vh] w-full max-w-2xl flex flex-col overflow-hidden rounded-3xl bg-white dark:bg-gray-900 shadow-2xl p-0 border border-amber-100 dark:border-gray-800 mx-auto mt-35">
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col h-full overflow-hidden relative">
