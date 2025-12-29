@@ -751,7 +751,16 @@ exports.getAllRooms = async(req, res) => {
         res.status(500).json({ message: err.message });
     }
 };
-
+// // GET SINGLE ROOM
+exports.getRoom = async(req, res) => {
+    try {
+        const room = await Room.findById(req.params.id);
+        if (!room) return res.status(404).json({ message: 'Room not found' });
+        res.json(formatRoom(room));
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
 // ✅ CREATE ROOM
 exports.createRoom = async(req, res) => {
     try {
