@@ -394,7 +394,7 @@ const uploadMenu = multer({ storage: createCloudinaryStorage('menu') });
 // });
 
 
-// ✅ FIX: Use Cloudinary for Rooms, matching Menu logic
+// Ensure this block is at the top of upload.js
 const uploadRoom = multer({
     storage: createCloudinaryStorage('rooms'),
     limits: { fileSize: 10 * 1024 * 1024, files: 3 },
