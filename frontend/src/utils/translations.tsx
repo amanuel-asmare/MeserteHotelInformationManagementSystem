@@ -1025,7 +1025,11 @@ trackYourDuty: "Track Your Duty with Royal Precision",
     commitmentDesc: "To provide seamless, digital-first hospitality while maintaining the highest standards of safety and comfort.",
 
   
-
+// --- ENGLISH ---
+certifiedTitle: "Certified Excellence",
+certifiedDesc: "Guaranteed international safety and service standards",
+supportTitle: "Professional Support",
+supportDesc: "Our dedicated team is available 24/7 for your needs",
    
     // --- FOOTER ---
     footerBio: "Experience the heights of luxury and the warmth of Ethiopian hospitality at Meseret Hotel. Your sanctuary in Woldia.",
@@ -2101,7 +2105,11 @@ trackYourDuty: "የተከበሩ ሰራተኞች – የሥራ መልክ�ዎን
   
     privacyPolicy: "የግል መረጃ ጥበቃ",
     termsOfService: "የአገልግሎት ደንቦች",
-
+// --- AMHARIC ---
+certifiedTitle: "የተረጋገጠ ጥራት",
+certifiedDesc: "ደህንነቱ የተጠበቀ እና ዓለም አቀፍ ደረጃውን የጠበቀ አገልግሎት",
+supportTitle: "የማይቋረጥ ድጋፍ",
+supportDesc: "ለእርሶ ሁልጊዜም ዝግጁ የሆኑ የሰለጠኑ ባለሙያዎች",
   
 }
 };
