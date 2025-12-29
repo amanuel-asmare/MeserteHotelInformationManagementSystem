@@ -228,7 +228,43 @@ export default function RoomManagementClient() {
     setCurrentPage(1);
   }, [searchTerm, typeFilter, availabilityFilter]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // const handleSubmit = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   const formData = new FormData();
+  //   formData.append('roomNumber', form.roomNumber);
+  //   formData.append('type', form.type);
+  //   formData.append('price', form.price);
+  //   formData.append('floorNumber', form.floorNumber);
+  //   formData.append('description', form.description);
+  //   formData.append('capacity', form.capacity);
+  //   formData.append('amenities', form.amenities);
+  //   formData.append('status', form.status);
+  //   formData.append('numberOfBeds', form.numberOfBeds);
+  //   formData.append('bathrooms', form.bathrooms);
+  //   form.images.forEach(file => formData.append('images', file));
+
+  //   try {
+  //     setUploading(true);
+  //     if (editingRoom) {
+  //       await axios.put(`${API_BASE}/api/rooms/${editingRoom._id}`, formData, { withCredentials: true });
+  //     } else {
+  //       await axios.post(`${API_BASE}/api/rooms`, formData, { withCredentials: true });
+  //     }
+
+  //     setShowAddModal(false);
+  //     setSuccessMessage(editingRoom ? t('updateSuccessfully') : t('addSuccessfully'));
+  //     resetForm();
+  //     fetchRooms();
+  //     setEditingRoom(null);
+
+  //   } catch (err: any) {
+  //     alert(err.response?.data?.message || 'Error saving room');
+  //   } finally {
+  //     setUploading(false);
+  //   }
+  // };
+// Inside RoomManagementClient.tsx
+const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData();
     formData.append('roomNumber', form.roomNumber);
@@ -241,7 +277,11 @@ export default function RoomManagementClient() {
     formData.append('status', form.status);
     formData.append('numberOfBeds', form.numberOfBeds);
     formData.append('bathrooms', form.bathrooms);
-    form.images.forEach(file => formData.append('images', file));
+    
+    // Only append images if files were selected
+    if (form.images && form.images.length > 0) {
+      form.images.forEach(file => formData.append('images', file));
+    }
 
     try {
       setUploading(true);
@@ -258,12 +298,14 @@ export default function RoomManagementClient() {
       setEditingRoom(null);
 
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Error saving room');
+      // ✅ FIX: Show the specific error from the backend instead of generic alert
+      const errorMessage = err.response?.data?.message || 'Error saving room';
+      alert(errorMessage);
+      console.error("Submission error:", err);
     } finally {
       setUploading(false);
     }
-  };
-
+};
   const resetForm = () => {
     setForm({
       roomNumber: '',

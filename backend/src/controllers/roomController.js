@@ -720,17 +720,19 @@ exports.updateRoomStatus = async(req, res) => {
     }
 }; */
 
+// backend/src/controllers/roomController.js
 const Room = require('../models/Room.js');
 const fs = require('fs');
 const path = require('path');
 
-// ✅ Fixed Helper: Cloudinary gives full URLs, so we only prefix local paths
+// ✅ Robust Image URL Helper
 const getFullImageUrl = (imagePath) => {
     if (!imagePath || typeof imagePath !== 'string') return '';
-    if (imagePath.startsWith('http')) return imagePath;
+    if (imagePath.startsWith('http')) return imagePath; // Already Cloudinary
 
     const API_BASE = process.env.API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
-    return `${API_BASE}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
+    const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+    return `${API_BASE}${cleanPath}`;
 };
 
 const formatRoom = (room) => {
@@ -760,17 +762,18 @@ exports.getRoom = async(req, res) => {
         res.status(500).json({ message: err.message });
     }
 };
+
 // ✅ CREATE ROOM
 exports.createRoom = async(req, res) => {
     try {
         const data = req.body;
-        // Get Cloudinary URLs from multer
+        // Cloudinary URLs come from req.files via multer-storage-cloudinary
         const images = req.files ? req.files.map(file => file.path) : [];
 
         const room = new Room({
             roomNumber: data.roomNumber,
             type: data.type,
-            // Use Number() but handle empty strings to trigger schema validation
+            // Parse numbers safely. If string is empty, use undefined to trigger 'Required' validation
             price: data.price === '' ? undefined : Number(data.price),
             floorNumber: data.floorNumber === '' ? undefined : Number(data.floorNumber),
             description: data.description,
@@ -779,14 +782,14 @@ exports.createRoom = async(req, res) => {
             numberOfBeds: data.numberOfBeds === '' ? undefined : Number(data.numberOfBeds),
             bathrooms: data.bathrooms === '' ? undefined : Number(data.bathrooms),
             status: data.status || 'clean',
-            // Correctly parse amenities string to array
+            // Convert "wifi, tv" string to array
             amenities: data.amenities ? data.amenities.split(',').map(a => a.trim()).filter(a => a !== "") : []
         });
 
         await room.save();
         res.status(201).json(formatRoom(room));
     } catch (err) {
-        console.error("CREATE ERROR:", err);
+        console.error("ROOM CREATE ERROR:", err);
         // Handle Duplicate Room Number
         if (err.code === 11000) return res.status(400).json({ message: "Room number already exists" });
         res.status(400).json({ message: err.message });
@@ -801,19 +804,21 @@ exports.updateRoom = async(req, res) => {
 
         const data = req.body;
 
-        // ✅ Handle Image Re-upload (Replace all if new ones provided)
+        // ✅ Handle Image Re-upload (Replace all if new ones are provided)
         if (req.files && req.files.length > 0) {
-            // Safe cleanup for local legacy files
+            // Safe cleanup for local legacy files only
             room.images.forEach(img => {
                 if (img && !img.startsWith('http')) {
                     const imgPath = path.join(__dirname, '..', 'public', img);
-                    if (fs.existsSync(imgPath)) try { fs.unlinkSync(imgPath); } catch (e) {}
+                    if (fs.existsSync(imgPath)) {
+                        try { fs.unlinkSync(imgPath); } catch (e) {}
+                    }
                 }
             });
             room.images = req.files.map(file => file.path);
         }
 
-        // Update fields safely
+        // Update standard fields
         if (data.roomNumber) room.roomNumber = data.roomNumber;
         if (data.type) room.type = data.type;
         if (data.price !== undefined) room.price = data.price === '' ? undefined : Number(data.price);
@@ -824,6 +829,7 @@ exports.updateRoom = async(req, res) => {
         if (data.bathrooms !== undefined) room.bathrooms = data.bathrooms === '' ? undefined : Number(data.bathrooms);
         if (data.status) room.status = data.status;
 
+        // Handle amenities conversion
         if (data.amenities !== undefined) {
             room.amenities = typeof data.amenities === 'string' ?
                 data.amenities.split(',').map(a => a.trim()).filter(a => a !== "") :
@@ -833,7 +839,7 @@ exports.updateRoom = async(req, res) => {
         await room.save();
         res.json(formatRoom(room));
     } catch (err) {
-        console.error("UPDATE ERROR:", err);
+        console.error("ROOM UPDATE ERROR:", err);
         res.status(400).json({ message: err.message });
     }
 };
@@ -847,7 +853,9 @@ exports.deleteRoom = async(req, res) => {
         room.images.forEach(img => {
             if (img && !img.startsWith('http')) {
                 const imgPath = path.join(__dirname, '..', 'public', img);
-                if (fs.existsSync(imgPath)) try { fs.unlinkSync(imgPath); } catch (e) {}
+                if (fs.existsSync(imgPath)) {
+                    try { fs.unlinkSync(imgPath); } catch (e) {}
+                }
             }
         });
 
