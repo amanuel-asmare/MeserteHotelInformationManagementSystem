@@ -585,7 +585,7 @@ export default function Home() {
             {t('scanMenuQR' as any)}
           </motion.button>
 
-          {/* SEARCH BOX */}
+          {/* SEARCH BOX }
           <div className="w-full max-w-5xl rounded-3xl bg-white p-4 lg:p-6 shadow-2xl ring-1 ring-black/5">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="flex flex-col text-left group">
@@ -622,7 +622,7 @@ export default function Home() {
             </div>
           </div>
         </div>
-      </section>
+      </section>*/}
 
       {/* 2. ABOUT SECTION */}
       <section className="py-24 bg-white dark:bg-gray-950">
@@ -638,7 +638,7 @@ export default function Home() {
                 <Image src="/hotel-background.png" width={700} height={900} alt="Meseret Experience" className="w-full h-[400px] lg:h-[550px] object-cover" />
               </div>
               <div className="absolute -bottom-10 -right-10 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl -z-10" />
-              <div className="absolute top-10 -left-10 p-6 bg-amber-600 rounded-3xl shadow-2xl hidden md:block text-white">
+              <div className="relative top-10 -left-10 p-6 bg-amber-600 rounded-3xl shadow-2xl hidden md:block text-white">
                 <Award size={40} className="mb-2" />
                 <p className="text-4xl font-black">12+</p>
                 <p className="text-[10px] uppercase font-black tracking-widest opacity-80 ">{t('yearsExcellence' as any)}</p>
