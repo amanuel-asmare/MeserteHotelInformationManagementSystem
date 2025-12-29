@@ -615,6 +615,24 @@ exports.updateRoom = async(req, res) => {
     } catch (err) {
         res.status(400).json({ message: err.message });
     }
+};
+// // DELETE ROOM
+exports.deleteRoom = async(req, res) => {
+    try {
+        const room = await Room.findById(req.params.id);
+        if (!room) return res.status(404).json({ message: 'Room not found' });
+
+        // Delete images
+        room.images.forEach(img => {
+            const imgPath = path.join(__dirname, '..', 'public', img);
+            if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+        });
+
+        await Room.deleteOne({ _id: req.params.id });
+        res.json({ message: 'Room deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
 };*/
 
 // ✅ UPDATE ROOM
@@ -658,25 +676,6 @@ exports.updateRoom = async(req, res) => {
         res.status(400).json({ message: err.message });
     }
 };
-/*
-// // DELETE ROOM
-exports.deleteRoom = async(req, res) => {
-    try {
-        const room = await Room.findById(req.params.id);
-        if (!room) return res.status(404).json({ message: 'Room not found' });
-
-        // Delete images
-        room.images.forEach(img => {
-            const imgPath = path.join(__dirname, '..', 'public', img);
-            if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
-        });
-
-        await Room.deleteOne({ _id: req.params.id });
-        res.json({ message: 'Room deleted successfully' });
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
-};*/
 
 // ✅ DELETE ROOM
 exports.deleteRoom = async(req, res) => {
@@ -718,6 +717,4 @@ exports.updateRoomStatus = async(req, res) => {
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
-};
-}
 };
