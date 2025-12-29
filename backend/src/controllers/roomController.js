@@ -578,7 +578,7 @@ exports.createRoom = async(req, res) => {
         res.status(400).json({ message: err.message });
     }
 };
-// // UPDATE ROOM
+/*// // UPDATE ROOM
 exports.updateRoom = async(req, res) => {
     const { roomNumber, type, price, availability, floorNumber, description, capacity, amenities, status, numberOfBeds, bathrooms } = req.body;
 
@@ -615,7 +615,50 @@ exports.updateRoom = async(req, res) => {
     } catch (err) {
         res.status(400).json({ message: err.message });
     }
+};*/
+
+// ✅ UPDATE ROOM
+exports.updateRoom = async(req, res) => {
+    const { roomNumber, type, price, availability, floorNumber, description, capacity, amenities, status, numberOfBeds, bathrooms } = req.body;
+
+    try {
+        const room = await Room.findById(req.params.id);
+        if (!room) return res.status(404).json({ message: 'Room not found' });
+
+        // ✅ HANDLE IMAGES SAFELY
+        if (req.files && req.files.length > 0) {
+            // Only try to delete from local disk if it's NOT a Cloudinary URL
+            room.images.forEach(img => {
+                if (img && !img.startsWith('http')) {
+                    const imgPath = path.join(__dirname, '..', 'public', img);
+                    if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+                }
+            });
+            // Update with new Cloudinary URLs
+            room.images = req.files.map(file => file.path);
+        }
+
+        // Update other fields
+        room.roomNumber = roomNumber || room.roomNumber;
+        room.type = type || room.type;
+        room.price = price ? Number(price) : room.price;
+        room.availability = availability !== undefined ? availability : room.availability;
+        room.floorNumber = floorNumber ? Number(floorNumber) : room.floorNumber;
+        room.description = description || room.description;
+        room.capacity = capacity ? Number(capacity) : room.capacity;
+        room.amenities = amenities ? (typeof amenities === 'string' ? amenities.split(',').map(a => a.trim()) : amenities) : room.amenities;
+        room.status = status || room.status;
+        room.numberOfBeds = numberOfBeds ? Number(numberOfBeds) : room.numberOfBeds;
+        room.bathrooms = bathrooms ? Number(bathrooms) : room.bathrooms;
+
+        await room.save();
+        res.json(formatRoom(room));
+    } catch (err) {
+        console.error("Update Error:", err);
+        res.status(400).json({ message: err.message });
+    }
 };
+/*
 // // DELETE ROOM
 exports.deleteRoom = async(req, res) => {
     try {
@@ -626,6 +669,27 @@ exports.deleteRoom = async(req, res) => {
         room.images.forEach(img => {
             const imgPath = path.join(__dirname, '..', 'public', img);
             if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+        });
+
+        await Room.deleteOne({ _id: req.params.id });
+        res.json({ message: 'Room deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};*/
+
+// ✅ DELETE ROOM
+exports.deleteRoom = async(req, res) => {
+    try {
+        const room = await Room.findById(req.params.id);
+        if (!room) return res.status(404).json({ message: 'Room not found' });
+
+        // ✅ SAFE DELETE
+        room.images.forEach(img => {
+            if (img && !img.startsWith('http')) {
+                const imgPath = path.join(__dirname, '..', 'public', img);
+                if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+            }
         });
 
         await Room.deleteOne({ _id: req.params.id });
@@ -654,4 +718,6 @@ exports.updateRoomStatus = async(req, res) => {
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
+};
+}
 };
