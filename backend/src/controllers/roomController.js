@@ -763,17 +763,19 @@ exports.getRoom = async(req, res) => {
     }
 };
 
+// backend/src/controllers/roomController.js
+
 // ✅ CREATE ROOM
 exports.createRoom = async(req, res) => {
     try {
         const data = req.body;
-        // Cloudinary URLs come from req.files via multer-storage-cloudinary
+
+        // Safety check: if req.files doesn't exist, use empty array
         const images = req.files ? req.files.map(file => file.path) : [];
 
         const room = new Room({
             roomNumber: data.roomNumber,
             type: data.type,
-            // Parse numbers safely. If string is empty, use undefined to trigger 'Required' validation
             price: data.price === '' ? undefined : Number(data.price),
             floorNumber: data.floorNumber === '' ? undefined : Number(data.floorNumber),
             description: data.description,
@@ -782,16 +784,17 @@ exports.createRoom = async(req, res) => {
             numberOfBeds: data.numberOfBeds === '' ? undefined : Number(data.numberOfBeds),
             bathrooms: data.bathrooms === '' ? undefined : Number(data.bathrooms),
             status: data.status || 'clean',
-            // Convert "wifi, tv" string to array
             amenities: data.amenities ? data.amenities.split(',').map(a => a.trim()).filter(a => a !== "") : []
         });
 
         await room.save();
         res.status(201).json(formatRoom(room));
     } catch (err) {
-        console.error("ROOM CREATE ERROR:", err);
-        // Handle Duplicate Room Number
-        if (err.code === 11000) return res.status(400).json({ message: "Room number already exists" });
+        console.error("CREATE ERROR:", err);
+        // Handle MongoDB unique constraint error
+        if (err.code === 11000) {
+            return res.status(400).json({ message: "Room number already exists" });
+        }
         res.status(400).json({ message: err.message });
     }
 };
@@ -804,32 +807,28 @@ exports.updateRoom = async(req, res) => {
 
         const data = req.body;
 
-        // ✅ Handle Image Re-upload (Replace all if new ones are provided)
         if (req.files && req.files.length > 0) {
-            // Safe cleanup for local legacy files only
+            // Delete old LOCAL images only
             room.images.forEach(img => {
                 if (img && !img.startsWith('http')) {
                     const imgPath = path.join(__dirname, '..', 'public', img);
-                    if (fs.existsSync(imgPath)) {
-                        try { fs.unlinkSync(imgPath); } catch (e) {}
-                    }
+                    if (fs.existsSync(imgPath)) try { fs.unlinkSync(imgPath); } catch (e) {}
                 }
             });
             room.images = req.files.map(file => file.path);
         }
 
-        // Update standard fields
+        // Apply updates
         if (data.roomNumber) room.roomNumber = data.roomNumber;
         if (data.type) room.type = data.type;
-        if (data.price !== undefined) room.price = data.price === '' ? undefined : Number(data.price);
-        if (data.floorNumber !== undefined) room.floorNumber = data.floorNumber === '' ? undefined : Number(data.floorNumber);
+        if (data.price !== undefined) room.price = data.price === '' ? room.price : Number(data.price);
+        if (data.floorNumber !== undefined) room.floorNumber = data.floorNumber === '' ? room.floorNumber : Number(data.floorNumber);
         if (data.description) room.description = data.description;
-        if (data.capacity !== undefined) room.capacity = data.capacity === '' ? undefined : Number(data.capacity);
-        if (data.numberOfBeds !== undefined) room.numberOfBeds = data.numberOfBeds === '' ? undefined : Number(data.numberOfBeds);
-        if (data.bathrooms !== undefined) room.bathrooms = data.bathrooms === '' ? undefined : Number(data.bathrooms);
+        if (data.capacity !== undefined) room.capacity = data.capacity === '' ? room.capacity : Number(data.capacity);
+        if (data.numberOfBeds !== undefined) room.numberOfBeds = data.numberOfBeds === '' ? room.numberOfBeds : Number(data.numberOfBeds);
+        if (data.bathrooms !== undefined) room.bathrooms = data.bathrooms === '' ? room.bathrooms : Number(data.bathrooms);
         if (data.status) room.status = data.status;
 
-        // Handle amenities conversion
         if (data.amenities !== undefined) {
             room.amenities = typeof data.amenities === 'string' ?
                 data.amenities.split(',').map(a => a.trim()).filter(a => a !== "") :
@@ -839,11 +838,10 @@ exports.updateRoom = async(req, res) => {
         await room.save();
         res.json(formatRoom(room));
     } catch (err) {
-        console.error("ROOM UPDATE ERROR:", err);
+        console.error("UPDATE ERROR:", err);
         res.status(400).json({ message: err.message });
     }
 };
-
 // ✅ DELETE ROOM
 exports.deleteRoom = async(req, res) => {
     try {

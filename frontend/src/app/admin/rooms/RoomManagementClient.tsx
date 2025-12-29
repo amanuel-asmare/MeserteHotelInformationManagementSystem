@@ -263,32 +263,46 @@ export default function RoomManagementClient() {
   //     setUploading(false);
   //   }
   // };
-// Inside RoomManagementClient.tsx
+// frontend/src/app/admin/rooms/RoomManagementClient.tsx
+
 const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const formData = new FormData();
-    formData.append('roomNumber', form.roomNumber);
-    formData.append('type', form.type);
-    formData.append('price', form.price);
-    formData.append('floorNumber', form.floorNumber);
-    formData.append('description', form.description);
-    formData.append('capacity', form.capacity);
-    formData.append('amenities', form.amenities);
-    formData.append('status', form.status);
-    formData.append('numberOfBeds', form.numberOfBeds);
-    formData.append('bathrooms', form.bathrooms);
-    
-    // Only append images if files were selected
-    if (form.images && form.images.length > 0) {
-      form.images.forEach(file => formData.append('images', file));
-    }
+    setUploading(true);
 
     try {
-      setUploading(true);
+      const formData = new FormData();
+      
+      // Append all text fields
+      formData.append('roomNumber', form.roomNumber);
+      formData.append('type', form.type);
+      formData.append('price', form.price.toString());
+      formData.append('floorNumber', form.floorNumber.toString());
+      formData.append('description', form.description);
+      formData.append('capacity', form.capacity.toString());
+      formData.append('amenities', form.amenities);
+      formData.append('status', form.status);
+      formData.append('numberOfBeds', form.numberOfBeds.toString());
+      formData.append('bathrooms', form.bathrooms.toString());
+      
+      // Append images correctly
+      if (form.images && form.images.length > 0) {
+        form.images.forEach((file) => {
+          formData.append('images', file);
+        });
+      }
+
+      // Explicitly set headers to multipart/form-data
+      const config = {
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      };
+
       if (editingRoom) {
-        await axios.put(`${API_BASE}/api/rooms/${editingRoom._id}`, formData, { withCredentials: true });
+        await axios.put(`${API_BASE}/api/rooms/${editingRoom._id}`, formData, config);
       } else {
-        await axios.post(`${API_BASE}/api/rooms`, formData, { withCredentials: true });
+        await axios.post(`${API_BASE}/api/rooms`, formData, config);
       }
 
       setShowAddModal(false);
@@ -298,10 +312,10 @@ const handleSubmit = async (e: React.FormEvent) => {
       setEditingRoom(null);
 
     } catch (err: any) {
-      // ✅ FIX: Show the specific error from the backend instead of generic alert
-      const errorMessage = err.response?.data?.message || 'Error saving room';
-      alert(errorMessage);
       console.error("Submission error:", err);
+      // Show actual error message from backend if available
+      const msg = err.response?.data?.message || 'Error saving room';
+      alert(msg);
     } finally {
       setUploading(false);
     }
