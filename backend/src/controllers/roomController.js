@@ -727,10 +727,9 @@ const Room = require('../models/Room.js');
 const fs = require('fs');
 const path = require('path');
 
-// Helper to format room data
 const getFullImageUrl = (imagePath) => {
     if (!imagePath) return '';
-    if (imagePath.startsWith('http')) return imagePath; // Cloudinary
+    if (imagePath.startsWith('http')) return imagePath;
     const API_BASE = process.env.API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
     return `${API_BASE}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
 };
@@ -764,25 +763,28 @@ exports.getRoom = async(req, res) => {
         res.status(500).json({ message: err.message });
     }
 };
-// CREATE ROOM
+
+// ✅ CREATE ROOM (Mirrored logic from Menu)
 exports.createRoom = async(req, res) => {
     try {
-        const data = req.body;
-        // Safe check for images from Multer
+        const { roomNumber, type, price, floorNumber, description, capacity, amenities, status, numberOfBeds, bathrooms } = req.body;
+
+        // Get Cloudinary URLs from multer-storage-cloudinary
         const images = req.files ? req.files.map(file => file.path) : [];
 
         const room = new Room({
-            roomNumber: data.roomNumber,
-            type: data.type,
-            price: Number(data.price),
-            floorNumber: Number(data.floorNumber),
-            description: data.description,
-            images: images,
-            capacity: Number(data.capacity),
-            numberOfBeds: Number(data.numberOfBeds),
-            bathrooms: Number(data.bathrooms),
-            status: data.status || 'clean',
-            amenities: data.amenities ? data.amenities.split(',').map(a => a.trim()).filter(a => a !== "") : []
+            roomNumber,
+            type,
+            price: Number(price) || 0,
+            floorNumber: Number(floorNumber) || 0,
+            description,
+            images,
+            capacity: Number(capacity) || 1,
+            status: status || 'clean',
+            numberOfBeds: Number(numberOfBeds) || 1,
+            bathrooms: Number(bathrooms) || 1,
+            // Safe split for amenities
+            amenities: amenities ? (typeof amenities === 'string' ? amenities.split(',').map(a => a.trim()) : amenities) : []
         });
 
         await room.save();
@@ -794,7 +796,7 @@ exports.createRoom = async(req, res) => {
     }
 };
 
-// UPDATE ROOM
+// ✅ UPDATE ROOM (Mirrored logic from Menu)
 exports.updateRoom = async(req, res) => {
     try {
         const room = await Room.findById(req.params.id);
@@ -802,28 +804,29 @@ exports.updateRoom = async(req, res) => {
 
         const data = req.body;
 
-        // Image Re-upload Logic
+        // Handle Image Update
         if (req.files && req.files.length > 0) {
-            // Delete legacy local files if they exist (skips http/cloudinary)
+            // Delete old LOCAL files (if any)
             room.images.forEach(img => {
                 if (img && !img.startsWith('http')) {
                     const imgPath = path.join(__dirname, '..', 'public', img);
                     if (fs.existsSync(imgPath)) try { fs.unlinkSync(imgPath); } catch (e) {}
                 }
             });
+            // Update with new Cloudinary paths
             room.images = req.files.map(file => file.path);
         }
 
-        // Apply Text Field Updates
-        if (data.roomNumber) room.roomNumber = data.roomNumber;
-        if (data.type) room.type = data.type;
-        if (data.price) room.price = Number(data.price);
-        if (data.floorNumber) room.floorNumber = Number(data.floorNumber);
-        if (data.description) room.description = data.description;
-        if (data.capacity) room.capacity = Number(data.capacity);
-        if (data.numberOfBeds) room.numberOfBeds = Number(data.numberOfBeds);
-        if (data.bathrooms) room.bathrooms = Number(data.bathrooms);
-        if (data.status) room.status = data.status;
+        // Standard fields update
+        room.roomNumber = data.roomNumber || room.roomNumber;
+        room.type = data.type || room.type;
+        room.price = data.price ? Number(data.price) : room.price;
+        room.floorNumber = data.floorNumber ? Number(data.floorNumber) : room.floorNumber;
+        room.description = data.description || room.description;
+        room.capacity = data.capacity ? Number(data.capacity) : room.capacity;
+        room.status = data.status || room.status;
+        room.numberOfBeds = data.numberOfBeds ? Number(data.numberOfBeds) : room.numberOfBeds;
+        room.bathrooms = data.bathrooms ? Number(data.bathrooms) : room.bathrooms;
 
         if (data.amenities !== undefined) {
             room.amenities = typeof data.amenities === 'string' ?
@@ -838,6 +841,7 @@ exports.updateRoom = async(req, res) => {
         res.status(400).json({ message: err.message });
     }
 };
+
 
 // DELETE ROOM
 exports.deleteRoom = async(req, res) => {
