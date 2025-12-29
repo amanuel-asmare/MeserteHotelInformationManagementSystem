@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { 
   Menu, X, Globe, LogOut, Sun, Moon, Bell, CheckCircle, 
-  Info, Trash2, Calendar, Loader2, MessageSquare, ShoppingCart, BedDouble 
+  Info, Trash2, Calendar, MessageSquare, ShoppingCart, BedDouble 
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '../../../context/AuthContext';
@@ -16,17 +16,23 @@ import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
 
+const getImageUrl = (path: string | undefined) => {
+  if (!path) return '/default-avatar.png';
+  if (path.startsWith('http')) return path;
+  return `${API_URL}${path}`;
+};
+
 export default function AdminLayoutClient({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const { language, setLanguage, t } = useLanguage();
   const pathname = usePathname();
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [langOpen, setLangOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [selectedNotification, setSelectedNotification] = useState<any>(null);
-  const [loadingNotifs, setLoadingNotifs] = useState(false);
 
   // --- Theme ---
   useEffect(() => {
@@ -42,30 +48,28 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
     document.documentElement.classList.toggle('dark', newMode);
   };
 
-  // --- Notifications Fetching ---
+  // --- Notifications Logic ---
   const fetchNotifications = useCallback(async () => {
     try {
       const res = await axios.get(`${API_URL}/api/dashboard/notifications`, { withCredentials: true });
       setNotifications(res.data);
     } catch (err) {
-      console.error("Error fetching notifications", err);
+      console.error("Error", err);
     }
   }, []);
 
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 10000); // 10s Poll
+    const interval = setInterval(fetchNotifications, 10000);
     return () => clearInterval(interval);
   }, [fetchNotifications]);
 
-  // --- Permanent Dismissal ---
   const dismissPermanently = async (id: string) => {
-    // Optimistic Update
     setNotifications(prev => prev.filter(n => n.id !== id));
     try {
       await axios.delete(`${API_URL}/api/dashboard/notifications/${id}`, { withCredentials: true });
     } catch (err) {
-      fetchNotifications(); // Rollback on error
+      fetchNotifications();
     }
   };
 
@@ -75,30 +79,13 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
     dismissPermanently(notif.id);
   };
 
-  // Helper for UI icons
   const getIcon = (type: string) => {
     if (type === 'success') return <BedDouble size={16} />;
     if (type === 'warning') return <MessageSquare size={16} />;
     return <ShoppingCart size={16} />;
   };
 
-  const menuItems = [
-    { icon: 'LayoutDashboard', label: t('dashboard'), href: '/admin' },
-    { icon: 'BedDouble', label: t('roomManagement'), href: '/admin/rooms' },
-    { icon: 'Users', label: t('manageStaff'), href: '/admin/staff' },
-    { icon: 'MenuSquare', label: t('menuManagement'), href: '/admin/menu' },
-    { icon: 'ShoppingCart', label: t('foodOrders'), href: '/admin/food-orders' },
-    { icon: 'FileBarChart', label: t('generateReport'), href: '/admin/reports' },
-    { icon: 'UploadCloud', label: t('News'), href: '/admin/upload-docs' },
-    { icon: 'FileText', label: t('feedback'), href: '/admin/feedback' },
-    { icon: 'MessageCircle', label: t('chat'), href: '/admin/chat' },
-    { icon: 'Banknote', label: t('pyroll'), href: '/admin/payroll' },
-    { icon: 'Settings', label: t('HotelLego'), href: '/admin/settings/settingConfigration' },
-    { icon: 'ShoppingBag', label: t('purchases'), href: '/admin/purchases' },
-    { icon: 'Receipt', label: t('expenses'), href: '/admin/expenses' },
-    { icon: 'PieChart', label: t('financialReports'), href: '/admin/analytics' },
-    { icon: 'Settings', label: t('settings'), href: '/admin/settings' },
-  ];
+  const languages = [{ code: 'en', name: 'English' }, { code: 'am', name: 'Amharic (አማርኛ)' }];
 
   return (
     <div className={`min-h-screen flex flex-col transition-colors duration-300 ${darkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
@@ -112,11 +99,12 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Dark Mode */}
             <button onClick={toggleDarkMode} className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 dark:text-yellow-400">
               {darkMode ? <Sun size={20} /> : <Moon size={20} />}
             </button>
 
-            {/* Notifications Bell */}
+            {/* Notifications */}
             <div className="relative">
               <button onClick={() => setShowNotifications(!showNotifications)} className="relative p-2 bg-gray-100 dark:bg-gray-700 dark:text-white rounded-lg">
                 <Bell size={20} />
@@ -126,13 +114,12 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
                   </span>
                 )}
               </button>
-
               <AnimatePresence>
                 {showNotifications && (
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-3 w-80 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border dark:border-gray-700 overflow-hidden z-50">
                     <div className="p-4 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex justify-between items-center">
                       <h3 className="font-bold dark:text-white text-sm">Notifications</h3>
-                      <span className="text-[10px] bg-amber-500 text-white px-2 py-0.5 rounded-full font-bold">New</span>
+                      <span className="text-[10px] bg-amber-500 text-white px-2 py-0.5 rounded-full">LIVE</span>
                     </div>
                     <div className="max-h-96 overflow-y-auto">
                       {notifications.length > 0 ? (
@@ -146,14 +133,12 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
                                 <p className="text-sm font-bold text-gray-900 dark:text-white">{n.title}</p>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1">{n.message}</p>
                               </div>
-                              <button onClick={(e) => { e.stopPropagation(); dismissPermanently(n.id); }} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-opacity">
-                                <Trash2 size={14} />
-                              </button>
+                              <button onClick={(e) => { e.stopPropagation(); dismissPermanently(n.id); }} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500"><Trash2 size={14} /></button>
                             </div>
                           </div>
                         ))
                       ) : (
-                        <div className="p-10 text-center text-gray-400 text-sm italic">No unread alerts</div>
+                        <div className="p-10 text-center text-gray-400 text-sm italic">No alerts</div>
                       )}
                     </div>
                   </motion.div>
@@ -161,7 +146,27 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
               </AnimatePresence>
             </div>
 
-            <button onClick={logout} className="p-2 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-lg"><LogOut size={18} /></button>
+            {/* USER PROFILE - PRESERVED */}
+            <div className="hidden sm:flex items-center gap-3 pl-3 border-l dark:border-gray-700">
+              <div className="text-right">
+                <p className="text-sm font-bold text-gray-900 dark:text-white leading-none">
+                  {user?.firstName || 'Admin'}
+                </p>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider mt-1">
+                  {t('admin')}
+                </p>
+              </div>
+              <img
+                src={getImageUrl(user?.profileImage)}
+                alt="Profile"
+                className="w-9 h-9 rounded-full object-cover ring-2 ring-offset-2 ring-amber-500 dark:ring-offset-gray-800"
+              />
+            </div>
+
+            {/* Logout */}
+            <button onClick={logout} className="p-2 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-lg hover:bg-red-100 transition">
+              <LogOut size={18} />
+            </button>
           </div>
         </div>
       </header>
@@ -175,40 +180,23 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
                     <div className={`p-3 rounded-2xl ${selectedNotification.type === 'success' ? 'bg-green-100 text-green-600' : selectedNotification.type === 'warning' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'}`}>
                         {getIcon(selectedNotification.type)}
                     </div>
-                    <button onClick={() => setSelectedNotification(null)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-400 transition-colors"><X size={20} /></button>
+                    <button onClick={() => setSelectedNotification(null)} className="p-2 hover:bg-gray-100 rounded-full dark:text-white"><X size={20} /></button>
                 </div>
                 <h2 className="text-xl font-black text-gray-900 dark:text-white mb-2">{selectedNotification.title}</h2>
-                <div className="flex items-center gap-2 text-gray-400 text-xs mb-4"><Calendar size={14} /><span>Recently Received</span></div>
-                <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-2xl border dark:border-gray-700">
+                <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-2xl border dark:border-gray-700 mt-4">
                     <p className="text-gray-600 dark:text-gray-300 leading-relaxed text-sm font-medium">{selectedNotification.detail}</p>
                 </div>
-                <button onClick={() => setSelectedNotification(null)} className="w-full mt-6 py-3 bg-amber-600 text-white font-bold rounded-xl shadow-lg hover:bg-amber-700 transition-colors">Close</button>
+                <button onClick={() => setSelectedNotification(null)} className="w-full mt-6 py-3 bg-amber-600 text-white font-bold rounded-xl shadow-lg hover:bg-amber-700 transition-colors">Dismiss</button>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
 
       <div className="flex flex-1 overflow-hidden">
-        <aside className={`fixed md:static inset-y-0 left-0 z-40 w-64 bg-white dark:bg-gray-800 border-r dark:border-gray-700 transform transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
-          <div className="p-5 h-full overflow-y-auto">
-            <nav className="space-y-1">
-              {menuItems.map((item) => {
-                const isActive = pathname === item.href;
-                return (
-                  <Link key={item.href} href={item.href} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive ? 'bg-amber-600 text-white shadow-md' : 'text-gray-600 dark:text-gray-400 hover:bg-amber-50 dark:hover:bg-gray-700'}`}>
-                    <span className="font-medium">{item.label}</span>
-                  </Link>
-                );
-              })}
-            </nav>
-          </div>
-        </aside>
-
-        <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 transition-colors">
-          <div className="max-w-7xl mx-auto px-4 py-6">{children}</div>
-          <Footer />
-        </main>
+        {/* Main layout content... */}
+        {children}
       </div>
+      <Footer />
     </div>
   );
 }/*'use client';
