@@ -10,7 +10,7 @@ import {
   User, Mail, Phone, Lock, MapPin, Building, Globe, Camera, 
   ArrowRight, ArrowLeft, CheckCircle2, Sparkles, X
 } from 'lucide-react';
-import { useLanguage } from '../../context/LanguageContext'; // Import Hook
+import { useLanguage } from '../../context/LanguageContext';
 import { Modal } from '../ui/Modal'; 
 
 // --- Schema ---
@@ -62,14 +62,13 @@ const Fireworks = () => {
 };
 
 export default function RegisterForm({ onClose, forceRole, onSwitchToLogin, onSwitch }: RegisterFormProps) {
-  const { t } = useLanguage(); // Use Translation Hook
+  const { t } = useLanguage();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'personal' | 'address'>('personal');
   const [preview, setPreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // Handle switching to login (support both prop names)
   const handleSwitchToLogin = onSwitch || onSwitchToLogin;
 
   const {
@@ -105,7 +104,6 @@ export default function RegisterForm({ onClose, forceRole, onSwitchToLogin, onSw
     }
   };
 
-  // --- SAFE CLOSE HANDLER ---
   const handleClose = () => {
     if (onClose && typeof onClose === 'function') {
       onClose();
@@ -147,14 +145,10 @@ export default function RegisterForm({ onClose, forceRole, onSwitchToLogin, onSw
     }
   };
 
-  // --- Success View ---
   if (showSuccess) {
     return (
-      <Modal 
-        title="" 
-        onClose={handleClose} 
-      >
-        <div className="max-w-md w-full p-0 overflow-hidden rounded-3xl bg-white border-0 relative shadow-2xl mx-auto">
+      <Modal title="" onClose={handleClose}>
+        <div className="relative z-[70] max-w-md w-full p-0 overflow-hidden rounded-3xl bg-white border-0 shadow-2xl mx-auto my-auto">
             <Fireworks />
             <div className="flex flex-col items-center justify-center p-12 text-center bg-gradient-to-br from-amber-50 to-white min-h-[400px] relative">
                 <button 
@@ -200,17 +194,19 @@ export default function RegisterForm({ onClose, forceRole, onSwitchToLogin, onSw
     );
   }
 
-  // --- Main Form View ---
   return (
-    <Modal
-      title="" 
-      onClose={handleClose} 
-    >
-      <div className="max-h-[90vh] w-full max-w-2xl flex flex-col overflow-hidden rounded-3xl bg-white dark:bg-gray-900 shadow-2xl p-0 border border-amber-100 dark:border-gray-800 mx-auto mt-35">
+    <Modal title="" onClose={handleClose}>
+      {/* 
+        GRADUATION PROJECT FIX:
+        1. z-[70] stays above Navbar.
+        2. max-h-[calc(100vh-60px)] prevents cut-off.
+        3. flex-col + sticky parts allows elegant scrolling.
+      */}
+      <div className="relative z-[70] w-full max-w-2xl mx-auto my-4 overflow-hidden rounded-3xl bg-white dark:bg-gray-900 shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-amber-100 dark:border-gray-800 max-h-[calc(100vh-60px)] flex flex-col">
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col h-full overflow-hidden relative">
             
-            {/* Header */}
-            <div className="relative bg-gradient-to-r from-amber-600 to-amber-800 p-6 md:p-8 shrink-0">
+            {/* STICKY HEADER */}
+            <div className="sticky top-0 z-30 bg-gradient-to-r from-amber-600 to-amber-800 p-6 md:p-8 shrink-0 shadow-lg transition-all">
                 <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
                     <Sparkles size={100} className="text-white" />
                 </div>
@@ -243,8 +239,8 @@ export default function RegisterForm({ onClose, forceRole, onSwitchToLogin, onSw
                 </div>
             </div>
 
-            {/* Tabs */}
-            <div className="flex border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0">
+            {/* STICKY TABS */}
+            <div className="sticky top-0 z-20 flex border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0 shadow-sm">
                 <button
                     type="button"
                     onClick={() => setActiveTab('personal')}
@@ -271,8 +267,8 @@ export default function RegisterForm({ onClose, forceRole, onSwitchToLogin, onSw
                 </button>
             </div>
 
-            {/* Form Body */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-8 bg-gray-50/30 dark:bg-gray-900 relative">
+            {/* SCROLLABLE BODY */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-8 bg-gray-50/30 dark:bg-gray-900">
                 <AnimatePresence mode="wait">
                     {activeTab === 'personal' && (
                         <motion.div
@@ -393,8 +389,8 @@ export default function RegisterForm({ onClose, forceRole, onSwitchToLogin, onSw
                 </AnimatePresence>
             </div>
 
-            {/* Footer */}
-            <div className="shrink-0 p-5 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 flex justify-between items-center gap-4 z-20">
+            {/* STICKY FOOTER */}
+            <div className="sticky bottom-0 z-30 p-5 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 flex justify-between items-center gap-4 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
             
             <div className="flex items-center">
                 {activeTab === 'address' ? (
@@ -403,11 +399,10 @@ export default function RegisterForm({ onClose, forceRole, onSwitchToLogin, onSw
                         onClick={() => setActiveTab('personal')}
                         className="flex items-center gap-2 text-gray-500 font-bold hover:text-amber-600 transition px-2"
                     >
-                        <ArrowLeft size={18} /> {t('viewHistory')} {/* Assuming 'Back' implies view previous step, or add 'back' key */}
+                        <ArrowLeft size={18} /> {t('viewHistory')} 
                     </button>
                 ) : (
                     isReceptionistMode ? (
-                        // --- RECEPTIONIST: Functional Cancel Button ---
                         <button 
                             type="button" 
                             onClick={(e) => {
@@ -419,7 +414,6 @@ export default function RegisterForm({ onClose, forceRole, onSwitchToLogin, onSw
                             {t('cancel')}
                         </button>
                     ) : (
-                        // --- PUBLIC: Login Link ---
                         handleSwitchToLogin && (
                             <button 
                                 type="button" 
