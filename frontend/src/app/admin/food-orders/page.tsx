@@ -112,15 +112,14 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinforma
       toast.error('Update failed');
     }
   };
-
-  const printReceipt = (order: Order) => {
+const printReceipt = (order: Order) => {
     const win = window.open('', '_blank');
     if (!win) return;
 
     const items = order.items.map(i => `
       <div style="display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid #eee;">
         <div style="display:flex; gap:12px; align-items:center;">
-          ${i.image ? `<img src="${getImageUrl(i.image)}" style="width:48px; height:48px; object-cover:cover; border-radius:8px;" />` : ''}
+          ${i.image ? `<img src="${getImageUrl(i.image)}" style="width:48px; height:48px; object-fit:cover; border-radius:8px;" />` : ''}
           <div>
             <div style="font-weight:600;">${i.name}</div>
             <div style="font-size:12px; color:#666;">×${i.quantity}</div>
@@ -135,9 +134,24 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinforma
         customer: language === 'am' ? 'ደንበኛ' : 'Customer',
         room: language === 'am' ? 'ክፍል' : 'Room',
         table: language === 'am' ? 'ጠረጴዛ' : 'Table',
+        phone: language === 'am' ? 'ስልክ' : 'Phone',
+        address: language === 'am' ? 'አድራሻ' : 'Address',
         total: language === 'am' ? 'ጠቅላላ' : 'Total',
         thankYou: language === 'am' ? 'መሰረት ሆቴልን ስለመረጡ እናመሰግናለን!' : 'Thank you for choosing Meseret Hotel!'
     };
+
+    // --- LOGIC TO FIX "TABLE: NULL" AND SHOW DELIVERY INFO ---
+    let deliveryInfoHtml = '';
+    if (order.orderType === 'delivery') {
+      deliveryInfoHtml = `
+        <strong>${rT.phone}:</strong> ${order.customer.phone}<br>
+        <strong>${rT.address}:</strong> ${order.customer.deliveryAddress?.street}, ${order.customer.deliveryAddress?.landmark}
+      `;
+    } else {
+      deliveryInfoHtml = order.customer.roomNumber 
+        ? `<strong>${rT.room}:</strong> ${order.customer.roomNumber}` 
+        : `<strong>${rT.table}:</strong> ${order.customer.tableNumber}`;
+    }
 
     win.document.write(`
       <html><head><title>${order.orderNumber}</title>
@@ -147,7 +161,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinforma
         .header { text-align:center; margin-bottom:32px; }
         .logo { width:80px; height:80px; background:#f59e0b; color:white; border-radius:50%; margin:0 auto 16px; display:flex; align-items:center; justify-content:center; font-size:36px; font-weight:bold; }
         h1 { margin:0; color:#92400e; font-size:28px; }
-        .info { text-align:center; color:#555; margin:16px 0; font-size:14px; }
+        .info { text-align:center; color:#555; margin:16px 0; font-size:14px; line-height:1.6; }
         .total { font-size:32px; font-weight:bold; text-align:right; color:#f59e0b; margin:24px 0; }
         .footer { text-align:center; margin-top:40px; color:#888; font-style:italic; }
       </style></head>
@@ -160,7 +174,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinforma
           <div class="info">
             <strong>${rT.order}:</strong> ${order.orderNumber}<br>
             <strong>${rT.customer}:</strong> ${order.customer.name}<br>
-            ${order.customer.roomNumber ? `<strong>${rT.room}:</strong> ${order.customer.roomNumber}` : `<strong>${rT.table}:</strong> ${order.customer.tableNumber}`}<br>
+            ${deliveryInfoHtml}<br>
             ${format(new Date(order.orderedAt), 'PPP p')}
           </div>
           <div style="margin:24px 0;">${items}</div>
@@ -172,6 +186,65 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinforma
     win.document.close();
     setTimeout(() => win.print(), 1000);
   };
+  // const printReceipt = (order: Order) => {
+  //   const win = window.open('', '_blank');
+  //   if (!win) return;
+
+  //   const items = order.items.map(i => `
+  //     <div style="display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid #eee;">
+  //       <div style="display:flex; gap:12px; align-items:center;">
+  //         ${i.image ? `<img src="${getImageUrl(i.image)}" style="width:48px; height:48px; object-cover:cover; border-radius:8px;" />` : ''}
+  //         <div>
+  //           <div style="font-weight:600;">${i.name}</div>
+  //           <div style="font-size:12px; color:#666;">×${i.quantity}</div>
+  //         </div>
+  //       </div>
+  //       <div style="font-weight:600;">ETB ${(i.price * i.quantity).toFixed(2)}</div>
+  //     </div>
+  //   `).join('');
+
+  //   const rT = {
+  //       order: language === 'am' ? 'ትዕዛዝ' : 'Order',
+  //       customer: language === 'am' ? 'ደንበኛ' : 'Customer',
+  //       room: language === 'am' ? 'ክፍል' : 'Room',
+  //       table: language === 'am' ? 'ጠረጴዛ' : 'Table',
+  //       total: language === 'am' ? 'ጠቅላላ' : 'Total',
+  //       thankYou: language === 'am' ? 'መሰረት ሆቴልን ስለመረጡ እናመሰግናለን!' : 'Thank you for choosing Meseret Hotel!'
+  //   };
+
+  //   win.document.write(`
+  //     <html><head><title>${order.orderNumber}</title>
+  //     <style>
+  //       body { font-family: 'Segoe UI', sans-serif; padding:40px; background:#f9f9f9; }
+  //       .receipt { max-width:380px; margin:auto; background:white; padding:32px; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,0.1); }
+  //       .header { text-align:center; margin-bottom:32px; }
+  //       .logo { width:80px; height:80px; background:#f59e0b; color:white; border-radius:50%; margin:0 auto 16px; display:flex; align-items:center; justify-content:center; font-size:36px; font-weight:bold; }
+  //       h1 { margin:0; color:#92400e; font-size:28px; }
+  //       .info { text-align:center; color:#555; margin:16px 0; font-size:14px; }
+  //       .total { font-size:32px; font-weight:bold; text-align:right; color:#f59e0b; margin:24px 0; }
+  //       .footer { text-align:center; margin-top:40px; color:#888; font-style:italic; }
+  //     </style></head>
+  //     <body>
+  //       <div class="receipt">
+  //         <div class="header">
+  //           <div class="logo">MH</div>
+  //           <h1>Meseret Hotel</h1>
+  //         </div>
+  //         <div class="info">
+  //           <strong>${rT.order}:</strong> ${order.orderNumber}<br>
+  //           <strong>${rT.customer}:</strong> ${order.customer.name}<br>
+  //           ${order.customer.roomNumber ? `<strong>${rT.room}:</strong> ${order.customer.roomNumber}` : `<strong>${rT.table}:</strong> ${order.customer.tableNumber}`}<br>
+  //           ${format(new Date(order.orderedAt), 'PPP p')}
+  //         </div>
+  //         <div style="margin:24px 0;">${items}</div>
+  //         <div class="total">${rT.total}: ETB ${order.totalAmount.toFixed(2)}</div>
+  //         <div class="footer">${rT.thankYou}</div>
+  //       </div>
+  //     </body></html>
+  //   `);
+  //   win.document.close();
+  //   setTimeout(() => win.print(), 1000);
+  // };
 
   const getFilteredOrders = () => {
     const now = new Date();
