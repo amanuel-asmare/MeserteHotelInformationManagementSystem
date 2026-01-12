@@ -635,7 +635,7 @@ export default function Home() {
               className="lg:w-1/2 relative"
             >
               <div className="relative z-10 rounded-[2.5rem] overflow-hidden shadow-2xl border-8 border-gray-50 dark:border-gray-900">
-                <Image src="/hotel-background.png" width={700} height={900} alt="Meseret Experience" className="w-full h-[400px] lg:h-[550px] object-cover" />
+                <Image src="/meserethotelbackground.jpg" width={700} height={900} alt="Meseret Experience" className="w-full h-[400px] lg:h-[550px] object-cover" />
               </div>
               <div className="absolute -bottom-10 -right-10 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl -z-10" />
               <div className="relative top-10 -left-10 p-6 bg-amber-600 rounded-3xl shadow-2xl hidden md:block text-white">
