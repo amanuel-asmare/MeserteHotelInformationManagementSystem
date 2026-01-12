@@ -62,7 +62,6 @@ export default function AboutModal({ onClose }: AboutModalProps) {
               </div>
             ))}
           </div>
-
           <div className="p-6 bg-amber-50 dark:bg-amber-900/20 rounded-2xl border border-amber-100 dark:border-amber-800 flex items-center gap-4">
              <HeartHandshake className="text-amber-600 w-10 h-10 shrink-0" />
              <div>
