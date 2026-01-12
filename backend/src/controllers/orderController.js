@@ -26,7 +26,27 @@ const generateOrderNumber = async() => {
 };
 
 // ──────────────────────────────────────────────────────────────
-// FORMAT ORDER ITEMS WITH FULL IMAGE URL
+// // FORMAT ORDER ITEMS WITH FULL IMAGE URL
+// // ──────────────────────────────────────────────────────────────
+// const formatOrderItems = (items, menuItemsList) => {
+//     return items.map(item => {
+//         let menuItem = null;
+//         if (menuItemsList && Array.isArray(menuItemsList)) {
+//             menuItem = menuItemsList.find(m => m && m._id && item.menuItem && m._id.toString() === item.menuItem.toString());
+//         }
+
+//         return {
+//             _id: item._id || item.menuItem,
+//             name: item.name || (menuItem && menuItem.name) || 'Unknown Item',
+//             price: item.price || (menuItem && menuItem.price) || 0,
+//             quantity: item.quantity || 1,
+//             notes: item.notes || '',
+//             image: item.menuItem && item.menuItem.image ?
+//                 `/uploads/menu/${path.basename(item.menuItem.image)}` : null
+//         };
+//     });
+// };
+// FORMAT ORDER ITEMS WITH FULL IMAGE URL - FIXED
 // ──────────────────────────────────────────────────────────────
 const formatOrderItems = (items, menuItemsList) => {
     return items.map(item => {
@@ -35,14 +55,26 @@ const formatOrderItems = (items, menuItemsList) => {
             menuItem = menuItemsList.find(m => m && m._id && item.menuItem && m._id.toString() === item.menuItem.toString());
         }
 
+        // FIX: Check if image is already a Cloudinary URL or needs a local path
+        let finalImage = null;
+        const rawImage = item.menuItem && item.menuItem.image ? item.menuItem.image : null;
+
+        if (rawImage) {
+            if (rawImage.startsWith('http')) {
+                finalImage = rawImage; // Use Cloudinary URL directly
+            } else {
+                // For old local images
+                finalImage = `/uploads/menu/${path.basename(rawImage)}`;
+            }
+        }
+
         return {
             _id: item._id || item.menuItem,
             name: item.name || (menuItem && menuItem.name) || 'Unknown Item',
             price: item.price || (menuItem && menuItem.price) || 0,
             quantity: item.quantity || 1,
             notes: item.notes || '',
-            image: item.menuItem && item.menuItem.image ?
-                `/uploads/menu/${path.basename(item.menuItem.image)}` : null
+            image: finalImage // Return the fixed image path
         };
     });
 };

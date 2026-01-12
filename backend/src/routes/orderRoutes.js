@@ -71,8 +71,9 @@ const {
     createChapaOrder,
     chapaVerify
 } = require('../controllers/orderController');
+// ... existing code ...
 
-// === GET MY ORDERS (Customer) ===
+// === GET MY ORDERS (Customer) - FIXED IMAGE LOGIC ===
 router.get('/my', protect, authorize('customer'), async(req, res) => {
     try {
         const orders = await Order.find({ createdBy: req.user._id })
@@ -83,16 +84,28 @@ router.get('/my', protect, authorize('customer'), async(req, res) => {
             const o = order.toObject();
             return {
                 ...o,
-                items: o.items.map(item => ({
-                    _id: item._id,
-                    name: item.name || (item.menuItem && item.menuItem.name) || 'Unknown Item',
-                    price: item.price || (item.menuItem && item.menuItem.price) || 0,
-                    quantity: item.quantity || 1,
-                    notes: item.notes || '',
-                    image: item.menuItem && item.menuItem.image ?
-                        `/uploads/menu/${path.basename(item.menuItem.image)}` :
-                        null
-                }))
+                items: o.items.map(item => {
+                    // FIX: Handle Cloudinary URLs vs Local Paths
+                    let finalImage = null;
+                    const rawImage = item.menuItem && item.menuItem.image ? item.menuItem.image : null;
+
+                    if (rawImage) {
+                        if (rawImage.startsWith('http')) {
+                            finalImage = rawImage;
+                        } else {
+                            finalImage = `/uploads/menu/${path.basename(rawImage)}`;
+                        }
+                    }
+
+                    return {
+                        _id: item._id,
+                        name: item.name || (item.menuItem && item.menuItem.name) || 'Unknown Item',
+                        price: item.price || (item.menuItem && item.menuItem.price) || 0,
+                        quantity: item.quantity || 1,
+                        notes: item.notes || '',
+                        image: finalImage // Use fixed path
+                    };
+                })
             };
         });
 
@@ -102,6 +115,39 @@ router.get('/my', protect, authorize('customer'), async(req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 });
+
+// ... rest of the file stays exactly the same ...
+
+// // === GET MY ORDERS (Customer) ===
+// router.get('/my', protect, authorize('customer'), async(req, res) => {
+//     try {
+//         const orders = await Order.find({ createdBy: req.user._id })
+//             .populate('items.menuItem', 'name price image')
+//             .sort({ orderedAt: -1 });
+
+//         const formatted = orders.map(order => {
+//             const o = order.toObject();
+//             return {
+//                 ...o,
+//                 items: o.items.map(item => ({
+//                     _id: item._id,
+//                     name: item.name || (item.menuItem && item.menuItem.name) || 'Unknown Item',
+//                     price: item.price || (item.menuItem && item.menuItem.price) || 0,
+//                     quantity: item.quantity || 1,
+//                     notes: item.notes || '',
+//                     image: item.menuItem && item.menuItem.image ?
+//                         `/uploads/menu/${path.basename(item.menuItem.image)}` :
+//                         null
+//                 }))
+//             };
+//         });
+
+//         res.json(formatted);
+//     } catch (err) {
+//         console.error('Error fetching my orders:', err);
+//         res.status(500).json({ message: 'Server error' });
+//     }
+// });
 
 // === GET SINGLE ORDER (Customer sees own, Staff sees all) ===
 router.get('/:id', protect, async(req, res) => {
@@ -132,8 +178,7 @@ router.get('/:id', protect, async(req, res) => {
                 quantity: item.quantity || 1,
                 notes: item.notes || '',
                 image: item.menuItem && item.menuItem.image ?
-                    `/uploads/menu/${path.basename(item.menuItem.image)}` :
-                    null
+                    `/uploads/menu/${path.basename(item.menuItem.image)}` : null
             }))
         };
 
