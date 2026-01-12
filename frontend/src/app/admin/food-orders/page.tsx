@@ -19,7 +19,17 @@ interface OrderItem {
 interface Order {
   _id: string;
   orderNumber: string;
-  customer: { name: string; roomNumber?: string; tableNumber?: string };
+  customer: { 
+    name: string; 
+    roomNumber?: string; 
+    tableNumber?: string;
+    phone?: string;
+    deliveryAddress?: {
+        street: string;
+        landmark: string;
+        city: string;
+    };
+  };
   items: OrderItem[];
   totalAmount: number;
   status: 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
@@ -39,8 +49,8 @@ export default function MenuOrdersClient() {
   const [loading, setLoading] = useState(true);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
 
-  // const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinformationmanagementsystem.onrender.com';
+  
   const getImageUrl = (path?: string | null): string => {
     if (!path || path.includes('default-menu')) return '/placeholder-food.jpg';
     return path.startsWith('http') ? path : `${API_BASE}${path.startsWith('/') ? '' : '/'}${path}`;
@@ -92,7 +102,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinforma
 
       setOrders(data);
     } catch {
-      // Suppress error
+      // Error handled silently
     } finally {
       setLoading(false);
     }
@@ -105,14 +115,14 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mesertehotelinforma
 
     try {
       await api.put(`/api/orders/${id}/status`, { status });
-      // Fix: Cast status to any to avoid type error if key is missing in types
       toast.success(`${t('orderMarkedAs')} ${t(status as any)}!`); 
       fetchOrders();
     } catch {
       toast.error('Update failed');
     }
   };
-const printReceipt = (order: Order) => {
+
+  const printReceipt = (order: Order) => {
     const win = window.open('', '_blank');
     if (!win) return;
 
@@ -140,17 +150,17 @@ const printReceipt = (order: Order) => {
         thankYou: language === 'am' ? 'መሰረት ሆቴልን ስለመረጡ እናመሰግናለን!' : 'Thank you for choosing Meseret Hotel!'
     };
 
-    // --- LOGIC TO FIX "TABLE: NULL" AND SHOW DELIVERY INFO ---
+    // --- FIX: Logic to handle Delivery vs In-Hotel orders ---
     let deliveryInfoHtml = '';
     if (order.orderType === 'delivery') {
       deliveryInfoHtml = `
-        <strong>${rT.phone}:</strong> ${order.customer.phone}<br>
-        <strong>${rT.address}:</strong> ${order.customer.deliveryAddress?.street}, ${order.customer.deliveryAddress?.landmark}
+        <strong>${rT.phone}:</strong> ${order.customer.phone || 'N/A'}<br>
+        <strong>${rT.address}:</strong> ${order.customer.deliveryAddress?.street || ''}, ${order.customer.deliveryAddress?.landmark || ''}
       `;
     } else {
       deliveryInfoHtml = order.customer.roomNumber 
         ? `<strong>${rT.room}:</strong> ${order.customer.roomNumber}` 
-        : `<strong>${rT.table}:</strong> ${order.customer.tableNumber}`;
+        : `<strong>${rT.table}:</strong> ${order.customer.tableNumber || 'N/A'}`;
     }
 
     win.document.write(`
@@ -161,7 +171,7 @@ const printReceipt = (order: Order) => {
         .header { text-align:center; margin-bottom:32px; }
         .logo { width:80px; height:80px; background:#f59e0b; color:white; border-radius:50%; margin:0 auto 16px; display:flex; align-items:center; justify-content:center; font-size:36px; font-weight:bold; }
         h1 { margin:0; color:#92400e; font-size:28px; }
-        .info { text-align:center; color:#555; margin:16px 0; font-size:14px; line-height:1.6; }
+        .info { text-align:center; color:#555; margin:16px 0; font-size:14px; line-height: 1.6; }
         .total { font-size:32px; font-weight:bold; text-align:right; color:#f59e0b; margin:24px 0; }
         .footer { text-align:center; margin-top:40px; color:#888; font-style:italic; }
       </style></head>
@@ -186,65 +196,6 @@ const printReceipt = (order: Order) => {
     win.document.close();
     setTimeout(() => win.print(), 1000);
   };
-  // const printReceipt = (order: Order) => {
-  //   const win = window.open('', '_blank');
-  //   if (!win) return;
-
-  //   const items = order.items.map(i => `
-  //     <div style="display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid #eee;">
-  //       <div style="display:flex; gap:12px; align-items:center;">
-  //         ${i.image ? `<img src="${getImageUrl(i.image)}" style="width:48px; height:48px; object-cover:cover; border-radius:8px;" />` : ''}
-  //         <div>
-  //           <div style="font-weight:600;">${i.name}</div>
-  //           <div style="font-size:12px; color:#666;">×${i.quantity}</div>
-  //         </div>
-  //       </div>
-  //       <div style="font-weight:600;">ETB ${(i.price * i.quantity).toFixed(2)}</div>
-  //     </div>
-  //   `).join('');
-
-  //   const rT = {
-  //       order: language === 'am' ? 'ትዕዛዝ' : 'Order',
-  //       customer: language === 'am' ? 'ደንበኛ' : 'Customer',
-  //       room: language === 'am' ? 'ክፍል' : 'Room',
-  //       table: language === 'am' ? 'ጠረጴዛ' : 'Table',
-  //       total: language === 'am' ? 'ጠቅላላ' : 'Total',
-  //       thankYou: language === 'am' ? 'መሰረት ሆቴልን ስለመረጡ እናመሰግናለን!' : 'Thank you for choosing Meseret Hotel!'
-  //   };
-
-  //   win.document.write(`
-  //     <html><head><title>${order.orderNumber}</title>
-  //     <style>
-  //       body { font-family: 'Segoe UI', sans-serif; padding:40px; background:#f9f9f9; }
-  //       .receipt { max-width:380px; margin:auto; background:white; padding:32px; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,0.1); }
-  //       .header { text-align:center; margin-bottom:32px; }
-  //       .logo { width:80px; height:80px; background:#f59e0b; color:white; border-radius:50%; margin:0 auto 16px; display:flex; align-items:center; justify-content:center; font-size:36px; font-weight:bold; }
-  //       h1 { margin:0; color:#92400e; font-size:28px; }
-  //       .info { text-align:center; color:#555; margin:16px 0; font-size:14px; }
-  //       .total { font-size:32px; font-weight:bold; text-align:right; color:#f59e0b; margin:24px 0; }
-  //       .footer { text-align:center; margin-top:40px; color:#888; font-style:italic; }
-  //     </style></head>
-  //     <body>
-  //       <div class="receipt">
-  //         <div class="header">
-  //           <div class="logo">MH</div>
-  //           <h1>Meseret Hotel</h1>
-  //         </div>
-  //         <div class="info">
-  //           <strong>${rT.order}:</strong> ${order.orderNumber}<br>
-  //           <strong>${rT.customer}:</strong> ${order.customer.name}<br>
-  //           ${order.customer.roomNumber ? `<strong>${rT.room}:</strong> ${order.customer.roomNumber}` : `<strong>${rT.table}:</strong> ${order.customer.tableNumber}`}<br>
-  //           ${format(new Date(order.orderedAt), 'PPP p')}
-  //         </div>
-  //         <div style="margin:24px 0;">${items}</div>
-  //         <div class="total">${rT.total}: ETB ${order.totalAmount.toFixed(2)}</div>
-  //         <div class="footer">${rT.thankYou}</div>
-  //       </div>
-  //     </body></html>
-  //   `);
-  //   win.document.close();
-  //   setTimeout(() => win.print(), 1000);
-  // };
 
   const getFilteredOrders = () => {
     const now = new Date();
@@ -269,11 +220,9 @@ const printReceipt = (order: Order) => {
 
   const activeOrders = orders.filter(o => !['delivered', 'cancelled'].includes(o.status));
 
-  // --- ROYAL LOADING SCREEN ---
   if (loading) {
     return (
       <div className="fixed inset-0 bg-gradient-to-br from-amber-950 via-black to-amber-900 flex items-center justify-center overflow-hidden">
-        {/* ... (Existing Animation Code kept same for brevity) ... */}
         <div className="text-white text-2xl font-bold animate-pulse">Loading Orders...</div>
       </div>
     );
@@ -281,7 +230,7 @@ const printReceipt = (order: Order) => {
 
   return (
     <>
-      <Toaster position="top-center" toastOptions={{ duration: 4000 }} />
+      <Toaster position="top-center" />
 
       {!audioUnlocked && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-amber-600 text-white px-8 py-4 rounded-full shadow-2xl animate-bounce flex items-center gap-3">
@@ -324,7 +273,6 @@ const printReceipt = (order: Order) => {
             </div>
           </div>
 
-          {/* History Filters */}
           <AnimatePresence>
             {viewMode === 'history' && (
               <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-10">
@@ -359,39 +307,25 @@ const printReceipt = (order: Order) => {
                     exit={{ opacity: 0, scale: 0.9 }}
                     className={`relative rounded-3xl overflow-hidden shadow-2xl transition-all ${isPending ? 'ring-4 ring-orange-500 ring-opacity-50' : ''}`}
                   >
-                    {isPending && (
-                      <div className="absolute inset-0 bg-orange-400 opacity-20 animate-pulse pointer-events-none" />
-                    )}
-
                     <div className={`h-full bg-white border-4 ${isPending ? 'border-orange-500' : order.status === 'preparing' ? 'border-amber-400' : order.status === 'ready' ? 'border-blue-500' : order.status === 'delivered' ? 'border-green-500' : 'border-gray-300'}`}>
-
-                      {/* Header */}
                       <div className="p-6 bg-gradient-to-r from-amber-50 to-orange-50">
                         <div className="flex justify-between items-start">
                           <div>
                             <h3 className="text-3xl font-black text-gray-900">{order.orderNumber}</h3>
                             <p className="text-2xl font-bold text-amber-700 mt-1">{order.customer.name}</p>
-                            
                             <p className="text-lg font-medium text-gray-700">
                                 {order.orderType === 'delivery' ? (
                                     <span className="flex items-center gap-2 text-indigo-600">
-                                        {/* FIX: Cast 'delivery' to any to avoid translation type error */}
                                         <Bike size={20} /> {t('delivery' as any)}
                                     </span>
                                 ) : order.customer.roomNumber ? (
-                                    // FIX: Cast 'room' to any
                                     `${t('room' as any)} ${order.customer.roomNumber}`
-                                ) : order.customer.tableNumber ? (
-                                    // FIX: Cast 'table' to any
-                                    `${t('table' as any)} ${order.customer.tableNumber}`
                                 ) : (
-                                    // FIX: Cast 'unknownLocation' to any
-                                    <span className="text-gray-400 italic">{t('unknownLocation' as any)}</span>
+                                    `${t('table' as any)} ${order.customer.tableNumber || t('notSet' as any)}`
                                 )}
                             </p>
                           </div>
                           <div className="text-right">
-                            {/* STATUS BADGE TRANSLATED - Cast status to any to fix type error */}
                             <span className={`px-4 py-2 rounded-full text-sm font-bold uppercase tracking-wider ${isPending ? 'bg-red-100 text-red-800' : order.status === 'preparing' ? 'bg-amber-100 text-amber-800' : order.status === 'ready' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>
                               {t(order.status as any)}
                             </span>
@@ -400,12 +334,8 @@ const printReceipt = (order: Order) => {
                             </button>
                           </div>
                         </div>
-                        <p className="text-sm text-gray-600 mt-3 font-medium">
-                          {format(new Date(order.orderedAt), 'MMM d, yyyy • h:mm a')}
-                        </p>
                       </div>
 
-                      {/* Items */}
                       <div className="p-6 space-y-4">
                         {order.items.map((item) => (
                           <div key={item._id} className="flex items-center justify-between bg-gray-50 rounded-2xl p-4">
@@ -430,59 +360,34 @@ const printReceipt = (order: Order) => {
                         ))}
                       </div>
 
-                      {/* Footer */}
                       <div className="p-6 bg-gradient-to-r from-amber-50 to-orange-50 border-t-4 border-amber-400">
                           <p className="text-4xl font-black text-amber-600">
                             ETB {order.totalAmount.toFixed(2)}
                           </p>
-                        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                        
                           {viewMode === 'live' && (
-                            <div className="flex items-center gap-4">
+                            <div className="mt-4 flex flex-wrap gap-2">
                               {order.status === 'pending' && (
-                                <button
-                                  onClick={() => updateStatus(order._id, 'preparing')}
-                                  className="px-3 py-2 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-2xl font-bold text-lg hover:shadow-2xl transition-all flex items-center gap-3"
-                                >
-                                  <Package size={24} />
-                                  {/* FIX: Cast 'startCooking' to any */}
-                                  {t('startCooking' as any)}
+                                <button onClick={() => updateStatus(order._id, 'preparing')} className="px-4 py-2 bg-amber-500 text-white rounded-xl font-bold flex items-center gap-2 transition hover:bg-amber-600">
+                                  <Package size={20} /> {t('startCooking' as any)}
                                 </button>
                               )}
                               {order.status === 'preparing' && (
-                                <button
-                                  onClick={() => updateStatus(order._id, 'ready')}
-                                  className="px-6 py-4 bg-gradient-to-r from-blue-500 to-cyan-600 text-white rounded-2xl font-bold text-lg hover:shadow-2xl transition-all flex items-center gap-3"
-                                >
-                                  <Clock size={24} />
-                                  {/* FIX: Cast 'markReady' to any */}
-                                  {t('markReady' as any)}
+                                <button onClick={() => updateStatus(order._id, 'ready')} className="px-4 py-2 bg-blue-500 text-white rounded-xl font-bold flex items-center gap-2 transition hover:bg-blue-600">
+                                  <Clock size={20} /> {t('markReady' as any)}
                                 </button>
                               )}
                               {order.status === 'ready' && (
-                                <button
-                                  onClick={() => updateStatus(order._id, 'delivered')}
-                                  className="px-6 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl font-bold text-lg hover:shadow-2xl transition-all flex items-center gap-3"
-                                >
-                                  <CheckCircle size={24} />
-                                  {/* FIX: Cast 'delivered' to any */}
-                                  {t('delivered' as any)}
+                                <button onClick={() => updateStatus(order._id, 'delivered')} className="px-4 py-2 bg-green-500 text-white rounded-xl font-bold flex items-center gap-2 transition hover:bg-green-600">
+                                  <CheckCircle size={20} /> {t('delivered' as any)}
                                 </button>
                               )}
-
                               {(order.status === 'pending' || order.status === 'preparing') && (
-                                <button
-                                  onClick={() => updateStatus(order._id, 'cancelled')}
-                                  className="p-5 bg-red-600 hover:bg-red-700 text-white rounded-2xl shadow-lg hover:shadow-2xl transition-all transform hover:scale-110"
-                                  // FIX: Cast 'cancelOrder' to any
-                                  title={t('cancelOrder' as any)}
-                                >
-                                  <XCircle size={32} />
+                                <button onClick={() => updateStatus(order._id, 'cancelled')} className="p-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition">
+                                  <XCircle size={20} />
                                 </button>
                               )}
                             </div>
                           )}
-                        </div>
                       </div>
                     </div>
                   </motion.div>
@@ -491,17 +396,11 @@ const printReceipt = (order: Order) => {
             </AnimatePresence>
           </div>
 
-          {/* Empty State */}
           {((viewMode === 'live' && activeOrders.length === 0) || (viewMode === 'history' && getFilteredOrders().length === 0)) && (
             <div className="text-center py-32">
               <Coffee className="w-40 h-40 text-gray-300 mx-auto mb-8" />
               <p className="text-3xl font-bold text-gray-500">
-                {/* FIX: Cast keys to any */}
                 {viewMode === 'live' ? t('noActiveOrders' as any) : t('noHistoryFound' as any)}
-              </p>
-              <p className="text-xl text-gray-400 mt-4">
-                {/* FIX: Cast keys to any */}
-                {viewMode === 'live' ? t('enjoyCalm' as any) : t('tryDifferentRange' as any)}
               </p>
             </div>
           )}
