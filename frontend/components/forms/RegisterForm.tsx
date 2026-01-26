@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -13,37 +13,56 @@ import {
 import { useLanguage } from '../../context/LanguageContext';
 import { Modal } from '../ui/Modal'; 
 
+// --- WORLD COUNTRY DATA ---
+const COUNTRIES = [
+  { name: 'Ethiopia', code: 'ET', flag: '🇪🇹', dial: '+251' },
+  { name: 'United States', code: 'US', flag: '🇺🇸', dial: '+1' },
+  { name: 'United Kingdom', code: 'GB', flag: '🇬🇧', dial: '+44' },
+  { name: 'United Arab Emirates', code: 'AE', flag: '🇦🇪', dial: '+971' },
+  { name: 'Kenya', code: 'KE', flag: '🇰🇪', dial: '+254' },
+  { name: 'Germany', code: 'DE', flag: '🇩🇪', dial: '+49' },
+  { name: 'China', code: 'CN', flag: '🇨🇳', dial: '+86' },
+  { name: 'India', code: 'IN', flag: '🇮🇳', dial: '+91' },
+  { name: 'Canada', code: 'CA', flag: '🇨🇦', dial: '+1' },
+  { name: 'South Africa', code: 'ZA', flag: '🇿🇦', dial: '+27' },
+  // You can add more countries here easily...
+].sort((a, b) => a.name.localeCompare(b.name));
+
 export default function RegisterForm({ onClose, forceRole, onSwitchToLogin, onSwitch }: RegisterFormProps) {
   const { t } = useLanguage();
   const router = useRouter();
-  
+
   // --- ENHANCED VALIDATION SCHEMA ---
   const registerSchema = z.object({
-    firstName: z.string()
-      .min(2, t('firstNameMin' as any) || 'First name must be at least 2 characters')
-      .max(30, 'Too long')
-      .regex(/^[a-zA-Z]+$/, t('alphaOnly' as any) || 'Only letters allowed'),
-    
-    lastName: z.string()
-      .min(2, t('lastNameMin' as any) || 'Last name must be at least 2 characters')
-      .regex(/^[a-zA-Z]+$/, t('alphaOnly' as any) || 'Only letters allowed'),
-    
-    email: z.string()
-      .email(t('invalidEmail' as any) || 'Please enter a valid email address'),
-    
-    password: z.string()
-      .min(6, t('passwordMin' as any) || 'Password must be at least 6 characters')
-      .regex(/[A-Z]/, t('passUpper' as any) || 'Must contain one uppercase letter')
-      .regex(/[0-9]/, t('passNum' as any) || 'Must contain one number'),
-    
-    phone: z.string()
-      .refine((val) => /^(09|07)\d{8}$/.test(val), {
-        message: t('ethioPhoneError' as any) || 'Must be 10 digits starting with 09 (Ethio) or 07 (Safaricom)',
-      }),
-    
-    country: z.string().min(1, 'Required'),
-    city: z.string().min(2, t('cityRequired' as any) || 'City is required'),
+    firstName: z.string().min(2, t('firstNameMin' as any) || 'Min 2 characters'),
+    lastName: z.string().min(2, t('lastNameMin' as any) || 'Min 2 characters'),
+    email: z.string().email(t('invalidEmail' as any) || 'Invalid email'),
+    password: z.string().min(6, t('passwordMin' as any) || 'Min 6 characters'),
+    country: z.string().min(1),
+    phone: z.string().min(5, t('phoneTooShort' as any) || 'Phone too short'),
+    city: z.string().min(2, t('cityRequired' as any) || 'City required'),
     kebele: z.string().optional().or(z.literal('')),
+  }).superRefine((data, ctx) => {
+    // Custom logic for Ethiopia
+    if (data.country === 'Ethiopia') {
+      // Must be 9 digits starting with 9 or 7 (excludes leading 0)
+      if (!/^[79]\d{8}$/.test(data.phone)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: t('ethioPhoneError' as any) || 'Enter 9 digits starting with 9 or 7 (No leading 0)',
+          path: ['phone'],
+        });
+      }
+    } else {
+        // Basic digits check for other countries
+        if (!/^\d+$/.test(data.phone)) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: t('digitsOnly' as any) || 'Digits only',
+                path: ['phone'],
+            });
+        }
+    }
   });
 
   type RegisterFormData = z.infer<typeof registerSchema>;
@@ -63,15 +82,18 @@ export default function RegisterForm({ onClose, forceRole, onSwitchToLogin, onSw
     formState: { errors, isSubmitting },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
-    defaultValues: {
-      country: 'Ethiopia',
-      phone: '',
-      kebele: ''
-    }
+    defaultValues: { country: 'Ethiopia', phone: '', kebele: '' }
   });
 
+  const selectedCountryName = watch('country');
   const firstName = watch('firstName');
   const isReceptionistMode = !!forceRole;
+
+  // Find dial code for current country
+  const selectedCountry = useMemo(() => 
+    COUNTRIES.find(c => c.name === selectedCountryName) || COUNTRIES[0],
+    [selectedCountryName]
+  );
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -83,21 +105,22 @@ export default function RegisterForm({ onClose, forceRole, onSwitchToLogin, onSw
 
   const handleNextStep = async () => {
     const isValid = await trigger(['firstName', 'lastName', 'email', 'password']);
-    if (isValid) {
-      setActiveTab('address');
-    }
+    if (isValid) setActiveTab('address');
   };
 
   const handleClose = () => {
-    if (onClose && typeof onClose === 'function') onClose();
+    if (onClose) onClose();
     if (isReceptionistMode) router.push('/receptionist');
   };
 
   const onSubmit = async (data: RegisterFormData) => {
     const formData = new FormData();
     Object.entries(data).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) formData.append(key, value);
+      if (value !== undefined) formData.append(key, value as any);
     });
+    // Add dial code to the phone before sending to backend
+    formData.set('phone', `${selectedCountry.dial}${data.phone}`);
+    
     if (imageFile) formData.append('profileImage', imageFile);
     if (forceRole) formData.append('role', forceRole);
 
@@ -107,59 +130,47 @@ export default function RegisterForm({ onClose, forceRole, onSwitchToLogin, onSw
         body: formData,
         credentials: 'include',
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.message ?? 'Registration failed');
-      
+      if (!res.ok) throw new Error('Registration failed');
       setShowSuccess(true);
       setTimeout(() => {
         if (!forceRole && handleSwitchToLogin) handleSwitchToLogin(); 
         else handleClose();
       }, 4000); 
     } catch (err: any) {
-      alert(err.message || 'Failed to register');
+      alert(err.message);
     }
   };
 
-  if (showSuccess) {
-      // (Keep existing Success View code here...)
-      return <div className="z-[70]">... Success View Content ...</div>;
-  }
-
   return (
     <Modal title="" onClose={handleClose}>
-      <div className="relative z-[70] w-full max-w-2xl mx-auto my-4 overflow-hidden rounded-3xl bg-white dark:bg-gray-900 shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-amber-100 dark:border-gray-800 max-h-[calc(100vh-60px)] flex flex-col">
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col h-full overflow-hidden relative">
+      <div className="relative z-[70] w-full max-w-2xl mx-auto my-4 overflow-hidden rounded-3xl bg-white dark:bg-gray-900 shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-amber-100 max-h-[calc(100vh-60px)] flex flex-col">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col h-full overflow-hidden">
             
             {/* STICKY HEADER */}
             <div className="sticky top-0 z-30 bg-gradient-to-r from-amber-600 to-amber-800 p-6 md:p-8 shrink-0 shadow-lg">
                 <div className="relative z-10 flex items-center gap-6">
                     <div className="relative group shrink-0">
-                        <div className={`w-20 h-20 md:w-24 md:h-24 rounded-full overflow-hidden border-4 border-white/30 shadow-2xl backdrop-blur-sm transition-all ${preview ? 'bg-black' : 'bg-white/10'}`}>
-                            {preview ? <img src={preview} alt="Preview" className="w-full h-full object-cover" /> : <div className="w-full h-full flex flex-col items-center justify-center text-white/80"><User size={32} /></div>}
+                        <div className={`w-20 h-20 md:w-24 md:h-24 rounded-full overflow-hidden border-4 border-white/30 shadow-2xl backdrop-blur-sm ${preview ? 'bg-black' : 'bg-white/10'}`}>
+                            {preview ? <img src={preview} alt="Preview" className="w-full h-full object-cover" /> : <User size={32} className="m-auto mt-6 text-white/80" />}
                         </div>
-                        <label className="absolute bottom-0 right-0 p-2 bg-white text-amber-700 rounded-full shadow-lg cursor-pointer hover:bg-amber-50 hover:scale-110 transition-all z-20">
-                            <Camera size={16} />
-                            <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                        <label className="absolute bottom-0 right-0 p-2 bg-white text-amber-700 rounded-full shadow-lg cursor-pointer hover:scale-110 transition-all z-20">
+                            <Camera size={16} /><input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
                         </label>
                     </div>
                     <div className="text-white">
-                        <h2 className="text-2xl font-bold font-serif tracking-wide">{isReceptionistMode ? t('newGuest' as any) : t('createAccount' as any)}</h2>
+                        <h2 className="text-2xl font-bold font-serif">{isReceptionistMode ? t('newGuest' as any) : t('createAccount' as any)}</h2>
                         <p className="text-amber-100 text-sm opacity-90">{t('fillDetailsBelow' as any)}</p>
                     </div>
                 </div>
             </div>
 
-            {/* TABS */}
-            <div className="sticky top-0 z-20 flex border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0">
-                <button type="button" onClick={() => setActiveTab('personal')} className={`flex-1 py-4 text-sm font-bold uppercase transition-all relative ${activeTab === 'personal' ? 'text-amber-600 bg-amber-50/50' : 'text-gray-400 hover:bg-gray-50'}`}>
-                    1. {t('personalDetails' as any)}
-                </button>
-                <button type="button" onClick={handleNextStep} className={`flex-1 py-4 text-sm font-bold uppercase transition-all relative ${activeTab === 'address' ? 'text-amber-600 bg-amber-50/50' : 'text-gray-400 hover:bg-gray-50'}`}>
-                    2. {t('contactAddress' as any)}
-                </button>
+            {/* STICKY TABS */}
+            <div className="sticky top-0 z-20 flex border-b border-gray-100 bg-white dark:bg-gray-900">
+                <button type="button" onClick={() => setActiveTab('personal')} className={`flex-1 py-4 text-sm font-bold uppercase ${activeTab === 'personal' ? 'text-amber-600 bg-amber-50' : 'text-gray-400'}`}>1. Personal</button>
+                <button type="button" onClick={handleNextStep} className={`flex-1 py-4 text-sm font-bold uppercase ${activeTab === 'address' ? 'text-amber-600 bg-amber-50' : 'text-gray-400'}`}>2. Contact</button>
             </div>
 
-            {/* FORM BODY */}
+            {/* SCROLLABLE BODY */}
             <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-8 bg-gray-50/30 dark:bg-gray-900">
                 <AnimatePresence mode="wait">
                     {activeTab === 'personal' && (
@@ -167,32 +178,30 @@ export default function RegisterForm({ onClose, forceRole, onSwitchToLogin, onSw
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="text-xs font-bold text-gray-500 mb-1 block uppercase">{t('firstName' as any)}</label>
-                                    <input placeholder="Amanuel" {...register('firstName')} className={`w-full px-4 py-3 bg-white border ${errors.firstName ? 'border-red-500 focus:ring-red-200' : 'border-gray-200 focus:ring-amber-500/20'} rounded-xl outline-none transition-all text-sm`} />
-                                    {errors.firstName && <p className="text-red-500 text-[10px] mt-1 font-bold italic">{errors.firstName.message}</p>}
+                                    <input placeholder="Amanuel" {...register('firstName')} className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl outline-none focus:border-amber-500 text-sm" />
+                                    {errors.firstName && <p className="text-red-500 text-[10px] mt-1 italic">{errors.firstName.message}</p>}
                                 </div>
                                 <div>
                                     <label className="text-xs font-bold text-gray-500 mb-1 block uppercase">{t('lastName' as any)}</label>
-                                    <input placeholder="Asmare" {...register('lastName')} className={`w-full px-4 py-3 bg-white border ${errors.lastName ? 'border-red-500 focus:ring-red-200' : 'border-gray-200 focus:ring-amber-500/20'} rounded-xl outline-none transition-all text-sm`} />
-                                    {errors.lastName && <p className="text-red-500 text-[10px] mt-1 font-bold italic">{errors.lastName.message}</p>}
+                                    <input placeholder="Asmare" {...register('lastName')} className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl outline-none focus:border-amber-500 text-sm" />
+                                    {errors.lastName && <p className="text-red-500 text-[10px] mt-1 italic">{errors.lastName.message}</p>}
                                 </div>
                             </div>
-
                             <div>
                                 <label className="text-xs font-bold text-gray-500 mb-1 block uppercase">{t('email' as any)}</label>
                                 <div className="relative">
                                     <Mail className="absolute left-4 top-3.5 text-gray-400" size={18} />
-                                    <input type="email" placeholder="example@gmail.com" {...register('email')} className={`w-full pl-11 pr-4 py-3 bg-white border ${errors.email ? 'border-red-500' : 'border-gray-200'} rounded-xl outline-none text-sm`} />
+                                    <input type="email" placeholder="example@gmail.com" {...register('email')} className="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-xl outline-none focus:border-amber-500 text-sm" />
                                 </div>
-                                {errors.email && <p className="text-red-500 text-[10px] mt-1 font-bold italic">{errors.email.message}</p>}
+                                {errors.email && <p className="text-red-500 text-[10px] mt-1 italic">{errors.email.message}</p>}
                             </div>
-
                             <div>
                                 <label className="text-xs font-bold text-gray-500 mb-1 block uppercase">{t('password' as any)}</label>
                                 <div className="relative">
                                     <Lock className="absolute left-4 top-3.5 text-gray-400" size={18} />
-                                    <input type="password" placeholder="••••••••" {...register('password')} className={`w-full pl-11 pr-4 py-3 bg-white border ${errors.password ? 'border-red-500' : 'border-gray-200'} rounded-xl outline-none text-sm`} />
+                                    <input type="password" placeholder="••••••••" {...register('password')} className="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-xl outline-none focus:border-amber-500 text-sm" />
                                 </div>
-                                {errors.password && <p className="text-red-500 text-[10px] mt-1 font-bold italic">{errors.password.message}</p>}
+                                {errors.password && <p className="text-red-500 text-[10px] mt-1 italic">{errors.password.message}</p>}
                             </div>
                         </motion.div>
                     )}
@@ -200,32 +209,42 @@ export default function RegisterForm({ onClose, forceRole, onSwitchToLogin, onSw
                     {activeTab === 'address' && (
                         <motion.div key="address" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-5">
                             
-                            {/* COUNTRY & PHONE VALIDATION SECTION */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-xs font-bold text-gray-500 mb-1 block uppercase">{t('country' as any)}</label>
-                                    <div className="relative">
-                                        <Globe className="absolute left-3 top-3 text-amber-600" size={18} />
-                                        <select {...register('country')} className="w-full pl-10 pr-3 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold">
-                                            <option value="Ethiopia">Ethiopia (+251)</option>
-                                        </select>
-                                    </div>
+                            {/* COUNTRY SELECT WITH FLAG */}
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 mb-1 block uppercase">{t('country' as any)}</label>
+                                <div className="relative">
+                                    <Globe className="absolute left-3 top-3.5 text-amber-600" size={18} />
+                                    <select {...register('country')} className="w-full pl-10 pr-3 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold appearance-none outline-none focus:border-amber-500">
+                                        {COUNTRIES.map(c => (
+                                            <option key={c.code} value={c.name}>{c.flag} {c.name} ({c.dial})</option>
+                                        ))}
+                                    </select>
+                                    <ChevronDown className="absolute right-4 top-4 text-gray-400" size={16} />
                                 </div>
-                                <div>
-                                    <label className="text-xs font-bold text-gray-500 mb-1 block uppercase">{t('phoneNumber' as any)}</label>
-                                    <div className="relative">
-                                        <Phone className={`absolute left-4 top-3.5 ${errors.phone ? 'text-red-500' : 'text-gray-400'}`} size={18} />
-                                        <input type="tel" placeholder="09... or 07..." {...register('phone')} className={`w-full pl-11 pr-4 py-3 bg-white border ${errors.phone ? 'border-red-500' : 'border-gray-200'} rounded-xl outline-none text-sm font-bold`} />
+                            </div>
+
+                            {/* PHONE INPUT WITH DYNAMIC PREFIX */}
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 mb-1 block uppercase">{t('phoneNumber' as any)}</label>
+                                <div className="flex shadow-sm rounded-xl overflow-hidden border border-gray-200 focus-within:border-amber-500 transition-all">
+                                    <div className="bg-gray-100 px-4 flex items-center text-sm font-black text-gray-600 border-r border-gray-200">
+                                        {selectedCountry.dial}
                                     </div>
-                                    {errors.phone && <p className="text-red-500 text-[10px] mt-1 font-bold italic">{errors.phone.message}</p>}
+                                    <input 
+                                        type="tel" 
+                                        placeholder={selectedCountryName === 'Ethiopia' ? "9... or 7..." : "Phone number"} 
+                                        {...register('phone')} 
+                                        className="w-full px-4 py-3 outline-none text-sm font-bold bg-white" 
+                                    />
                                 </div>
+                                {errors.phone && <p className="text-red-500 text-[10px] mt-1 font-bold italic">{errors.phone.message}</p>}
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="text-xs font-bold text-gray-500 mb-1 block uppercase">{t('city' as any)}</label>
-                                    <input placeholder="Woldia" {...register('city')} className={`w-full px-4 py-3 bg-white border ${errors.city ? 'border-red-500' : 'border-gray-200'} rounded-xl outline-none text-sm`} />
-                                    {errors.city && <p className="text-red-500 text-[10px] mt-1 font-bold italic">{errors.city.message}</p>}
+                                    <input placeholder="Woldia" {...register('city')} className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl outline-none text-sm" />
+                                    {errors.city && <p className="text-red-500 text-[10px] mt-1 italic">{errors.city.message}</p>}
                                 </div>
                                 <div>
                                     <label className="text-xs font-bold text-gray-500 mb-1 block uppercase">{t('kebele' as any)}</label>
@@ -239,27 +258,17 @@ export default function RegisterForm({ onClose, forceRole, onSwitchToLogin, onSw
 
             {/* STICKY FOOTER */}
             <div className="sticky bottom-0 z-30 p-5 bg-white border-t flex justify-between items-center gap-4 shadow-xl">
-                <div className="flex items-center">
-                    {activeTab === 'address' ? (
-                        <button type="button" onClick={() => setActiveTab('personal')} className="flex items-center gap-2 text-gray-500 font-bold hover:text-amber-600 transition px-2">
-                            <ArrowLeft size={18} /> {t('back' as any) || 'Back'}
-                        </button>
-                    ) : (
-                        !isReceptionistMode && handleSwitchToLogin && (
-                            <button type="button" onClick={handleSwitchToLogin} className="text-sm text-gray-500 hover:text-amber-700 font-bold">
-                                {t('alreadyHaveAccount' as any)} <span className="underline text-amber-600">{t('login' as any)}</span>
-                            </button>
-                        )
-                    )}
-                </div>
+                {activeTab === 'address' ? (
+                    <button type="button" onClick={() => setActiveTab('personal')} className="flex items-center gap-2 text-gray-500 font-bold hover:text-amber-600 px-2"><ArrowLeft size={18} /> {t('back' as any)}</button>
+                ) : (
+                    !isReceptionistMode && <button type="button" onClick={handleSwitchToLogin} className="text-sm text-gray-500 font-bold underline">{t('login' as any)}</button>
+                )}
                 
                 {activeTab === 'personal' ? (
-                    <button type="button" onClick={handleNextStep} className="px-8 py-3 bg-amber-100 text-amber-800 hover:bg-amber-200 font-bold rounded-xl transition flex items-center gap-2">
-                        {t('nextStep' as any)} <ArrowRight size={18} />
-                    </button>
+                    <button type="button" onClick={handleNextStep} className="px-8 py-3 bg-amber-100 text-amber-800 font-bold rounded-xl flex items-center gap-2">{t('nextStep' as any)} <ArrowRight size={18} /></button>
                 ) : (
-                    <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="submit" disabled={isSubmitting} className="px-8 py-3 bg-gradient-to-r from-amber-600 to-amber-700 text-white font-bold rounded-xl shadow-lg flex items-center gap-2">
-                        {isSubmitting ? <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> {t('saving' as any)}</> : <>{t('createAccount' as any)} <CheckCircle2 size={18} /></>}
+                    <motion.button whileHover={{ scale: 1.02 }} type="submit" disabled={isSubmitting} className="px-8 py-3 bg-amber-600 text-white font-bold rounded-xl shadow-lg flex items-center gap-2">
+                        {isSubmitting ? <div className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin"></div> : <>{t('createAccount' as any)} <CheckCircle2 size={18} /></>}
                     </motion.button>
                 )}
             </div>
@@ -269,7 +278,11 @@ export default function RegisterForm({ onClose, forceRole, onSwitchToLogin, onSw
   );
 }
 
-// Interfaces needed for clarity
+// Support Icon
+const ChevronDown = ({ className, size }: { className?: string, size?: number }) => (
+    <svg className={className} width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"></path></svg>
+);
+
 interface RegisterFormProps {
   onClose: () => void;
   forceRole?: 'customer';
