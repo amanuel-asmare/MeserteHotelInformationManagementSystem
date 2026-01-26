@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { 
   User, Mail, Phone, Lock, MapPin, Building, Globe, Camera, 
-  ArrowRight, ArrowLeft, CheckCircle2, Sparkles, X
+  ArrowRight, ArrowLeft, CheckCircle2, Sparkles, X, Eye, EyeOff, Wand2
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { Modal } from '../ui/Modal'; 
@@ -18,50 +18,42 @@ const COUNTRIES = [
   { name: 'Ethiopia', code: 'ET', flag: '🇪🇹', dial: '+251' },
   { name: 'United States', code: 'US', flag: '🇺🇸', dial: '+1' },
   { name: 'United Kingdom', code: 'GB', flag: '🇬🇧', dial: '+44' },
-  { name: 'United Arab Emirates', code: 'AE', flag: '🇦🇪', dial: '+971' },
   { name: 'Kenya', code: 'KE', flag: '🇰🇪', dial: '+254' },
-  { name: 'Germany', code: 'DE', flag: '🇩🇪', dial: '+49' },
-  { name: 'China', code: 'CN', flag: '🇨🇳', dial: '+86' },
-  { name: 'India', code: 'IN', flag: '🇮🇳', dial: '+91' },
-  { name: 'Canada', code: 'CA', flag: '🇨🇦', dial: '+1' },
-  { name: 'South Africa', code: 'ZA', flag: '🇿🇦', dial: '+27' },
-  // You can add more countries here easily...
 ].sort((a, b) => a.name.localeCompare(b.name));
 
 export default function RegisterForm({ onClose, forceRole, onSwitchToLogin, onSwitch }: RegisterFormProps) {
   const { t } = useLanguage();
   const router = useRouter();
-
+  const [showPassword, setShowPassword] = useState(false);
+  
   // --- ENHANCED VALIDATION SCHEMA ---
   const registerSchema = z.object({
-    firstName: z.string().min(2, t('firstNameMin' as any) || 'Min 2 characters'),
-    lastName: z.string().min(2, t('lastNameMin' as any) || 'Min 2 characters'),
-    email: z.string().email(t('invalidEmail' as any) || 'Invalid email'),
-    password: z.string().min(6, t('passwordMin' as any) || 'Min 6 characters'),
-    country: z.string().min(1),
-    phone: z.string().min(5, t('phoneTooShort' as any) || 'Phone too short'),
-    city: z.string().min(2, t('cityRequired' as any) || 'City required'),
+    firstName: z.string().min(1, t('firstNameReq' as any) || 'First Name is required').min(2, 'Min 2 characters'),
+    lastName: z.string().min(1, t('lastNameReq' as any) || 'Last Name is required').min(2, 'Min 2 characters'),
+    email: z.string()
+      .min(1, t('emailReq' as any) || 'Email address is required')
+      .email('Invalid email format')
+      .refine((val) => val.toLowerCase().endsWith('@gmail.com'), {
+        message: 'Only @gmail.com addresses are allowed'
+      }),
+    password: z.string()
+      .min(1, t('passReq' as any) || 'Password is required')
+      .min(8, 'Password must be at least 8 characters')
+      .regex(/[A-Z]/, 'Include at least one uppercase letter')
+      .regex(/[0-9]/, 'Include at least one number'),
+    country: z.string().min(1, 'Country is required'),
+    phone: z.string().min(1, 'Phone Number is required'),
+    city: z.string().min(1, 'City is required').min(2, 'Min 2 characters'),
     kebele: z.string().optional().or(z.literal('')),
   }).superRefine((data, ctx) => {
-    // Custom logic for Ethiopia
-    if (data.country === 'Ethiopia') {
-      // Must be 9 digits starting with 9 or 7 (excludes leading 0)
+    if (data.country === 'Ethiopia' && data.phone !== "") {
       if (!/^[79]\d{8}$/.test(data.phone)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: t('ethioPhoneError' as any) || 'Enter 9 digits starting with 9 or 7 (No leading 0)',
+          message: 'Enter 9 digits starting with 9 or 7',
           path: ['phone'],
         });
       }
-    } else {
-        // Basic digits check for other countries
-        if (!/^\d+$/.test(data.phone)) {
-            ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: t('digitsOnly' as any) || 'Digits only',
-                path: ['phone'],
-            });
-        }
     }
   });
 
@@ -72,35 +64,32 @@ export default function RegisterForm({ onClose, forceRole, onSwitchToLogin, onSw
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  const handleSwitchToLogin = onSwitch || onSwitchToLogin;
-
-  const {
-    register,
-    handleSubmit,
-    trigger,
-    watch,
-    formState: { errors, isSubmitting },
-  } = useForm<RegisterFormData>({
+  const { register, handleSubmit, trigger, watch, setValue, formState: { errors, isSubmitting } } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: { country: 'Ethiopia', phone: '', kebele: '' }
   });
 
   const selectedCountryName = watch('country');
-  const firstName = watch('firstName');
+  const handleSwitchToLogin = onSwitch || onSwitchToLogin;
   const isReceptionistMode = !!forceRole;
 
-  // Find dial code for current country
   const selectedCountry = useMemo(() => 
     COUNTRIES.find(c => c.name === selectedCountryName) || COUNTRIES[0],
     [selectedCountryName]
   );
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      setPreview(URL.createObjectURL(file));
+  // --- STRONG PASSWORD GENERATOR ---
+  const generateStrongPassword = () => {
+    const length = 12;
+    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+    let retVal = "";
+    // Ensure it meets our regex requirements
+    retVal += "A1"; // Force one upper and one number
+    for (let i = 0; i < length - 2; ++i) {
+      retVal += charset.charAt(Math.floor(Math.random() * charset.length));
     }
+    setValue('password', retVal, { shouldValidate: true });
+    setShowPassword(true); // Show it so user can see what was generated
   };
 
   const handleNextStep = async () => {
@@ -108,19 +97,10 @@ export default function RegisterForm({ onClose, forceRole, onSwitchToLogin, onSw
     if (isValid) setActiveTab('address');
   };
 
-  const handleClose = () => {
-    if (onClose) onClose();
-    if (isReceptionistMode) router.push('/receptionist');
-  };
-
   const onSubmit = async (data: RegisterFormData) => {
     const formData = new FormData();
-    Object.entries(data).forEach(([key, value]) => {
-      if (value !== undefined) formData.append(key, value as any);
-    });
-    // Add dial code to the phone before sending to backend
+    Object.entries(data).forEach(([key, value]) => { if (value !== undefined) formData.append(key, value as any); });
     formData.set('phone', `${selectedCountry.dial}${data.phone}`);
-    
     if (imageFile) formData.append('profileImage', imageFile);
     if (forceRole) formData.append('role', forceRole);
 
@@ -132,123 +112,119 @@ export default function RegisterForm({ onClose, forceRole, onSwitchToLogin, onSw
       });
       if (!res.ok) throw new Error('Registration failed');
       setShowSuccess(true);
-      setTimeout(() => {
-        if (!forceRole && handleSwitchToLogin) handleSwitchToLogin(); 
-        else handleClose();
-      }, 4000); 
-    } catch (err: any) {
-      alert(err.message);
-    }
+      setTimeout(() => { if (!forceRole && handleSwitchToLogin) handleSwitchToLogin(); else onClose(); }, 4000); 
+    } catch (err: any) { alert(err.message); }
   };
 
   return (
-    <Modal title="" onClose={handleClose}>
-      <div className="relative z-[70] w-full max-w-2xl mx-auto my-4 overflow-hidden rounded-3xl bg-white dark:bg-gray-900 shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-amber-100 max-h-[calc(100vh-60px)] flex flex-col">
+    <Modal title="" onClose={onClose}>
+      <div className="relative z-[70] w-full max-w-2xl mx-auto my-4 overflow-hidden rounded-3xl bg-white shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-amber-100 max-h-[calc(100vh-60px)] flex flex-col">
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col h-full overflow-hidden">
             
             {/* STICKY HEADER */}
-            <div className="sticky top-0 z-30 bg-gradient-to-r from-amber-600 to-amber-800 p-6 md:p-8 shrink-0 shadow-lg">
-                <div className="relative z-10 flex items-center gap-6">
+            <div className="sticky top-0 z-30 bg-gradient-to-r from-amber-600 to-amber-800 p-6 md:p-8 shrink-0 shadow-lg text-white">
+                <div className="flex items-center gap-6">
                     <div className="relative group shrink-0">
-                        <div className={`w-20 h-20 md:w-24 md:h-24 rounded-full overflow-hidden border-4 border-white/30 shadow-2xl backdrop-blur-sm ${preview ? 'bg-black' : 'bg-white/10'}`}>
-                            {preview ? <img src={preview} alt="Preview" className="w-full h-full object-cover" /> : <User size={32} className="m-auto mt-6 text-white/80" />}
+                        <div className={`w-20 h-20 rounded-full overflow-hidden border-4 border-white/30 shadow-2xl backdrop-blur-sm ${preview ? 'bg-black' : 'bg-white/10'}`}>
+                            {preview ? <img src={preview} alt="Preview" className="w-full h-full object-cover" /> : <User size={32} className="m-auto mt-6" />}
                         </div>
-                        <label className="absolute bottom-0 right-0 p-2 bg-white text-amber-700 rounded-full shadow-lg cursor-pointer hover:scale-110 transition-all z-20">
-                            <Camera size={16} /><input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                        <label className="absolute bottom-0 right-0 p-2 bg-white text-amber-700 rounded-full shadow-lg cursor-pointer hover:scale-110 transition-all">
+                            <Camera size={16} /><input type="file" accept="image/*" onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) { setImageFile(file); setPreview(URL.createObjectURL(file)); }
+                            }} className="hidden" />
                         </label>
                     </div>
-                    <div className="text-white">
+                    <div>
                         <h2 className="text-2xl font-bold font-serif">{isReceptionistMode ? t('newGuest' as any) : t('createAccount' as any)}</h2>
                         <p className="text-amber-100 text-sm opacity-90">{t('fillDetailsBelow' as any)}</p>
                     </div>
                 </div>
             </div>
 
-            {/* STICKY TABS */}
-            <div className="sticky top-0 z-20 flex border-b border-gray-100 bg-white dark:bg-gray-900">
-                <button type="button" onClick={() => setActiveTab('personal')} className={`flex-1 py-4 text-sm font-bold uppercase ${activeTab === 'personal' ? 'text-amber-600 bg-amber-50' : 'text-gray-400'}`}>1. Personal</button>
-                <button type="button" onClick={handleNextStep} className={`flex-1 py-4 text-sm font-bold uppercase ${activeTab === 'address' ? 'text-amber-600 bg-amber-50' : 'text-gray-400'}`}>2. Contact</button>
+            {/* TABS */}
+            <div className="sticky top-0 z-20 flex border-b border-gray-100 bg-white">
+                <button type="button" onClick={() => setActiveTab('personal')} className={`flex-1 py-4 text-sm font-bold uppercase ${activeTab === 'personal' ? 'text-amber-600 border-b-2 border-amber-600' : 'text-gray-400'}`}>1. Personal</button>
+                <button type="button" onClick={handleNextStep} className={`flex-1 py-4 text-sm font-bold uppercase ${activeTab === 'address' ? 'text-amber-600 border-b-2 border-amber-600' : 'text-gray-400'}`}>2. Address</button>
             </div>
 
-            {/* SCROLLABLE BODY */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-8 bg-gray-50/30 dark:bg-gray-900">
+            {/* BODY */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-8 bg-gray-50/30">
                 <AnimatePresence mode="wait">
-                    {activeTab === 'personal' && (
+                    {activeTab === 'personal' ? (
                         <motion.div key="personal" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-5">
                             <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-xs font-bold text-gray-500 mb-1 block uppercase">{t('firstName' as any)}</label>
-                                    <input placeholder="Amanuel" {...register('firstName')} className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl outline-none focus:border-amber-500 text-sm" />
-                                    {errors.firstName && <p className="text-red-500 text-[10px] mt-1 italic">{errors.firstName.message}</p>}
+                                <div className="relative">
+                                    <label className="text-xs font-bold text-gray-500 mb-1 block">FIRST NAME</label>
+                                    <input {...register('firstName')} className={`w-full px-4 py-3 bg-white border ${errors.firstName ? 'border-red-500' : 'border-gray-200'} rounded-xl outline-none focus:border-amber-500 text-sm font-bold`} />
+                                    {errors.firstName && <p className="text-red-500 text-[10px] mt-1 font-bold italic">{errors.firstName.message}</p>}
                                 </div>
-                                <div>
-                                    <label className="text-xs font-bold text-gray-500 mb-1 block uppercase">{t('lastName' as any)}</label>
-                                    <input placeholder="Asmare" {...register('lastName')} className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl outline-none focus:border-amber-500 text-sm" />
-                                    {errors.lastName && <p className="text-red-500 text-[10px] mt-1 italic">{errors.lastName.message}</p>}
+                                <div className="relative">
+                                    <label className="text-xs font-bold text-gray-500 mb-1 block">LAST NAME</label>
+                                    <input {...register('lastName')} className={`w-full px-4 py-3 bg-white border ${errors.lastName ? 'border-red-500' : 'border-gray-200'} rounded-xl outline-none focus:border-amber-500 text-sm font-bold`} />
+                                    {errors.lastName && <p className="text-red-500 text-[10px] mt-1 font-bold italic">{errors.lastName.message}</p>}
                                 </div>
                             </div>
+
                             <div>
-                                <label className="text-xs font-bold text-gray-500 mb-1 block uppercase">{t('email' as any)}</label>
+                                <label className="text-xs font-bold text-gray-500 mb-1 block">GMAIL ADDRESS</label>
                                 <div className="relative">
                                     <Mail className="absolute left-4 top-3.5 text-gray-400" size={18} />
-                                    <input type="email" placeholder="example@gmail.com" {...register('email')} className="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-xl outline-none focus:border-amber-500 text-sm" />
+                                    <input type="email" placeholder="example@gmail.com" {...register('email')} className={`w-full pl-11 pr-4 py-3 bg-white border ${errors.email ? 'border-red-500' : 'border-gray-200'} rounded-xl outline-none focus:border-amber-500 text-sm font-bold`} />
                                 </div>
-                                {errors.email && <p className="text-red-500 text-[10px] mt-1 italic">{errors.email.message}</p>}
+                                {errors.email && <p className="text-red-500 text-[10px] mt-1 font-bold italic">{errors.email.message}</p>}
                             </div>
+
                             <div>
-                                <label className="text-xs font-bold text-gray-500 mb-1 block uppercase">{t('password' as any)}</label>
-                                <div className="relative">
-                                    <Lock className="absolute left-4 top-3.5 text-gray-400" size={18} />
-                                    <input type="password" placeholder="••••••••" {...register('password')} className="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-xl outline-none focus:border-amber-500 text-sm" />
+                                <label className="text-xs font-bold text-gray-500 mb-1 block">STRONG PASSWORD</label>
+                                <div className="relative flex gap-2">
+                                    <div className="relative flex-1">
+                                        <Lock className="absolute left-4 top-3.5 text-gray-400" size={18} />
+                                        <input type={showPassword ? "text" : "password"} placeholder="8+ characters" {...register('password')} className={`w-full pl-11 pr-11 py-3 bg-white border ${errors.password ? 'border-red-500' : 'border-gray-200'} rounded-xl outline-none focus:border-amber-500 text-sm font-bold`} />
+                                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-3.5 text-gray-400 hover:text-amber-600 transition">
+                                            {showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}
+                                        </button>
+                                    </div>
+                                    <button 
+                                        type="button" 
+                                        onClick={generateStrongPassword}
+                                        className="bg-amber-100 text-amber-700 px-3 rounded-xl hover:bg-amber-200 transition flex items-center gap-1 text-[10px] font-black"
+                                        title="Auto-Generate Strong Password"
+                                    >
+                                        <Wand2 size={16} /> GENERATE
+                                    </button>
                                 </div>
-                                {errors.password && <p className="text-red-500 text-[10px] mt-1 italic">{errors.password.message}</p>}
+                                {errors.password && <p className="text-red-500 text-[10px] mt-1 font-bold italic">{errors.password.message}</p>}
                             </div>
                         </motion.div>
-                    )}
-
-                    {activeTab === 'address' && (
+                    ) : (
                         <motion.div key="address" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-5">
-                            
-                            {/* COUNTRY SELECT WITH FLAG */}
-                            <div>
-                                <label className="text-xs font-bold text-gray-500 mb-1 block uppercase">{t('country' as any)}</label>
-                                <div className="relative">
-                                    <Globe className="absolute left-3 top-3.5 text-amber-600" size={18} />
-                                    <select {...register('country')} className="w-full pl-10 pr-3 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold appearance-none outline-none focus:border-amber-500">
-                                        {COUNTRIES.map(c => (
-                                            <option key={c.code} value={c.name}>{c.flag} {c.name} ({c.dial})</option>
-                                        ))}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500 mb-1 block uppercase">{t('country' as any)}</label>
+                                    <select {...register('country')} className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold">
+                                        {COUNTRIES.map(c => <option key={c.code} value={c.name}>{c.flag} {c.name} ({c.dial})</option>)}
                                     </select>
-                                    <ChevronDown className="absolute right-4 top-4 text-gray-400" size={16} />
                                 </div>
-                            </div>
-
-                            {/* PHONE INPUT WITH DYNAMIC PREFIX */}
-                            <div>
-                                <label className="text-xs font-bold text-gray-500 mb-1 block uppercase">{t('phoneNumber' as any)}</label>
-                                <div className="flex shadow-sm rounded-xl overflow-hidden border border-gray-200 focus-within:border-amber-500 transition-all">
-                                    <div className="bg-gray-100 px-4 flex items-center text-sm font-black text-gray-600 border-r border-gray-200">
-                                        {selectedCountry.dial}
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500 mb-1 block">PHONE NUMBER</label>
+                                    <div className="flex rounded-xl overflow-hidden border border-gray-200">
+                                        <div className="bg-gray-100 px-3 flex items-center text-sm font-black text-gray-500">{selectedCountry.dial}</div>
+                                        <input type="tel" placeholder="9... or 7..." {...register('phone')} className="w-full px-4 py-3 outline-none text-sm font-bold bg-white" />
                                     </div>
-                                    <input 
-                                        type="tel" 
-                                        placeholder={selectedCountryName === 'Ethiopia' ? "9... or 7..." : "Phone number"} 
-                                        {...register('phone')} 
-                                        className="w-full px-4 py-3 outline-none text-sm font-bold bg-white" 
-                                    />
+                                    {errors.phone && <p className="text-red-500 text-[10px] mt-1 font-bold italic">{errors.phone.message}</p>}
                                 </div>
-                                {errors.phone && <p className="text-red-500 text-[10px] mt-1 font-bold italic">{errors.phone.message}</p>}
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-xs font-bold text-gray-500 mb-1 block uppercase">{t('city' as any)}</label>
-                                    <input placeholder="Woldia" {...register('city')} className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl outline-none text-sm" />
-                                    {errors.city && <p className="text-red-500 text-[10px] mt-1 italic">{errors.city.message}</p>}
+                                    <label className="text-xs font-bold text-gray-500 mb-1 block">CITY</label>
+                                    <input placeholder="Woldia" {...register('city')} className={`w-full px-4 py-3 bg-white border ${errors.city ? 'border-red-500' : 'border-gray-200'} rounded-xl outline-none text-sm font-bold`} />
+                                    {errors.city && <p className="text-red-500 text-[10px] mt-1 font-bold italic">{errors.city.message}</p>}
                                 </div>
                                 <div>
-                                    <label className="text-xs font-bold text-gray-500 mb-1 block uppercase">{t('kebele' as any)}</label>
-                                    <input placeholder="01" {...register('kebele')} className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl outline-none text-sm" />
+                                    <label className="text-xs font-bold text-gray-500 mb-1 block">KEBELE</label>
+                                    <input placeholder="01" {...register('kebele')} className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl outline-none text-sm font-bold" />
                                 </div>
                             </div>
                         </motion.div>
@@ -256,19 +232,16 @@ export default function RegisterForm({ onClose, forceRole, onSwitchToLogin, onSw
                 </AnimatePresence>
             </div>
 
-            {/* STICKY FOOTER */}
+            {/* FOOTER */}
             <div className="sticky bottom-0 z-30 p-5 bg-white border-t flex justify-between items-center gap-4 shadow-xl">
-                {activeTab === 'address' ? (
-                    <button type="button" onClick={() => setActiveTab('personal')} className="flex items-center gap-2 text-gray-500 font-bold hover:text-amber-600 px-2"><ArrowLeft size={18} /> {t('back' as any)}</button>
-                ) : (
-                    !isReceptionistMode && <button type="button" onClick={handleSwitchToLogin} className="text-sm text-gray-500 font-bold underline">{t('login' as any)}</button>
-                )}
-                
+                <button type="button" onClick={() => activeTab === 'address' ? setActiveTab('personal') : (handleSwitchToLogin && handleSwitchToLogin())} className="flex items-center gap-2 text-gray-500 font-bold hover:text-amber-600 transition px-2 text-xs">
+                    <ArrowLeft size={16} /> {activeTab === 'address' ? 'BACK' : 'LOGIN'}
+                </button>
                 {activeTab === 'personal' ? (
-                    <button type="button" onClick={handleNextStep} className="px-8 py-3 bg-amber-100 text-amber-800 font-bold rounded-xl flex items-center gap-2">{t('nextStep' as any)} <ArrowRight size={18} /></button>
+                    <button type="button" onClick={handleNextStep} className="px-8 py-3 bg-amber-100 text-amber-800 font-bold rounded-xl flex items-center gap-2 hover:bg-amber-200 transition">NEXT <ArrowRight size={18} /></button>
                 ) : (
-                    <motion.button whileHover={{ scale: 1.02 }} type="submit" disabled={isSubmitting} className="px-8 py-3 bg-amber-600 text-white font-bold rounded-xl shadow-lg flex items-center gap-2">
-                        {isSubmitting ? <div className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin"></div> : <>{t('createAccount' as any)} <CheckCircle2 size={18} /></>}
+                    <motion.button whileHover={{ scale: 1.02 }} type="submit" disabled={isSubmitting} className="px-10 py-3 bg-amber-600 text-white font-bold rounded-xl shadow-lg flex items-center gap-2 disabled:opacity-50">
+                        {isSubmitting ? <div className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin" /> : <>{t('createAccount' as any)} <CheckCircle2 size={18} /></>}
                     </motion.button>
                 )}
             </div>
@@ -277,11 +250,6 @@ export default function RegisterForm({ onClose, forceRole, onSwitchToLogin, onSw
     </Modal>
   );
 }
-
-// Support Icon
-const ChevronDown = ({ className, size }: { className?: string, size?: number }) => (
-    <svg className={className} width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"></path></svg>
-);
 
 interface RegisterFormProps {
   onClose: () => void;
