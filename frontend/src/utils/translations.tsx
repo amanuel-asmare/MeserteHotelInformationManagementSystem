@@ -1045,7 +1045,14 @@ supportDesc: "Our dedicated team is available 24/7 for your needs",
     privacyPolicy: "Privacy Policy",
     termsOfService: "Terms of Service",
 
-    
+    ethioPhoneError: "Phone must start with 09 or 07 and be 10 digits.",
+invalidEmail: "Enter a valid email address.",
+passwordMin: "Password must be at least 6 characters.",
+passUpper: "Must contain one uppercase letter.",
+passNum: "Must contain one number.",
+firstNameMin: "First name must be at least 2 characters.",
+alphaOnly: "Only letters are allowed.",
+cityRequired: "City name is required.",
   },
   am: {
     // --- BRAND ---
@@ -2110,6 +2117,15 @@ certifiedTitle: "የተረጋገጠ ጥራት",
 certifiedDesc: "ደህንነቱ የተጠበቀ እና ዓለም አቀፍ ደረጃውን የጠበቀ አገልግሎት",
 supportTitle: "የማይቋረጥ ድጋፍ",
 supportDesc: "ለእርሶ ሁልጊዜም ዝግጁ የሆኑ የሰለጠኑ ባለሙያዎች",
+
+ethioPhoneError: "ስልክ ቁጥር በ 09 ወይም 07 መጀመር አለበት (10 አሃዝ)።",
+invalidEmail: "ትክክለኛ ኢሜይል ያስገቡ።",
+passwordMin: "የይለፍ ቃል ቢያንስ 6 ፊደላት መሆን አለበት።",
+passUpper: "ቢያንስ አንድ አቢይ (Capital) ፊደል ሊኖረው ይገባል።",
+passNum: "ቢያንስ አንድ ቁጥር ሊኖረው ይገባል።",
+firstNameMin: "ስም ቢያንስ 2 ፊደላት መሆን አለበት።",
+alphaOnly: "ፊደላት ብቻ ይጠቀሙ።",
+cityRequired: "የከተማ ስም ያስፈልጋል።",
   
 }
 };

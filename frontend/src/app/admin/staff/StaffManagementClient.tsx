@@ -27,7 +27,7 @@ const containerVariants: Variants = {
 };
 
 // Animation Variants for each Letter
-// FIX: Explicitly type as Variants to satisfy TypeScript
+
 const letterVariants: Variants = {
   hidden: { y: 20, opacity: 0, rotateX: -90 },
   visible: {
